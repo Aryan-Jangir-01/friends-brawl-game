@@ -18,6 +18,7 @@ export class GameRenderer {
     this.targetCamX = 1200;
     this.targetCamY = 900;
     this.screenShake = 0;
+    this.activeEmotes = new Map(); // playerId -> { emoji, endTime }
 
     this.resize();
     window.addEventListener("resize", () => this.resize());
@@ -41,6 +42,10 @@ export class GameRenderer {
 
   addScreenShake(amount = 12) {
     this.screenShake = Math.max(this.screenShake, amount);
+  }
+
+  addPlayerEmote(playerId, emoji) {
+    this.activeEmotes.set(playerId, { emoji, endTime: Date.now() + 2500 });
   }
 
   updateCamera(targetX, targetY, dt) {
@@ -379,6 +384,21 @@ export class GameRenderer {
       ctx.shadowBlur = 4;
       ctx.fillText(p.name, 0, barY - (p.shield > 0 ? 9 : 3));
 
+      // Active Emote Bubble
+      const emote = this.activeEmotes.get(p.id);
+      if (emote) {
+        if (Date.now() < emote.endTime) {
+          const bounce = Math.sin(Date.now() / 150) * 4;
+          ctx.save();
+          ctx.font = "24px sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText(emote.emoji, 0, barY - 24 + bounce);
+          ctx.restore();
+        } else {
+          this.activeEmotes.delete(p.id);
+        }
+      }
+
       ctx.restore();
     });
   }
@@ -479,3 +499,4 @@ export class GameRenderer {
     }
   }
 }
+

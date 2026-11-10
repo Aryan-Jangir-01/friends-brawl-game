@@ -23,6 +23,7 @@
         <div class="hud-room-tag">
           <span class="icon">📍</span> <span id="hud-room-code">ROOM-????</span>
           <span id="hud-ping-badge" class="ping-badge">24ms</span>
+          <button id="btn-hud-sound" class="btn-small-icon" title="Toggle Sound">🔊</button>
           <button id="btn-hud-fullscreen" class="btn-small-icon" title="Toggle Fullscreen">⛶</button>
         </div>
         <div class="hud-match-timer" id="hud-timer">05:00</div>
@@ -102,12 +103,30 @@
             <span class="btn-subtext">SWAP</span>
           </button>
 
+          <!-- Emote Button -->
+          <button id="btn-emote" class="action-btn emote-btn" aria-label="Emote">
+            <span class="btn-icon">💬</span>
+            <span class="btn-subtext">EMOTE</span>
+          </button>
+
           <!-- Dash / Jet Boost Button -->
           <button id="btn-dash" class="action-btn dash-btn" aria-label="Dash">
             <span class="btn-icon">⚡</span>
             <span class="btn-subtext">DASH</span>
             <div id="dash-cooldown-overlay" class="cooldown-overlay"></div>
           </button>
+        </div>
+
+        <!-- Floating Quick Emote Wheel -->
+        <div id="emote-wheel" class="emote-wheel hidden">
+          <button class="emote-item" data-emoji="🔥">🔥</button>
+          <button class="emote-item" data-emoji="💀">💀</button>
+          <button class="emote-item" data-emoji="👑">👑</button>
+          <button class="emote-item" data-emoji="😂">😂</button>
+          <button class="emote-item" data-emoji="⚡">⚡</button>
+          <button class="emote-item" data-emoji="🛡️">🛡️</button>
+          <button class="emote-item" data-emoji="🚀">🚀</button>
+          <button class="emote-item" data-emoji="💣">💣</button>
         </div>
       </div>
     </div>
@@ -176,6 +195,17 @@
             <button class="color-dot" data-color="#a855f7" style="background:#a855f7;"></button>
             <button class="color-dot" data-color="#ec4899" style="background:#ec4899;"></button>
             <button class="color-dot" data-color="#3b82f6" style="background:#3b82f6;"></button>
+          </div>
+        </div>
+
+        <!-- Hero Class Selection -->
+        <div class="class-picker-row">
+          <span>Hero Class:</span>
+          <div class="class-chips" id="class-chips">
+            <button class="class-chip active" data-class="striker" title="Balanced">⚡ Striker</button>
+            <button class="class-chip" data-class="juggernaut" title="Heavy HP & Shield">🛡️ Juggernaut</button>
+            <button class="class-chip" data-class="phantom" title="Fast & Quick Dash">💨 Phantom</button>
+            <button class="class-chip" data-class="sniper" title="Long Range Railgun">🎯 Sniper</button>
           </div>
         </div>
       </div>
@@ -256,6 +286,12 @@
           <div class="players-section">
             <div class="section-title">PLAYERS CONNECTED (<span id="player-count">0</span>)</div>
             <div id="lobby-player-list" class="players-grid"></div>
+          </div>
+
+          <!-- Host Bot Controls -->
+          <div id="host-bot-controls" class="bot-controls-row hidden">
+            <button id="btn-add-bot" class="btn btn-secondary btn-small">+ ADD BOT 🤖</button>
+            <button id="btn-remove-bot" class="btn btn-secondary btn-small">- REMOVE BOT</button>
           </div>
 
           <!-- Ready / Start Actions -->

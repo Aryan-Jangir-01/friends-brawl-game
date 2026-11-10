@@ -147,9 +147,13 @@ export class RoomManager {
     room.state = "playing";
     room.gameInstance = new GameInstance(room.id, room.options, this.io);
 
-    // Register all players
+    // Register all players and bots
     room.players.forEach(profile => {
-      room.gameInstance.addPlayer(profile.id, profile);
+      if (profile.isBot) {
+        room.gameInstance.addBot(profile.team);
+      } else {
+        room.gameInstance.addPlayer(profile.id, profile);
+      }
     });
 
     room.gameInstance.start();
@@ -161,6 +165,67 @@ export class RoomManager {
     });
 
     return { success: true };
+  }
+
+  addBotToRoom(socket) {
+    const room = this.rooms.get(socket.roomId);
+    if (!room || room.hostId !== socket.id) return { success: false, error: "Only host can add bots" };
+    if (room.players.size >= 8) return { success: false, error: "Room is full (max 8)" };
+
+    const botId = `bot_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const BOT_NAMES = ["CyberViper", "NeonGhost", "TitanX", "ShadowReaper", "BlazeBot", "ApexHunter", "ZeroCool", "RogueOne"];
+    const BOT_COLORS = ["#f43f5e", "#8b5cf6", "#ec4899", "#14b8a6", "#eab308", "#f97316", "#06b6d4"];
+    const BOT_CLASSES = ["striker", "juggernaut", "phantom", "sniper"];
+
+    const botPlayer = {
+      id: botId,
+      name: `🤖 ${BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)]}`,
+      color: BOT_COLORS[Math.floor(Math.random() * BOT_COLORS.length)],
+      avatar: BOT_CLASSES[Math.floor(Math.random() * BOT_CLASSES.length)],
+      team: room.players.size % 2 === 0 ? "blue" : "red",
+      isHost: false,
+      isReady: true,
+      isBot: true
+    };
+
+    room.players.set(botId, botPlayer);
+
+    if (room.state === "playing" && room.gameInstance) {
+      room.gameInstance.addBot(botPlayer.team);
+    }
+
+    this.broadcastLobbyUpdate(room.id);
+    return { success: true, bot: botPlayer };
+  }
+
+  removeBotFromRoom(socket, botId = null) {
+    const room = this.rooms.get(socket.roomId);
+    if (!room || room.hostId !== socket.id) return { success: false, error: "Only host can remove bots" };
+
+    if (!botId) {
+      for (const [id, p] of room.players.entries()) {
+        if (p.isBot) botId = id;
+      }
+    }
+
+    if (botId && room.players.has(botId)) {
+      room.players.delete(botId);
+      if (room.gameInstance) {
+        room.gameInstance.removeBot(botId);
+      }
+      this.broadcastLobbyUpdate(room.id);
+      return { success: true };
+    }
+    return { success: false, error: "No bots to remove" };
+  }
+
+  sendEmote(socket, emoji) {
+    const room = this.rooms.get(socket.roomId);
+    if (!room) return;
+    this.io.to(room.id).emit("player_emoted", {
+      playerId: socket.id,
+      emoji: emoji
+    });
   }
 
   returnToLobby(socket) {
@@ -195,3 +260,4 @@ export class RoomManager {
     }
   }
 }
+

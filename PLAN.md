@@ -87,3 +87,4 @@ An action-packed, top-down multiplayer arena shooter designed specifically for f
 - Verify multi-client connection and latency handling.
 - Review code against CodeRabbit quality standards (memory leak checks, spatial partitioning, event cleanup).
 - Document exact steps for playing over Wi-Fi / Mobile Hotspot / Internet.
+

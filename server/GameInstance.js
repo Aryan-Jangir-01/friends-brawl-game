@@ -1,5 +1,6 @@
 // server/GameInstance.js
-import { MAPS, WEAPON_CONFIGS } from "./MapData.js";
+import { MAPS, WEAPON_CONFIGS, HERO_CLASSES } from "./MapData.js";
+import { BotPlayer } from "./BotPlayer.js";
 
 export class GameInstance {
   constructor(roomId, options = {}, io) {
@@ -14,6 +15,7 @@ export class GameInstance {
 
     this.map = MAPS[this.options.mapId] || MAPS.cyber_arena;
     this.players = new Map();
+    this.bots = new Map();
     this.bullets = [];
     this.bulletIdCounter = 1;
     this.groundItems = [];
@@ -58,6 +60,15 @@ export class GameInstance {
 
   addPlayer(socketId, profile = {}) {
     const spawn = this.getRandomSpawnPoint();
+    const heroClass = HERO_CLASSES[profile.avatar] || HERO_CLASSES.striker;
+
+    const initialWeapons = {
+      blaster: { ammo: Infinity }
+    };
+    if (heroClass.starterWeapon && heroClass.starterWeapon !== "blaster") {
+      initialWeapons[heroClass.starterWeapon] = { ammo: 20 };
+    }
+
     const player = {
       id: socketId,
       name: profile.name || `Player_${socketId.substring(0, 4)}`,
@@ -70,24 +81,21 @@ export class GameInstance {
       vy: 0,
       radius: 24,
       angle: 0,
-      health: 100,
-      maxHealth: 100,
-      shield: 50,
-      maxShield: 100,
-      speed: 340,
-      baseSpeed: 340,
+      health: heroClass.maxHealth,
+      maxHealth: heroClass.maxHealth,
+      shield: heroClass.maxShield,
+      maxShield: heroClass.maxShield,
+      speed: heroClass.speed,
+      baseSpeed: heroClass.speed,
       speedBoostEndTime: 0,
 
       // Inventory
-      weapons: {
-        blaster: { ammo: Infinity },
-        shotgun: { ammo: 15 }
-      },
-      currentWeapon: "blaster",
+      weapons: initialWeapons,
+      currentWeapon: heroClass.starterWeapon || "blaster",
       lastShootTime: 0,
 
       // Movement & Dash
-      dashCooldown: 2500, // 2.5s
+      dashCooldown: heroClass.dashCooldown,
       lastDashTime: 0,
       isDashing: false,
       dashEndTime: 0,
@@ -100,6 +108,7 @@ export class GameInstance {
       isAlive: true,
       respawnTimer: 0,
       inBush: false,
+      isBot: profile.isBot || false,
 
       // Input buffer from client
       input: {
@@ -113,6 +122,33 @@ export class GameInstance {
 
     this.players.set(socketId, player);
     return player;
+  }
+
+  addBot(team = null) {
+    const botId = `bot_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const botController = new BotPlayer(botId, this, team);
+    this.bots.set(botId, botController);
+    const player = this.addPlayer(botId, {
+      name: botController.name,
+      color: botController.color,
+      avatar: botController.avatar,
+      team: botController.team,
+      isBot: true
+    });
+    return player;
+  }
+
+  removeBot(botId = null) {
+    if (!botId) {
+      const keys = Array.from(this.bots.keys());
+      if (keys.length > 0) botId = keys[keys.length - 1];
+    }
+    if (botId && this.bots.has(botId)) {
+      this.bots.delete(botId);
+      this.removePlayer(botId);
+      return true;
+    }
+    return false;
   }
 
   removePlayer(socketId) {
@@ -239,6 +275,11 @@ export class GameInstance {
     // 2. Update Players (Movement, Dash, Bush check, Shooting, Respawn)
     this.players.forEach(player => {
       this.updatePlayer(player, dt, now);
+    });
+
+    // 2.5. Update AI Bots
+    this.bots.forEach(bot => {
+      bot.update(dt, now);
     });
 
     // 3. Update Bullets (Physics, Collisions with Walls, Crates, Players)
@@ -828,3 +869,4 @@ export class GameInstance {
     });
   }
 }
+

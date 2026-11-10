@@ -79,6 +79,10 @@ export class NetworkClient {
     this.socket.on("returned_to_lobby", (roomSummary) => {
       this.trigger("returned_to_lobby", roomSummary);
     });
+
+    this.socket.on("player_emoted", (data) => {
+      this.trigger("player_emoted", data);
+    });
   }
 
   startPingLoop() {
@@ -128,6 +132,20 @@ export class NetworkClient {
     this.socket.emit("start_game", callback);
   }
 
+  addBot(callback) {
+    this.socket.emit("add_bot", callback);
+  }
+
+  removeBot(botId, callback) {
+    this.socket.emit("remove_bot", botId, callback);
+  }
+
+  sendEmote(emoji) {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit("send_emote", emoji);
+    }
+  }
+
   returnToLobby() {
     this.socket.emit("return_to_lobby");
   }
@@ -138,3 +156,4 @@ export class NetworkClient {
     }
   }
 }
+

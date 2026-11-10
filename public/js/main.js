@@ -147,6 +147,19 @@ function initProfile() {
       updateAvatarPreview();
     });
   });
+
+  // Hero Class Picker
+  const classChips = document.getElementById("class-chips");
+  if (classChips) {
+    classChips.querySelectorAll(".class-chip").forEach(btn => {
+      btn.addEventListener("click", () => {
+        classChips.querySelectorAll(".class-chip").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        state.profile.avatar = btn.dataset.class;
+        showToast(`Selected Class: ${btn.textContent}`);
+      });
+    });
+  }
 }
 
 function updateAvatarPreview() {
@@ -309,6 +322,11 @@ function initNetwork() {
     lobbyScreen.classList.remove("hidden");
     renderLobbyRoom(roomSummary);
   });
+
+  network.on("player_emoted", (data) => {
+    renderer.addPlayerEmote(data.playerId, data.emoji);
+    audio.playEmoteSound();
+  });
 }
 
 // 4. Lobby Actions
@@ -445,9 +463,11 @@ function renderLobbyRoom(room) {
   if (isMeHost) {
     btnStartGame.classList.remove("hidden");
     hostHint.classList.add("hidden");
+    document.getElementById("host-bot-controls")?.classList.remove("hidden");
   } else {
     btnStartGame.classList.add("hidden");
     hostHint.classList.remove("hidden");
+    document.getElementById("host-bot-controls")?.classList.add("hidden");
   }
 
   // Render players grid
@@ -599,6 +619,52 @@ function gameLoop(time) {
   }
 
   requestAnimationFrame(gameLoop);
+}
+
+// Bot Controls
+document.getElementById("btn-add-bot")?.addEventListener("click", () => {
+  network.addBot((res) => {
+    if (!res.success) showToast(res.error || "Cannot add bot");
+  });
+});
+
+document.getElementById("btn-remove-bot")?.addEventListener("click", () => {
+  network.removeBot(null, (res) => {
+    if (!res.success) showToast(res.error || "Cannot remove bot");
+  });
+});
+
+// Emote Wheel
+const btnEmote = document.getElementById("btn-emote");
+const emoteWheel = document.getElementById("emote-wheel");
+if (btnEmote && emoteWheel) {
+  btnEmote.addEventListener("click", (e) => {
+    e.stopPropagation();
+    emoteWheel.classList.toggle("hidden");
+  });
+
+  emoteWheel.querySelectorAll(".emote-item").forEach(item => {
+    item.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const emoji = item.dataset.emoji;
+      network.sendEmote(emoji);
+      emoteWheel.classList.add("hidden");
+    });
+  });
+
+  document.addEventListener("click", () => {
+    emoteWheel.classList.add("hidden");
+  });
+}
+
+// Sound toggle
+const btnHudSound = document.getElementById("btn-hud-sound");
+if (btnHudSound) {
+  btnHudSound.addEventListener("click", () => {
+    const isMuted = audio.toggleMute();
+    btnHudSound.textContent = isMuted ? "🔇" : "🔊";
+    showToast(isMuted ? "Sound Muted" : "Sound Enabled");
+  });
 }
 
 // Startup

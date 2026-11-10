@@ -223,6 +223,7 @@ html, body {
   gap: 0.75rem;
   font-size: 0.85rem;
   color: var(--text-muted);
+  margin-bottom: 0.75rem;
 }
 
 .color-options {
@@ -244,6 +245,52 @@ html, body {
   transform: scale(1.15);
   border-color: #ffffff;
   box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+}
+
+/* Hero Class Chips */
+.class-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.class-chips {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.class-chip {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-radius: 8px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.class-chip:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.class-chip.active {
+  background: rgba(0, 240, 255, 0.2);
+  border-color: var(--cyan-neon);
+  box-shadow: 0 0 10px var(--cyan-glow);
+  color: var(--cyan-neon);
+}
+
+/* Host Bot Controls */
+.bot-controls-row {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
 }
 
 /* Room Action Cards Grid */

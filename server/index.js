@@ -133,6 +133,20 @@ io.on("connection", (socket) => {
     if (callback) callback(result);
   });
 
+  socket.on("add_bot", (callback) => {
+    const result = roomManager.addBotToRoom(socket);
+    if (callback) callback(result);
+  });
+
+  socket.on("remove_bot", (botId, callback) => {
+    const result = roomManager.removeBotFromRoom(socket, botId);
+    if (callback) callback(result);
+  });
+
+  socket.on("send_emote", (emoji) => {
+    roomManager.sendEmote(socket, emoji);
+  });
+
   socket.on("return_to_lobby", () => {
     roomManager.returnToLobby(socket);
   });
@@ -167,3 +181,4 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log("👉 Tip: Connect your phone to the same Wi-Fi or Hotspot,");
   console.log("   then open the Mobile/LAN Play link above or scan QR code!\n");
 });
+

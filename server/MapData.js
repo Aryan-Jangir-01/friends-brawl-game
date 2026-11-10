@@ -85,6 +85,49 @@ export const MAPS = {
   }
 };
 
+export const HERO_CLASSES = {
+  striker: {
+    name: "Striker",
+    icon: "⚡",
+    desc: "Balanced combatant with standard armor and agility",
+    maxHealth: 100,
+    maxShield: 50,
+    speed: 340,
+    dashCooldown: 2500,
+    starterWeapon: "blaster"
+  },
+  juggernaut: {
+    name: "Juggernaut",
+    icon: "🛡️",
+    desc: "Heavy armored fortress with high HP and thick shield",
+    maxHealth: 140,
+    maxShield: 80,
+    speed: 295,
+    dashCooldown: 3200,
+    starterWeapon: "shotgun"
+  },
+  phantom: {
+    name: "Phantom",
+    icon: "💨",
+    desc: "Ultra-fast ninja with rapid dash recovery",
+    maxHealth: 80,
+    maxShield: 40,
+    speed: 395,
+    dashCooldown: 1600,
+    starterWeapon: "plasma"
+  },
+  sniper: {
+    name: "Sniper",
+    icon: "🎯",
+    desc: "Long-range specialist carrying heavy energy weapons",
+    maxHealth: 90,
+    maxShield: 40,
+    speed: 330,
+    dashCooldown: 2800,
+    starterWeapon: "railgun"
+  }
+};
+
 export const WEAPON_CONFIGS = {
   blaster: {
     name: "Blaster",
@@ -153,3 +196,4 @@ export const WEAPON_CONFIGS = {
     type: "railgun"
   }
 };
+
