@@ -1,16 +1,21 @@
 // public/sw.js
-const CACHE_NAME = "brawl-zone-v7";
+const CACHE_NAME = "brawl-zone-v8";
 const ASSETS = [
   "./",
   "./index.html",
   "./css/style.css",
   "./css/joystick.css",
+  "./js/socket.io.min.js",
   "./js/main.js",
   "./js/audio.js",
   "./js/input.js",
   "./js/renderer.js",
   "./js/network.js",
   "./js/particles.js",
+  "./js/engine/MapData.js",
+  "./js/engine/BotPlayer.js",
+  "./js/engine/GameInstance.js",
+  "./js/engine/LocalGameServer.js",
   "./icons/icon.svg",
   "./manifest.json"
 ];
