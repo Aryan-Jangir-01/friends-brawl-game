@@ -254,6 +254,10 @@
         </div>
         <h1 class="game-title">BRAWL <span class="highlight">ZONE</span></h1>
         <p class="game-tagline">Multi-Phone Action Arena • Instant Wi-Fi & Online Play</p>
+        <div id="server-connection-tag" style="margin-top: 6px; font-size: 0.8rem; color: #94a3b8; display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: rgba(15,23,42,0.6); padding: 4px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+          <span id="server-status-dot" style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#eab308;"></span>
+          <span id="server-status-text">Cloud Server: Checking...</span>
+        </div>
       </div>
 
       <!-- Player Profile Customizer Card -->
@@ -331,11 +335,19 @@
       <!-- Navigation Tabs / Sections: Main Menu vs Active Room -->
       <div id="view-room-selection" class="room-selection-view">
         <div class="cards-grid">
+          <!-- Solo Practice Card -->
+          <div class="glass-card action-card practice-card" style="border-color: rgba(16, 185, 129, 0.4);">
+            <div class="card-badge" style="background: rgba(16, 185, 129, 0.2); border-color: #10b981; color: #10b981;">SOLO PLAY</div>
+            <h3>🤖 PLAY VS BOTS (OFFLINE)</h3>
+            <p>Play instantly in your browser right now against AI bots with zero server or Wi-Fi needed!</p>
+            <button id="btn-practice-bots" class="btn btn-secondary full-width" style="border-color: #10b981; color: #10b981; font-weight: 700; background: rgba(16, 185, 129, 0.1);">PLAY VS BOTS NOW ⚔️</button>
+          </div>
+
           <!-- Create Room Card -->
           <div class="glass-card action-card">
             <div class="card-badge">HOST</div>
             <h3>CREATE NEW ROOM</h3>
-            <p>Start a game room on this phone/device. Friends can scan the QR code or enter code to join.</p>
+            <p>Start a multiplayer room. Friends can scan the QR code or enter code to battle.</p>
             <button id="btn-create-room" class="btn btn-primary full-width">CREATE ROOM 🚀</button>
           </div>
 

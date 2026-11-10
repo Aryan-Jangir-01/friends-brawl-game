@@ -1,10 +1,13 @@
 // public/js/network.js
+import { LocalGameServer } from "./engine/LocalGameServer.js";
 
 export class NetworkClient {
   constructor() {
     this.socket = null;
     this.ping = 0;
     this.callbacks = {};
+    this.isLocalSolo = false;
+    this.localServer = new LocalGameServer(this);
   }
 
   getServerUrl() {
@@ -149,59 +152,125 @@ export class NetworkClient {
     }
   }
 
+  isServerOnline() {
+    return Boolean(this.socket && this.socket.connected);
+  }
+
+  startSoloMatch(profile, options = {}) {
+    this.isLocalSolo = true;
+    const result = this.localServer.start(profile, options);
+    this.trigger("connected", result.localPlayerId);
+    return result;
+  }
+
   createRoom(profile, options, callback) {
+    if (!this.isServerOnline()) {
+      if (callback) callback({ success: false, error: "Server offline" });
+      return;
+    }
     this.socket.emit("create_room", { profile, options }, callback);
   }
 
   joinRoom(roomId, profile, callback) {
+    if (!this.isServerOnline()) {
+      if (callback) callback({ success: false, error: "Server offline" });
+      return;
+    }
     this.socket.emit("join_room", { roomId, profile }, callback);
   }
 
   leaveRoom() {
-    this.socket.emit("leave_room");
+    if (this.isLocalSolo) {
+      this.localServer.stop();
+      this.isLocalSolo = false;
+      return;
+    }
+    if (this.socket && this.socket.connected) {
+      this.socket.emit("leave_room");
+    }
   }
 
   toggleReady(isReady) {
-    this.socket.emit("toggle_ready", isReady);
+    if (this.socket && this.socket.connected) {
+      this.socket.emit("toggle_ready", isReady);
+    }
   }
 
   changeTeam(team) {
-    this.socket.emit("change_team", team);
+    if (this.socket && this.socket.connected) {
+      this.socket.emit("change_team", team);
+    }
   }
 
   updateRoomOptions(options) {
-    this.socket.emit("update_room_options", options);
+    if (this.socket && this.socket.connected) {
+      this.socket.emit("update_room_options", options);
+    }
   }
 
   startGame(callback) {
-    this.socket.emit("start_game", callback);
+    if (this.socket && this.socket.connected) {
+      this.socket.emit("start_game", callback);
+    }
   }
 
   addBot(callback) {
-    this.socket.emit("add_bot", callback);
+    if (this.socket && this.socket.connected) {
+      this.socket.emit("add_bot", callback);
+    }
   }
 
   removeBot(botId, callback) {
-    this.socket.emit("remove_bot", botId, callback);
+    if (this.socket && this.socket.connected) {
+      this.socket.emit("remove_bot", botId, callback);
+    }
   }
 
   sendEmote(emoji) {
+    if (this.isLocalSolo) {
+      this.trigger("player_emoted", { id: "local_player_1", emoji });
+      return;
+    }
     if (this.socket && this.socket.connected) {
       this.socket.emit("send_emote", emoji);
     }
   }
 
   sendTacticalPing(pingData) {
+    if (this.isLocalSolo) {
+      this.trigger("tactical_ping", {
+        id: "local_player_1",
+        playerName: "You",
+        color: "#00f0ff",
+        type: pingData.type,
+        text: pingData.text,
+        icon: pingData.icon,
+        x: 1200,
+        y: 900
+      });
+      return;
+    }
     if (this.socket && this.socket.connected) {
       this.socket.emit("send_tactical_ping", pingData);
     }
   }
 
   returnToLobby() {
-    this.socket.emit("return_to_lobby");
+    if (this.isLocalSolo) {
+      this.localServer.stop();
+      this.isLocalSolo = false;
+      return;
+    }
+    if (this.socket && this.socket.connected) {
+      this.socket.emit("return_to_lobby");
+    }
   }
 
   sendInput(payload) {
+    if (this.isLocalSolo) {
+      this.localServer.handleInput(payload);
+      return;
+    }
     if (this.socket && this.socket.connected) {
       this.socket.emit("player_input", payload);
     }

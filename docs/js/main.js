@@ -260,15 +260,23 @@ async function fetchNetworkInfo() {
 function initNetwork() {
   network.connect();
 
+  const statusDot = document.getElementById("server-status-dot");
+  const statusText = document.getElementById("server-status-text");
+
   network.on("connect_error", () => {
+    if (statusDot) statusDot.style.background = "#f43f5e";
+    if (statusText) statusText.textContent = "Cloud Server: Offline (Solo Mode Available)";
     if (window.location.hostname.includes("github.io") || window.location.hostname.includes("itch.io")) {
-      showToast("Waking up game server... please wait ~30s");
+      showToast("Cloud server offline. Solo Mode ready to play!");
     }
   });
 
   network.on("connected", (socketId) => {
     state.localPlayerId = socketId;
     console.log("Registered local ID:", socketId);
+
+    if (statusDot) statusDot.style.background = "#10b981";
+    if (statusText) statusText.textContent = "Multiplayer Server: Online";
 
     // Check for room query parameter in URL (e.g. ?room=XYZ)
     const urlParams = new URLSearchParams(window.location.search);
@@ -472,8 +480,28 @@ function initNetwork() {
 }
 
 // 4. Lobby Actions
+const btnPracticeBots = document.getElementById("btn-practice-bots");
+if (btnPracticeBots) {
+  btnPracticeBots.addEventListener("click", () => {
+    initAudio();
+    audio.unlock();
+    audio.playClick();
+    showToast("Starting Solo Match vs AI Bots! ⚔️");
+    network.startSoloMatch(state.profile, {
+      gameMode: "ffa",
+      scoreLimit: 15,
+      matchDuration: 300,
+      mapId: "cyber_arena"
+    });
+  });
+}
+
 btnCreateRoom.addEventListener("click", () => {
   audio.unlock();
+  if (!network.isServerOnline()) {
+    showToast("⚠️ Multiplayer Cloud Server is not connected yet! To battle friends across phones, deploy to Render or run 'npm start' on PC. Click 'PLAY VS BOTS NOW' to play solo!");
+    return;
+  }
   network.createRoom(state.profile, { gameMode: "ffa", scoreLimit: 15 }, (res) => {
     if (res.success) {
       state.currentRoom = res.room;
@@ -488,6 +516,10 @@ btnCreateRoom.addEventListener("click", () => {
 
 btnJoinRoom.addEventListener("click", () => {
   audio.unlock();
+  if (!network.isServerOnline()) {
+    showToast("⚠️ Multiplayer Cloud Server is not connected yet! To battle friends across phones, deploy to Render or run 'npm start' on PC. Click 'PLAY VS BOTS NOW' to play solo!");
+    return;
+  }
   const code = inputRoomCode.value.trim().toUpperCase();
   if (!code) return showToast("Please enter a room code");
   joinSpecificRoom(code);
@@ -1009,7 +1041,7 @@ fetchNetworkInfo();
 // PWA Service Worker Registration
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {});
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
   });
 }
 
