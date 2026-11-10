@@ -22,8 +22,15 @@ const io = new Server(server, {
 const PORT = process.env.PORT || 3000;
 const roomManager = new RoomManager(io);
 
-// Static assets
+// Static assets and CORS for cross-origin hosting (e.g. GitHub Pages)
 const publicPath = path.join(__dirname, "..", "public");
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") return res.sendStatus(200);
+  next();
+});
 app.use(express.static(publicPath));
 app.use(express.json());
 

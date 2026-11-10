@@ -1,18 +1,18 @@
 // public/sw.js
-const CACHE_NAME = "brawl-zone-v6";
+const CACHE_NAME = "brawl-zone-v7";
 const ASSETS = [
-  "/",
-  "/index.html",
-  "/css/style.css",
-  "/css/joystick.css",
-  "/js/main.js",
-  "/js/audio.js",
-  "/js/input.js",
-  "/js/renderer.js",
-  "/js/network.js",
-  "/js/particles.js",
-  "/icons/icon.svg",
-  "/manifest.json"
+  "./",
+  "./index.html",
+  "./css/style.css",
+  "./css/joystick.css",
+  "./js/main.js",
+  "./js/audio.js",
+  "./js/input.js",
+  "./js/renderer.js",
+  "./js/network.js",
+  "./js/particles.js",
+  "./icons/icon.svg",
+  "./manifest.json"
 ];
 
 self.addEventListener("install", (e) => {

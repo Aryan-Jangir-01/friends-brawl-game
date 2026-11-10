@@ -1,0 +1,394 @@
+/* public/css/joystick.css */
+
+.touch-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: auto;
+  z-index: 10;
+  display: flex;
+}
+
+/* Touch Zones */
+.touch-zone {
+  flex: 1;
+  height: 100%;
+  position: relative;
+  touch-action: none;
+}
+
+#touch-zone-left {
+  /* Left half of screen */
+}
+
+#touch-zone-right {
+  /* Right half of screen */
+}
+
+/* Joystick Hints */
+.joystick-hint {
+  position: absolute;
+  bottom: 24px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.25);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  pointer-events: none;
+  transition: opacity 0.5s;
+}
+
+#touch-zone-left .joystick-hint {
+  left: 36px;
+}
+
+#touch-zone-right .joystick-hint {
+  right: 120px;
+}
+
+/* Joystick Rings */
+.joystick-ring {
+  position: absolute;
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 240, 255, 0.45);
+  background: radial-gradient(circle, rgba(0, 240, 255, 0.08) 0%, rgba(0, 0, 0, 0.4) 100%);
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  will-change: transform, left, top;
+}
+
+.joystick-knob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #00f0ff 0%, #0088cc 100%);
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.8);
+  transform: translate(-50%, -50%);
+  will-change: transform, left, top;
+}
+
+/* Right Aim Joystick Specific Styling */
+.aim-ring {
+  border-color: rgba(255, 0, 127, 0.45);
+  background: radial-gradient(circle, rgba(255, 0, 127, 0.08) 0%, rgba(0, 0, 0, 0.4) 100%);
+  box-shadow: 0 0 20px rgba(255, 0, 127, 0.2);
+}
+
+.aim-knob {
+  background: radial-gradient(circle, #ff007f 0%, #cc0055 100%);
+  box-shadow: 0 0 15px rgba(255, 0, 127, 0.8);
+}
+
+/* Action Buttons Group (Right side above or near thumb) */
+.action-buttons-group {
+  position: absolute;
+  right: 20px;
+  bottom: 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  pointer-events: auto;
+  z-index: 25;
+}
+
+.action-btn {
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  background: rgba(16, 24, 39, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+  touch-action: manipulation;
+  transition: transform 0.1s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.action-btn:active {
+  transform: scale(0.92);
+}
+
+.action-btn .btn-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.action-btn .btn-subtext {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Super Ultimate Button */
+.super-btn {
+  width: 72px;
+  height: 72px;
+  border-color: rgba(255, 0, 127, 0.6);
+  background: radial-gradient(circle, rgba(255, 0, 127, 0.25) 0%, rgba(16, 24, 39, 0.95) 100%);
+  box-shadow: 0 0 15px rgba(255, 0, 127, 0.3);
+  position: relative;
+}
+
+.super-meter-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+  pointer-events: none;
+}
+
+.super-meter-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-width: 4;
+}
+
+.super-meter-progress {
+  fill: none;
+  stroke: #ff007f;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-dasharray: 207.34; /* 2 * PI * 33 */
+  stroke-dashoffset: 207.34;
+  transition: stroke-dashoffset 0.15s ease-out, stroke 0.3s;
+}
+
+.super-btn.ready {
+  border-color: #ffea00;
+  background: radial-gradient(circle, rgba(255, 234, 0, 0.3) 0%, rgba(255, 0, 127, 0.4) 100%);
+  box-shadow: 0 0 25px rgba(255, 234, 0, 0.8), 0 0 45px rgba(255, 0, 127, 0.6);
+  animation: superPulse 1.2s infinite alternate;
+}
+
+.super-btn.ready .super-meter-progress {
+  stroke: #ffea00;
+  stroke-dashoffset: 0 !important;
+}
+
+.super-btn.ready #super-btn-status {
+  color: #ffea00;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+@keyframes superPulse {
+  0% { transform: scale(1); box-shadow: 0 0 20px rgba(255, 234, 0, 0.7); }
+  100% { transform: scale(1.08); box-shadow: 0 0 35px rgba(255, 234, 0, 1), 0 0 50px rgba(255, 0, 127, 0.8); }
+}
+
+/* Dash Button */
+.dash-btn {
+  border-color: var(--amber-neon);
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);
+}
+
+.dash-btn:active {
+  background: rgba(245, 158, 11, 0.3);
+}
+
+/* Cooldown radial dark overlay */
+.cooldown-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.65);
+  transform-origin: bottom;
+  transform: scaleY(0);
+  transition: transform 0.05s linear;
+  pointer-events: none;
+}
+
+/* Weapon Swap Button */
+.weapon-btn {
+  border-color: var(--cyan-neon);
+  box-shadow: 0 0 15px var(--cyan-glow);
+}
+
+.weapon-btn:active {
+  background: rgba(0, 240, 255, 0.25);
+}
+
+/* Emote Button */
+.emote-btn {
+  border-color: var(--purple-neon);
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
+}
+
+.emote-btn:active {
+  background: rgba(168, 85, 247, 0.3);
+}
+
+/* Emote & Tactical Wheel Popup */
+.emote-wheel {
+  position: absolute;
+  right: 95px;
+  bottom: 80px;
+  background: rgba(10, 14, 23, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--purple-neon);
+  box-shadow: 0 0 25px rgba(168, 85, 247, 0.5);
+  border-radius: 16px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 30;
+  animation: popScale 0.15s ease-out;
+  min-width: 216px;
+}
+
+.wheel-tabs {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 6px;
+}
+
+.wheel-tab {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 5px 0;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.wheel-tab.active {
+  background: rgba(168, 85, 247, 0.3);
+  border-color: var(--purple-neon);
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
+}
+
+.wheel-grid {
+  display: grid;
+  gap: 8px;
+}
+
+#wheel-emotes-grid {
+  grid-template-columns: repeat(4, 46px);
+}
+
+#wheel-tactical-grid {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.tactical-item {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 8px 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: transform 0.1s, background 0.2s, border-color 0.2s;
+  white-space: nowrap;
+}
+
+.tactical-item:active {
+  transform: scale(0.92);
+  background: rgba(0, 240, 255, 0.25);
+  border-color: var(--cyan-neon);
+}
+
+@keyframes popScale {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.emote-item {
+  width: 46px;
+  height: 46px;
+  font-size: 1.5rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.1s, background 0.2s;
+}
+
+.emote-item:active {
+  transform: scale(0.85);
+  background: rgba(168, 85, 247, 0.4);
+}
+
+/* Adjustments for smaller phone landscape */
+@media (max-height: 480px) {
+  .hud-top-bar {
+    top: 6px;
+  }
+  .hud-bottom-bar {
+    bottom: 8px;
+    padding: 0.4rem 0.8rem;
+    gap: 0.8rem;
+  }
+  .bars-container {
+    width: 120px;
+  }
+  .action-buttons-group {
+    bottom: 60px;
+    right: 12px;
+    gap: 10px;
+  }
+  .action-btn {
+    width: 54px;
+    height: 54px;
+  }
+  .super-btn {
+    width: 58px;
+    height: 58px;
+  }
+  .action-btn .btn-icon {
+    font-size: 1.1rem;
+  }
+  .action-btn .btn-subtext {
+    font-size: 0.55rem;
+  }
+  .joystick-ring {
+    width: 110px;
+    height: 110px;
+  }
+  .joystick-knob {
+    width: 44px;
+    height: 44px;
+  }
+}
+

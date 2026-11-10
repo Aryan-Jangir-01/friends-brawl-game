@@ -242,7 +242,7 @@ function updateAvatarPreview() {
 // 2. Fetch Network Info (LAN IP / Join URL)
 async function fetchNetworkInfo() {
   try {
-    const res = await fetch("/api/network-info");
+    const res = await fetch(network.getApiUrl("/api/network-info"));
     const data = await res.json();
     if (data.joinUrl) {
       lanUrlText.textContent = data.joinUrl;
@@ -259,6 +259,12 @@ async function fetchNetworkInfo() {
 // 3. Network & Lobby Event Wiring
 function initNetwork() {
   network.connect();
+
+  network.on("connect_error", () => {
+    if (window.location.hostname.includes("github.io") || window.location.hostname.includes("itch.io")) {
+      showToast("Waking up game server... please wait ~30s");
+    }
+  });
 
   network.on("connected", (socketId) => {
     state.localPlayerId = socketId;
@@ -560,7 +566,7 @@ btnShowQR.addEventListener("click", async () => {
   qrUrlText.textContent = roomUrl;
 
   try {
-    const res = await fetch(`/api/qr?url=${encodeURIComponent(roomUrl)}`);
+    const res = await fetch(network.getApiUrl(`/api/qr?url=${encodeURIComponent(roomUrl)}`));
     const data = await res.json();
     if (data.qr) {
       qrImage.src = data.qr;

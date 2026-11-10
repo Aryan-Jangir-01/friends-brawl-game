@@ -7,16 +7,49 @@ export class NetworkClient {
     this.callbacks = {};
   }
 
+  getServerUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const customServer = urlParams.get("server") || localStorage.getItem("brawl_custom_server");
+    if (customServer) {
+      return customServer.replace(/\/+$/, "");
+    }
+
+    // If hosted on GitHub Pages (e.g. *.github.io) or itch.io, connect to Render backend
+    if (window.location.hostname.includes("github.io") || window.location.hostname.includes("itch.io")) {
+      return "https://friends-brawl-game.onrender.com";
+    }
+
+    // Default: same origin (when running on localhost:3000 or directly on Render)
+    return "";
+  }
+
+  getApiUrl(endpoint) {
+    const base = this.getServerUrl();
+    if (!base) return endpoint;
+    const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+    return `${base}${cleanEndpoint}`;
+  }
+
   connect() {
-    this.socket = io({
+    const serverUrl = this.getServerUrl();
+    const socketOptions = {
       transports: ["websocket", "polling"],
-      reconnectionAttempts: 5
-    });
+      reconnectionAttempts: 15,
+      reconnectionDelay: 2000
+    };
+
+    console.log("Connecting to server target:", serverUrl || "(same-origin)");
+    this.socket = serverUrl ? io(serverUrl, socketOptions) : io(socketOptions);
 
     this.socket.on("connect", () => {
       console.log("Connected to BRAWL ZONE server:", this.socket.id);
       this.startPingLoop();
       this.trigger("connected", this.socket.id);
+    });
+
+    this.socket.on("connect_error", (err) => {
+      console.warn("Server connection error:", err.message);
+      this.trigger("connect_error", err);
     });
 
     this.socket.on("disconnect", () => {
