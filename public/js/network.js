@@ -34,6 +34,11 @@ export class NetworkClient {
   }
 
   connect() {
+    if (typeof io === "undefined") {
+      console.warn("io client library not loaded. Solo mode available.");
+      return;
+    }
+
     const serverUrl = this.getServerUrl();
     const socketOptions = {
       transports: ["websocket", "polling"],
@@ -158,8 +163,8 @@ export class NetworkClient {
 
   startSoloMatch(profile, options = {}) {
     this.isLocalSolo = true;
+    this.trigger("connected", "local_player_1");
     const result = this.localServer.start(profile, options);
-    this.trigger("connected", result.localPlayerId);
     return result;
   }
 

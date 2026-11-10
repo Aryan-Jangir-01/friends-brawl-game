@@ -486,7 +486,10 @@ if (btnPracticeBots) {
     initAudio();
     audio.unlock();
     audio.playClick();
+    renderer.resize();
     showToast("Starting Solo Match vs AI Bots! ⚔️");
+    state.currentRoom = { id: "SOLO", options: { mapId: "cyber_arena" } };
+    state.isHost = true;
     network.startSoloMatch(state.profile, {
       gameMode: "ffa",
       scoreLimit: 15,
@@ -499,7 +502,10 @@ if (btnPracticeBots) {
 btnCreateRoom.addEventListener("click", () => {
   audio.unlock();
   if (!network.isServerOnline()) {
-    showToast("⚠️ Multiplayer Cloud Server is not connected yet! To battle friends across phones, deploy to Render or run 'npm start' on PC. Click 'PLAY VS BOTS NOW' to play solo!");
+    showToast("⚠️ Cloud Multiplayer Server is offline! Starting Solo Bot match instead... 🤖");
+    setTimeout(() => {
+      btnPracticeBots?.click();
+    }, 1200);
     return;
   }
   network.createRoom(state.profile, { gameMode: "ffa", scoreLimit: 15 }, (res) => {
@@ -517,7 +523,10 @@ btnCreateRoom.addEventListener("click", () => {
 btnJoinRoom.addEventListener("click", () => {
   audio.unlock();
   if (!network.isServerOnline()) {
-    showToast("⚠️ Multiplayer Cloud Server is not connected yet! To battle friends across phones, deploy to Render or run 'npm start' on PC. Click 'PLAY VS BOTS NOW' to play solo!");
+    showToast("⚠️ Cloud Multiplayer Server is offline! Starting Solo Bot match instead... 🤖");
+    setTimeout(() => {
+      btnPracticeBots?.click();
+    }, 1200);
     return;
   }
   const code = inputRoomCode.value.trim().toUpperCase();
