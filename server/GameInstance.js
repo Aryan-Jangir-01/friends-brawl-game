@@ -109,6 +109,9 @@ export class GameInstance {
       respawnTimer: 0,
       inBush: false,
       isBot: profile.isBot || false,
+      currentStreak: 0,
+      multiKillCount: 0,
+      lastKillTime: 0,
 
       // Input buffer from client
       input: {
@@ -231,13 +234,19 @@ export class GameInstance {
       p.x = sp.x;
       p.y = sp.y;
       p.health = p.maxHealth;
-      p.shield = 50;
+      p.shield = p.maxShield;
       p.isAlive = true;
       p.kills = 0;
       p.deaths = 0;
       p.score = 0;
-      p.weapons = { blaster: { ammo: Infinity }, shotgun: { ammo: 15 } };
-      p.currentWeapon = "blaster";
+      p.currentStreak = 0;
+      p.multiKillCount = 0;
+      p.weapons = { blaster: { ammo: Infinity } };
+      const heroClass = HERO_CLASSES[p.avatar] || HERO_CLASSES.striker;
+      if (heroClass.starterWeapon && heroClass.starterWeapon !== "blaster") {
+        p.weapons[heroClass.starterWeapon] = { ammo: 20 };
+      }
+      p.currentWeapon = heroClass.starterWeapon || "blaster";
     });
 
     if (this.tickInterval) clearInterval(this.tickInterval);
@@ -371,6 +380,24 @@ export class GameInstance {
 
     // Bush detection
     player.inBush = this.checkBushOverlap(player.x, player.y);
+
+    // Hazard detection (acid/toxic pools)
+    if (this.map.hazards) {
+      for (const hazard of this.map.hazards) {
+        if (Math.hypot(player.x - hazard.x, player.y - hazard.y) < hazard.radius) {
+          const dmg = (hazard.dps || 12) * dt;
+          if (player.shield > 0) {
+            player.shield = Math.max(0, player.shield - dmg);
+          } else {
+            player.health = Math.max(0, player.health - dmg);
+          }
+          if (player.health <= 0) {
+            this.killPlayerByHazard(player);
+          }
+          break;
+        }
+      }
+    }
 
     // Shooting
     if (player.input.isShooting) {
@@ -695,11 +722,38 @@ export class GameInstance {
     if (target.health <= 0) {
       target.isAlive = false;
       target.deaths += 1;
+      target.currentStreak = 0;
       target.respawnTimer = 3.5; // 3.5s respawn
 
       if (attacker && attacker.id !== target.id) {
         attacker.kills += 1;
         attacker.score += 1;
+        attacker.currentStreak = (attacker.currentStreak || 0) + 1;
+
+        const now = Date.now();
+        if (now - (attacker.lastKillTime || 0) < 4500) {
+          attacker.multiKillCount = (attacker.multiKillCount || 1) + 1;
+        } else {
+          attacker.multiKillCount = 1;
+        }
+        attacker.lastKillTime = now;
+
+        let streakTitle = null;
+        if (attacker.multiKillCount === 2) streakTitle = "DOUBLE KILL!";
+        else if (attacker.multiKillCount === 3) streakTitle = "TRIPLE KILL!";
+        else if (attacker.multiKillCount >= 4) streakTitle = "ULTRA KILL!";
+        else if (attacker.currentStreak === 3) streakTitle = "KILLING SPREE!";
+        else if (attacker.currentStreak === 5) streakTitle = "RAMPAGE!";
+        else if (attacker.currentStreak >= 7) streakTitle = "UNSTOPPABLE!";
+
+        if (streakTitle) {
+          this.io.to(this.roomId).emit("killstreak_achieved", {
+            playerId: attacker.id,
+            playerName: attacker.name,
+            title: streakTitle,
+            color: attacker.color
+          });
+        }
       }
 
       const killEvent = {
@@ -721,15 +775,45 @@ export class GameInstance {
     }
   }
 
+  killPlayerByHazard(target) {
+    if (!target.isAlive) return;
+    target.health = 0;
+    target.isAlive = false;
+    target.deaths += 1;
+    target.currentStreak = 0;
+    target.respawnTimer = 3.5;
+
+    const killEvent = {
+      killerName: "Toxic Hazard",
+      killerColor: "#22c55e",
+      victimName: target.name,
+      victimColor: target.color,
+      weapon: "acid",
+      time: Date.now()
+    };
+    this.killFeed.unshift(killEvent);
+    if (this.killFeed.length > 5) this.killFeed.pop();
+
+    this.io.to(this.roomId).emit("player_killed", {
+      victimId: target.id,
+      killerId: null,
+      killEvent
+    });
+  }
+
   respawnPlayer(player) {
     const sp = this.getRandomSpawnPoint();
     player.x = sp.x;
     player.y = sp.y;
     player.health = player.maxHealth;
-    player.shield = 50;
+    player.shield = player.maxShield;
     player.isAlive = true;
-    player.weapons = { blaster: { ammo: Infinity }, shotgun: { ammo: 15 } };
-    player.currentWeapon = "blaster";
+    player.weapons = { blaster: { ammo: Infinity } };
+    const heroClass = HERO_CLASSES[player.avatar] || HERO_CLASSES.striker;
+    if (heroClass.starterWeapon && heroClass.starterWeapon !== "blaster") {
+      player.weapons[heroClass.starterWeapon] = { ammo: 20 };
+    }
+    player.currentWeapon = heroClass.starterWeapon || "blaster";
 
     this.io.to(this.roomId).emit("player_respawned", {
       id: player.id,

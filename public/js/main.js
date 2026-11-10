@@ -223,6 +223,7 @@ function initNetwork() {
     modalMatchOver.classList.add("hidden");
 
     if (hudRoomCode) hudRoomCode.textContent = state.currentRoom?.id || "ROOM";
+    audio.startMusic();
     showToast("⚔️ MATCH STARTED! FIGHT!");
   });
 
@@ -238,6 +239,10 @@ function initNetwork() {
     else if (data.weapon === "rocket") audio.playRocketLaunch();
     else if (data.weapon === "railgun") audio.playRailgun();
     else audio.playBlaster();
+
+    if (data.shooterId === state.localPlayerId && navigator.vibrate) {
+      navigator.vibrate(12);
+    }
 
     const tipDist = 36;
     const fx = data.x + Math.cos(data.angle) * tipDist;
@@ -269,6 +274,7 @@ function initNetwork() {
 
     if (isMe) {
       renderer.addScreenShake(8);
+      if (navigator.vibrate) navigator.vibrate(30);
     }
   });
 
@@ -283,6 +289,20 @@ function initNetwork() {
 
     if (data.victimId === state.localPlayerId) {
       showToast(`💀 You were eliminated by ${data.killEvent.killerName}! Respawning...`);
+      if (navigator.vibrate) navigator.vibrate([50, 30, 70]);
+    }
+  });
+
+  network.on("killstreak_achieved", (data) => {
+    audio.playStreakFanfare();
+    const banner = document.getElementById("killstreak-banner");
+    const title = document.getElementById("streak-text");
+    const sub = document.getElementById("streak-sub");
+    if (banner && title && sub) {
+      title.textContent = data.title;
+      sub.textContent = `${data.playerName} is on fire!`;
+      banner.classList.remove("hidden");
+      setTimeout(() => banner.classList.add("hidden"), 2600);
     }
   });
 
@@ -311,12 +331,14 @@ function initNetwork() {
 
   network.on("match_ended", (data) => {
     state.gameRunning = false;
+    audio.stopMusic();
     showMatchOverModal(data);
   });
 
   network.on("returned_to_lobby", (roomSummary) => {
     state.gameRunning = false;
     state.latestWorldState = null;
+    audio.stopMusic();
     modalMatchOver.classList.add("hidden");
     hudOverlay.classList.add("hidden");
     lobbyScreen.classList.remove("hidden");
@@ -459,6 +481,17 @@ function renderLobbyRoom(room) {
   selectScoreLimit.disabled = !isMeHost;
   selectGameMode.value = room.options?.gameMode || "ffa";
   selectScoreLimit.value = String(room.options?.scoreLimit || 15);
+
+  const selectMap = document.getElementById("select-map");
+  if (selectMap) {
+    selectMap.disabled = !isMeHost;
+    selectMap.value = room.options?.mapId || "cyber_arena";
+    selectMap.onchange = (e) => {
+      if (state.isHost) {
+        network.updateRoomOptions({ mapId: e.target.value });
+      }
+    };
+  }
 
   if (isMeHost) {
     btnStartGame.classList.remove("hidden");
@@ -670,5 +703,38 @@ if (btnHudSound) {
 // Startup
 initProfile();
 fetchNetworkInfo();
+
+// PWA Service Worker Registration
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}
+
+// PWA Install Prompt
+let deferredInstallPrompt = null;
+const btnInstallApp = document.getElementById("btn-install-app");
+
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  if (btnInstallApp) btnInstallApp.classList.remove("hidden");
+});
+
+if (btnInstallApp) {
+  btnInstallApp.addEventListener("click", async () => {
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      const { outcome } = await deferredInstallPrompt.userChoice;
+      if (outcome === "accepted") {
+        btnInstallApp.classList.add("hidden");
+      }
+      deferredInstallPrompt = null;
+    } else {
+      showToast("📱 On iPhone: Tap Share ➔ Add to Home Screen!");
+    }
+  });
+}
+
 initNetwork();
 requestAnimationFrame(gameLoop);

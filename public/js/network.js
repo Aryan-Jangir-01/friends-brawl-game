@@ -83,6 +83,10 @@ export class NetworkClient {
     this.socket.on("player_emoted", (data) => {
       this.trigger("player_emoted", data);
     });
+
+    this.socket.on("killstreak_achieved", (data) => {
+      this.trigger("killstreak_achieved", data);
+    });
   }
 
   startPingLoop() {

@@ -1015,3 +1015,42 @@ html, body {
 .text-center {
   text-align: center;
 }
+
+/* Killstreak Banner */
+.killstreak-banner {
+  position: absolute;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at center, rgba(239, 68, 68, 0.4) 0%, rgba(10, 14, 23, 0.9) 80%);
+  border: 2px solid var(--amber-neon);
+  box-shadow: 0 0 30px rgba(245, 158, 11, 0.6);
+  border-radius: 12px;
+  padding: 0.5rem 1.8rem;
+  text-align: center;
+  pointer-events: none;
+  z-index: 40;
+  animation: streakPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes streakPop {
+  0% { opacity: 0; transform: translateX(-50%) scale(0.6); }
+  70% { opacity: 1; transform: translateX(-50%) scale(1.15); }
+  100% { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+
+.streak-text {
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #ffea00;
+  text-shadow: 0 0 15px rgba(255, 234, 0, 0.8);
+}
+
+.streak-sub {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--cyan-neon);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}

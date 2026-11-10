@@ -7,6 +7,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#0a0e17">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+  <link rel="apple-touch-icon" href="/icons/icon.svg">
 
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/joystick.css">
@@ -31,6 +34,12 @@
           <span class="score-label">KILLS:</span>
           <span id="hud-player-kills" class="score-num">0</span>
         </div>
+      </div>
+
+      <!-- Animated Killstreak Banner -->
+      <div id="killstreak-banner" class="killstreak-banner hidden">
+        <div id="streak-text" class="streak-text">DOUBLE KILL!</div>
+        <div id="streak-sub" class="streak-sub">PLAYER NAME</div>
       </div>
 
       <!-- Real-time Kill Feed -->
@@ -163,6 +172,7 @@
       <!-- Title Header -->
       <div class="game-branding">
         <div class="top-util-row">
+          <button id="btn-install-app" class="btn-small" style="background: linear-gradient(135deg, #a855f7, #00f0ff); color: #090d16; font-weight: 800;" title="Install on Phone">📲 Install App</button>
           <button id="btn-lobby-fullscreen" class="btn-small" title="Fullscreen">⛶ Fullscreen</button>
         </div>
         <h1 class="game-title">BRAWL <span class="highlight">ZONE</span></h1>
@@ -278,6 +288,14 @@
                 <option value="10">10 Kills</option>
                 <option value="15" selected>15 Kills</option>
                 <option value="25">25 Kills</option>
+              </select>
+            </div>
+            <div class="setting-item" style="grid-column: span 2;">
+              <label>Arena Map</label>
+              <select id="select-map">
+                <option value="cyber_arena">Cyber Arena (Classic Balanced)</option>
+                <option value="neon_labyrinth">Neon Labyrinth (Stealth & Mazes)</option>
+                <option value="toxic_wasteland">Toxic Wasteland (Acid Pools & Long Lanes)</option>
               </select>
             </div>
           </div>

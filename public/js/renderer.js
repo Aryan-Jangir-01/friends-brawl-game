@@ -86,6 +86,11 @@ export class GameRenderer {
     // 1. Draw Arena Grid Floor
     this.drawFloor(ctx, mapData);
 
+    // 1.5. Draw Hazards (Toxic Acid Pools)
+    if (mapData.hazards) {
+      this.drawHazards(ctx, mapData.hazards);
+    }
+
     // 2. Draw Obstacle Walls
     this.drawWalls(ctx, mapData.walls);
 
@@ -151,6 +156,38 @@ export class GameRenderer {
     ctx.strokeStyle = "rgba(0, 240, 255, 0.3)";
     ctx.lineWidth = 18;
     ctx.strokeRect(0, 0, map.width, map.height);
+  }
+
+  drawHazards(ctx, hazards) {
+    const time = Date.now() / 400;
+    hazards.forEach(h => {
+      ctx.save();
+      // Outer warning ring
+      ctx.beginPath();
+      ctx.arc(h.x, h.y, h.radius, 0, Math.PI * 2);
+      ctx.fillStyle = h.color || "rgba(34, 197, 94, 0.3)";
+      ctx.fill();
+
+      ctx.strokeStyle = "rgba(34, 197, 94, 0.8)";
+      ctx.lineWidth = 3;
+      ctx.setLineDash([12, 8]);
+      ctx.stroke();
+
+      // Inner acid ripple
+      const ripple = (Math.sin(time) + 1) / 2;
+      ctx.beginPath();
+      ctx.arc(h.x, h.y, h.radius * 0.7 + ripple * 8, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(34, 197, 94, 0.25)";
+      ctx.fill();
+
+      // Hazard icon
+      ctx.font = "24px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("☣️", h.x, h.y);
+
+      ctx.restore();
+    });
   }
 
   drawWalls(ctx, walls) {
@@ -318,6 +355,20 @@ export class GameRenderer {
       }
 
       // 4. Rotating Gun Barrel & Body
+      // Aim guide laser line for local player
+      if (p.id === localPlayer?.id) {
+        ctx.save();
+        ctx.rotate(p.angle);
+        ctx.beginPath();
+        ctx.moveTo(p.radius + 18, 0);
+        ctx.lineTo(p.radius + 280, 0);
+        ctx.strokeStyle = "rgba(0, 240, 255, 0.4)";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 8]);
+        ctx.stroke();
+        ctx.restore();
+      }
+
       ctx.save();
       ctx.rotate(p.angle);
 

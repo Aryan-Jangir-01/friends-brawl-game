@@ -293,8 +293,64 @@ class SoundEngine {
     osc.stop(now + 0.15);
   }
 
+  playStreakFanfare() {
+    if (!this.ctx || this.isMuted) return;
+    const notes = [440, 554.37, 659.25, 880, 1108.73];
+    const now = this.ctx.currentTime;
+    notes.forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+      gain.gain.setValueAtTime(0.18, now + idx * 0.06);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.3);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now + idx * 0.06);
+      osc.stop(now + idx * 0.06 + 0.32);
+    });
+  }
+
+  startMusic() {
+    if (!this.ctx || this.isMuted || this.musicTimer) return;
+    const bassline = [110, 110, 130.81, 146.83, 110, 110, 164.81, 146.83];
+    let step = 0;
+    this.musicTimer = setInterval(() => {
+      if (!this.ctx || this.isMuted) return;
+      const freq = bassline[step % bassline.length];
+      step++;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(freq, now);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.5, now + 0.18);
+
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.19);
+    }, 220); // ~136 BPM
+  }
+
+  stopMusic() {
+    if (this.musicTimer) {
+      clearInterval(this.musicTimer);
+      this.musicTimer = null;
+    }
+  }
+
   toggleMute() {
     this.isMuted = !this.isMuted;
+    if (this.isMuted) {
+      this.stopMusic();
+    } else {
+      this.startMusic();
+    }
     return this.isMuted;
   }
 }

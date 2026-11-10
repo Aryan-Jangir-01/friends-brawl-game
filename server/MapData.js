@@ -82,6 +82,128 @@ export const MAPS = {
       { x: 600, y: 900 },
       { x: 1800, y: 900 }
     ]
+  },
+
+  neon_labyrinth: {
+    name: "Neon Labyrinth",
+    width: 2200,
+    height: 2200,
+    theme: {
+      background: "#090914",
+      gridColor: "rgba(168, 85, 247, 0.25)",
+      wallColor: "#170f2b",
+      wallBorder: "#a855f7"
+    },
+    walls: [
+      // Concentric labyrinth corridors
+      { x: 400, y: 400, w: 1400, h: 40 },
+      { x: 400, y: 1760, w: 1400, h: 40 },
+      { x: 400, y: 400, w: 40, h: 550 },
+      { x: 400, y: 1210, w: 40, h: 590 },
+      { x: 1760, y: 400, w: 40, h: 550 },
+      { x: 1760, y: 1210, w: 40, h: 590 },
+
+      // Inner ring
+      { x: 750, y: 750, w: 700, h: 40 },
+      { x: 750, y: 1410, w: 700, h: 40 },
+      { x: 750, y: 750, w: 40, h: 250 },
+      { x: 750, y: 1160, w: 40, h: 290 },
+      { x: 1410, y: 750, w: 40, h: 250 },
+      { x: 1410, y: 1160, w: 40, h: 290 },
+
+      // Center vault
+      { x: 1000, y: 1000, w: 80, h: 200 },
+      { x: 1120, y: 1000, w: 80, h: 200 }
+    ],
+    bushes: [
+      { id: "lb1", x: 600, y: 600, radius: 95 },
+      { id: "lb2", x: 1600, y: 600, radius: 95 },
+      { id: "lb3", x: 600, y: 1600, radius: 95 },
+      { id: "lb4", x: 1600, y: 1600, radius: 95 },
+      { id: "lb5", x: 1100, y: 600, radius: 85 },
+      { id: "lb6", x: 1100, y: 1600, radius: 85 },
+      { id: "lb7", x: 600, y: 1100, radius: 85 },
+      { id: "lb8", x: 1600, y: 1100, radius: 85 }
+    ],
+    crates: [
+      { id: "lc1", x: 1070, y: 920, hp: 50, maxHp: 50, size: 60 },
+      { id: "lc2", x: 1070, y: 1220, hp: 50, maxHp: 50, size: 60 },
+      { id: "lc3", x: 920, y: 1070, hp: 50, maxHp: 50, size: 60 },
+      { id: "lc4", x: 1220, y: 1070, hp: 50, maxHp: 50, size: 60 },
+      { id: "lc5", x: 500, y: 500, hp: 40, maxHp: 40, size: 50 },
+      { id: "lc6", x: 1700, y: 500, hp: 40, maxHp: 40, size: 50 },
+      { id: "lc7", x: 500, y: 1700, hp: 40, maxHp: 40, size: 50 },
+      { id: "lc8", x: 1700, y: 1700, hp: 40, maxHp: 40, size: 50 }
+    ],
+    itemSpawners: [
+      { id: "ls_mid", x: 1100, y: 1100, type: "rocket", interval: 14000 },
+      { id: "ls_hp1", x: 400, y: 1100, type: "health", interval: 12000 },
+      { id: "ls_hp2", x: 1800, y: 1100, type: "health", interval: 12000 },
+      { id: "ls_sh1", x: 1100, y: 400, type: "shield", interval: 12000 },
+      { id: "ls_sh2", x: 1100, y: 1800, type: "shield", interval: 12000 },
+      { id: "ls_wp1", x: 800, y: 800, type: "shotgun", interval: 10000 },
+      { id: "ls_wp2", x: 1400, y: 1400, type: "plasma", interval: 10000 }
+    ],
+    spawnPoints: [
+      { x: 250, y: 250 },
+      { x: 1950, y: 250 },
+      { x: 250, y: 1950 },
+      { x: 1950, y: 1950 },
+      { x: 1100, y: 250 },
+      { x: 1100, y: 1950 }
+    ]
+  },
+
+  toxic_wasteland: {
+    name: "Toxic Wasteland",
+    width: 2600,
+    height: 1800,
+    theme: {
+      background: "#0c150c",
+      gridColor: "rgba(34, 197, 94, 0.2)",
+      wallColor: "#1b291b",
+      wallBorder: "#22c55e"
+    },
+    // Acid pools that cause continuous damage if stood inside
+    hazards: [
+      { id: "h1", x: 1300, y: 900, radius: 170, dps: 18, color: "rgba(34, 197, 94, 0.4)" },
+      { id: "h2", x: 600, y: 500, radius: 130, dps: 15, color: "rgba(34, 197, 94, 0.35)" },
+      { id: "h3", x: 2000, y: 1300, radius: 130, dps: 15, color: "rgba(34, 197, 94, 0.35)" }
+    ],
+    walls: [
+      { x: 900, y: 400, w: 800, h: 45 },
+      { x: 900, y: 1350, w: 800, h: 45 },
+      { x: 450, y: 800, w: 250, h: 60 },
+      { x: 1900, y: 800, w: 250, h: 60 },
+      { x: 1270, y: 200, w: 60, h: 200 },
+      { x: 1270, y: 1400, w: 60, h: 200 }
+    ],
+    bushes: [
+      { id: "tb1", x: 1300, y: 550, radius: 85 },
+      { id: "tb2", x: 1300, y: 1250, radius: 85 },
+      { id: "tb3", x: 900, y: 900, radius: 80 },
+      { id: "tb4", x: 1700, y: 900, radius: 80 }
+    ],
+    crates: [
+      { id: "tc1", x: 1270, y: 870, hp: 50, maxHp: 50, size: 60 },
+      { id: "tc2", x: 600, y: 900, hp: 50, maxHp: 50, size: 50 },
+      { id: "tc3", x: 2000, y: 900, hp: 50, maxHp: 50, size: 50 }
+    ],
+    itemSpawners: [
+      { id: "ts_mid", x: 1300, y: 900, type: "railgun", interval: 16000 },
+      { id: "ts_hp1", x: 300, y: 900, type: "health", interval: 12000 },
+      { id: "ts_hp2", x: 2300, y: 900, type: "health", interval: 12000 },
+      { id: "ts_sh1", x: 1300, y: 100, type: "shield", interval: 12000 },
+      { id: "ts_sh2", x: 1300, y: 1700, type: "shield", interval: 12000 }
+    ],
+    spawnPoints: [
+      { x: 250, y: 250 },
+      { x: 2350, y: 250 },
+      { x: 250, y: 1550 },
+      { x: 2350, y: 1550 },
+      { x: 1300, y: 350 },
+      { x: 1300, y: 1450 }
+    ]
   }
 };
 
