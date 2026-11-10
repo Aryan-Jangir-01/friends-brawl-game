@@ -380,16 +380,19 @@ export class GameRenderer {
       }
 
       // 4. Rotating Gun Barrel & Body
-      // Aim guide laser line for local player
+      // Aim guide laser line for local player (Smooth solid gradient beam)
       if (p.id === localPlayer?.id) {
         ctx.save();
         ctx.rotate(p.angle);
         ctx.beginPath();
         ctx.moveTo(p.radius + 18, 0);
-        ctx.lineTo(p.radius + 280, 0);
-        ctx.strokeStyle = "rgba(0, 240, 255, 0.4)";
+        ctx.lineTo(p.radius + 260, 0);
+        const laserGrad = ctx.createLinearGradient(p.radius + 18, 0, p.radius + 260, 0);
+        laserGrad.addColorStop(0, "rgba(0, 240, 255, 0.45)");
+        laserGrad.addColorStop(1, "rgba(0, 240, 255, 0.0)");
+        ctx.strokeStyle = laserGrad;
         ctx.lineWidth = 2;
-        ctx.setLineDash([8, 8]);
+        ctx.setLineDash([]);
         ctx.stroke();
         ctx.restore();
       }

@@ -311,6 +311,25 @@ class SoundEngine {
     });
   }
 
+  playHitmarker(isCrit = false) {
+    if (!this.ctx || this.isMuted) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = isCrit ? "square" : "triangle";
+    osc.frequency.setValueAtTime(isCrit ? 1400 : 900, now);
+    osc.frequency.exponentialRampToValueAtTime(isCrit ? 400 : 200, now + 0.05);
+
+    gain.gain.setValueAtTime(isCrit ? 0.35 : 0.2, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.06);
+  }
+
   playSuperReady() {
     if (!this.ctx || this.isMuted) return;
     const now = this.ctx.currentTime;

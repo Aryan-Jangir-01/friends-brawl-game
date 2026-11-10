@@ -40,7 +40,6 @@ const modalQR = document.getElementById("modal-qr");
 const nameInput = document.getElementById("player-name-input");
 const avatarPreview = document.getElementById("avatar-preview");
 const avatarInitials = document.getElementById("avatar-initials");
-const colorOptions = document.getElementById("color-options");
 
 // Room Selection
 const btnCreateRoom = document.getElementById("btn-create-room");
@@ -124,6 +123,7 @@ function showToast(message) {
 // Hero Class Metadata for dynamic UI
 const HERO_INFO = {
   striker: {
+    color: "#00f0ff",
     role: "Assault",
     desc: "Balanced combatant with high agility and rapid lasers",
     stats: { speed: 80, health: 70, power: 75 },
@@ -131,6 +131,7 @@ const HERO_INFO = {
     superDesc: "Shield surge + 360° rapid plasma laser storm"
   },
   juggernaut: {
+    color: "#f59e0b",
     role: "Tank",
     desc: "Heavily armored juggernaut with massive HP and shockwave",
     stats: { speed: 50, health: 100, power: 85 },
@@ -138,6 +139,7 @@ const HERO_INFO = {
     superDesc: "Ground slam shockwave destroying obstacles & blasting foes"
   },
   phantom: {
+    color: "#a855f7",
     role: "Assassin",
     desc: "Speedster with hyper-fast dash and stealth smoke veil",
     stats: { speed: 100, health: 55, power: 70 },
@@ -145,6 +147,7 @@ const HERO_INFO = {
     superDesc: "Dense smoke bomb + 100% invisibility for 5 seconds"
   },
   sniper: {
+    color: "#ff007f",
     role: "Sharpshooter",
     desc: "Long-range specialist equipped with devastating orbital railgun",
     stats: { speed: 65, health: 60, power: 100 },
@@ -181,6 +184,7 @@ function updateHeroShowcase(heroClass) {
 // 1. Initialize Profile & UI
 function initProfile() {
   nameInput.value = state.profile.name;
+  state.profile.color = HERO_INFO[state.profile.avatar]?.color || "#00f0ff";
   updateAvatarPreview();
   updateHeroShowcase(state.profile.avatar);
 
@@ -188,22 +192,6 @@ function initProfile() {
     state.profile.name = e.target.value.trim() || "Brawler";
     localStorage.setItem("brawl_player_name", state.profile.name);
     updateAvatarPreview();
-  });
-
-  colorOptions.querySelectorAll(".color-dot").forEach(btn => {
-    if (btn.dataset.color === state.profile.color) {
-      btn.classList.add("active");
-    } else {
-      btn.classList.remove("active");
-    }
-
-    btn.addEventListener("click", () => {
-      colorOptions.querySelectorAll(".color-dot").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      state.profile.color = btn.dataset.color;
-      localStorage.setItem("brawl_player_color", state.profile.color);
-      updateAvatarPreview();
-    });
   });
 
   // Hero Class Picker
@@ -214,6 +202,9 @@ function initProfile() {
         classChips.querySelectorAll(".class-chip").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
         state.profile.avatar = btn.dataset.class;
+        state.profile.color = HERO_INFO[state.profile.avatar]?.color || "#00f0ff";
+        localStorage.setItem("brawl_player_color", state.profile.color);
+        updateAvatarPreview();
         updateHeroShowcase(state.profile.avatar);
         showToast(`Selected Class: ${btn.textContent}`);
       });
