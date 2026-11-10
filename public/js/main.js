@@ -263,12 +263,9 @@ function initNetwork() {
   const statusDot = document.getElementById("server-status-dot");
   const statusText = document.getElementById("server-status-text");
 
-  network.on("connect_error", () => {
-    if (statusDot) statusDot.style.background = "#f43f5e";
-    if (statusText) statusText.textContent = "Cloud Server: Offline (Solo Mode Available)";
-    if (window.location.hostname.includes("github.io") || window.location.hostname.includes("itch.io")) {
-      showToast("Cloud server offline. Solo Mode ready to play!");
-    }
+  network.on("p2p_active", () => {
+    if (statusDot) statusDot.style.background = "#10b981";
+    if (statusText) statusText.textContent = "Multiplayer: Online (P2P Ready)";
   });
 
   network.on("connected", (socketId) => {
@@ -276,7 +273,7 @@ function initNetwork() {
     console.log("Registered local ID:", socketId);
 
     if (statusDot) statusDot.style.background = "#10b981";
-    if (statusText) statusText.textContent = "Multiplayer Server: Online";
+    if (statusText) statusText.textContent = "Multiplayer: Online";
 
     // Check for room query parameter in URL (e.g. ?room=XYZ)
     const urlParams = new URLSearchParams(window.location.search);
@@ -501,13 +498,6 @@ if (btnPracticeBots) {
 
 btnCreateRoom.addEventListener("click", () => {
   audio.unlock();
-  if (!network.isServerOnline()) {
-    showToast("⚠️ Cloud Multiplayer Server is offline! Starting Solo Bot match instead... 🤖");
-    setTimeout(() => {
-      btnPracticeBots?.click();
-    }, 1200);
-    return;
-  }
   network.createRoom(state.profile, { gameMode: "ffa", scoreLimit: 15 }, (res) => {
     if (res.success) {
       state.currentRoom = res.room;
@@ -522,13 +512,6 @@ btnCreateRoom.addEventListener("click", () => {
 
 btnJoinRoom.addEventListener("click", () => {
   audio.unlock();
-  if (!network.isServerOnline()) {
-    showToast("⚠️ Cloud Multiplayer Server is offline! Starting Solo Bot match instead... 🤖");
-    setTimeout(() => {
-      btnPracticeBots?.click();
-    }, 1200);
-    return;
-  }
   const code = inputRoomCode.value.trim().toUpperCase();
   if (!code) return showToast("Please enter a room code");
   joinSpecificRoom(code);
@@ -588,7 +571,7 @@ selectScoreLimit.addEventListener("change", (e) => {
 // Share / QR Code
 btnShareRoom.addEventListener("click", () => {
   if (!state.currentRoom) return;
-  const roomUrl = `${window.location.origin}/?room=${state.currentRoom.id}`;
+  const roomUrl = `${window.location.origin}${window.location.pathname}?room=${state.currentRoom.id}`;
   if (navigator.share) {
     navigator.share({
       title: "Join my Brawl Zone match!",
@@ -603,7 +586,7 @@ btnShareRoom.addEventListener("click", () => {
 
 btnShowQR.addEventListener("click", async () => {
   if (!state.currentRoom) return;
-  const roomUrl = `${window.location.origin}/?room=${state.currentRoom.id}`;
+  const roomUrl = `${window.location.origin}${window.location.pathname}?room=${state.currentRoom.id}`;
   qrUrlText.textContent = roomUrl;
 
   try {
@@ -612,10 +595,13 @@ btnShowQR.addEventListener("click", async () => {
     if (data.qr) {
       qrImage.src = data.qr;
       modalQR.classList.remove("hidden");
+      return;
     }
-  } catch (err) {
-    showToast("Failed to load QR code");
-  }
+  } catch (err) {}
+
+  // Direct fast QR image generation fallback
+  qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(roomUrl)}`;
+  modalQR.classList.remove("hidden");
 });
 
 btnCloseQr.addEventListener("click", () => {

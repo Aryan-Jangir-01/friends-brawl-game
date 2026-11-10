@@ -1,5 +1,6 @@
 // public/js/network.js
 import { LocalGameServer } from "./engine/LocalGameServer.js";
+import { P2PManager } from "./p2p.js";
 
 export class NetworkClient {
   constructor() {
@@ -7,7 +8,9 @@ export class NetworkClient {
     this.ping = 0;
     this.callbacks = {};
     this.isLocalSolo = false;
+    this.mode = "p2p"; // "socket" or "p2p"
     this.localServer = new LocalGameServer(this);
+    this.p2p = new P2PManager(this);
   }
 
   getServerUrl() {
@@ -17,7 +20,7 @@ export class NetworkClient {
       return customServer.replace(/\/+$/, "");
     }
 
-    // If hosted on GitHub Pages (e.g. *.github.io) or itch.io, connect to Render backend
+    // If hosted on GitHub Pages (e.g. *.github.io) or itch.io, connect to Render backend if available
     if (window.location.hostname.includes("github.io") || window.location.hostname.includes("itch.io")) {
       return "https://friends-brawl-game.onrender.com";
     }
@@ -34,108 +37,126 @@ export class NetworkClient {
   }
 
   connect() {
+    // Always initialize P2P as default/fallback for guaranteed online multiplayer
+    this.p2p.init();
+
     if (typeof io === "undefined") {
-      console.warn("io client library not loaded. Solo mode available.");
+      console.log("Running in PeerJS P2P multiplayer mode");
+      this.mode = "p2p";
+      this.trigger("p2p_active");
       return;
     }
 
     const serverUrl = this.getServerUrl();
     const socketOptions = {
       transports: ["websocket", "polling"],
-      reconnectionAttempts: 15,
-      reconnectionDelay: 2000
+      reconnectionAttempts: 4,
+      reconnectionDelay: 2000,
+      timeout: 3500
     };
 
-    console.log("Connecting to server target:", serverUrl || "(same-origin)");
-    this.socket = serverUrl ? io(serverUrl, socketOptions) : io(socketOptions);
+    console.log("Attempting server connect to:", serverUrl || "(same-origin)");
+    try {
+      this.socket = serverUrl ? io(serverUrl, socketOptions) : io(socketOptions);
 
-    this.socket.on("connect", () => {
-      console.log("Connected to BRAWL ZONE server:", this.socket.id);
-      this.startPingLoop();
-      this.trigger("connected", this.socket.id);
-    });
+      this.socket.on("connect", () => {
+        console.log("Connected to BRAWL ZONE central server:", this.socket.id);
+        this.mode = "socket";
+        this.startPingLoop();
+        this.trigger("connected", this.socket.id);
+      });
 
-    this.socket.on("connect_error", (err) => {
-      console.warn("Server connection error:", err.message);
-      this.trigger("connect_error", err);
-    });
+      this.socket.on("connect_error", () => {
+        console.log("Central server unreachable, activating WebRTC P2P Multiplayer");
+        this.mode = "p2p";
+        this.p2p.init();
+        this.trigger("p2p_active");
+      });
 
-    this.socket.on("disconnect", () => {
-      console.log("Disconnected from server");
-      this.trigger("disconnected");
-    });
+      this.socket.on("disconnect", () => {
+        if (this.mode === "socket") {
+          console.log("Disconnected from central server");
+          this.trigger("disconnected");
+        }
+      });
 
-    // Latency / Ping
-    this.socket.on("server_pong", (clientTime) => {
-      this.ping = Math.round(Date.now() - clientTime);
-      this.trigger("ping_update", this.ping);
-    });
+      // Latency / Ping
+      this.socket.on("server_pong", (clientTime) => {
+        this.ping = Math.round(Date.now() - clientTime);
+        this.trigger("ping_update", this.ping);
+      });
 
-    // Lobby events
-    this.socket.on("lobby_updated", (roomSummary) => {
-      this.trigger("lobby_updated", roomSummary);
-    });
+      // Lobby events
+      this.socket.on("lobby_updated", (roomSummary) => {
+        if (this.mode === "socket") this.trigger("lobby_updated", roomSummary);
+      });
 
-    this.socket.on("game_started", (startData) => {
-      this.trigger("game_started", startData);
-    });
+      this.socket.on("game_started", (startData) => {
+        if (this.mode === "socket") this.trigger("game_started", startData);
+      });
 
-    // Gameplay sync events
-    this.socket.on("game_state", (state) => {
-      this.trigger("game_state", state);
-    });
+      // Gameplay sync events
+      this.socket.on("game_state", (state) => {
+        if (this.mode === "socket") this.trigger("game_state", state);
+      });
 
-    this.socket.on("weapon_fired", (data) => {
-      this.trigger("weapon_fired", data);
-    });
+      this.socket.on("weapon_fired", (data) => {
+        if (this.mode === "socket") this.trigger("weapon_fired", data);
+      });
 
-    this.socket.on("bullet_impact", (data) => {
-      this.trigger("bullet_impact", data);
-    });
+      this.socket.on("bullet_impact", (data) => {
+        if (this.mode === "socket") this.trigger("bullet_impact", data);
+      });
 
-    this.socket.on("player_hit", (data) => {
-      this.trigger("player_hit", data);
-    });
+      this.socket.on("player_hit", (data) => {
+        if (this.mode === "socket") this.trigger("player_hit", data);
+      });
 
-    this.socket.on("player_killed", (data) => {
-      this.trigger("player_killed", data);
-    });
+      this.socket.on("player_killed", (data) => {
+        if (this.mode === "socket") this.trigger("player_killed", data);
+      });
 
-    this.socket.on("player_dashed", (data) => {
-      this.trigger("player_dashed", data);
-    });
+      this.socket.on("player_dashed", (data) => {
+        if (this.mode === "socket") this.trigger("player_dashed", data);
+      });
 
-    this.socket.on("item_collected", (data) => {
-      this.trigger("item_collected", data);
-    });
+      this.socket.on("item_collected", (data) => {
+        if (this.mode === "socket") this.trigger("item_collected", data);
+      });
 
-    this.socket.on("crate_destroyed", (data) => {
-      this.trigger("crate_destroyed", data);
-    });
+      this.socket.on("crate_destroyed", (data) => {
+        if (this.mode === "socket") this.trigger("crate_destroyed", data);
+      });
 
-    this.socket.on("match_ended", (data) => {
-      this.trigger("match_ended", data);
-    });
+      this.socket.on("match_ended", (data) => {
+        if (this.mode === "socket") this.trigger("match_ended", data);
+      });
 
-    this.socket.on("returned_to_lobby", (roomSummary) => {
-      this.trigger("returned_to_lobby", roomSummary);
-    });
+      this.socket.on("returned_to_lobby", (roomSummary) => {
+        if (this.mode === "socket") this.trigger("returned_to_lobby", roomSummary);
+      });
 
-    this.socket.on("player_emoted", (data) => {
-      this.trigger("player_emoted", data);
-    });
+      this.socket.on("player_emoted", (data) => {
+        if (this.mode === "socket") this.trigger("player_emoted", data);
+      });
 
-    this.socket.on("killstreak_achieved", (data) => {
-      this.trigger("killstreak_achieved", data);
-    });
+      this.socket.on("killstreak_achieved", (data) => {
+        if (this.mode === "socket") this.trigger("killstreak_achieved", data);
+      });
 
-    this.socket.on("super_activated", (data) => {
-      this.trigger("super_activated", data);
-    });
+      this.socket.on("super_activated", (data) => {
+        if (this.mode === "socket") this.trigger("super_activated", data);
+      });
 
-    this.socket.on("tactical_ping", (data) => {
-      this.trigger("tactical_ping", data);
-    });
+      this.socket.on("tactical_ping", (data) => {
+        if (this.mode === "socket") this.trigger("tactical_ping", data);
+      });
+    } catch (e) {
+      console.warn("Socket init failed, fallback P2P:", e);
+      this.mode = "p2p";
+      this.p2p.init();
+      this.trigger("p2p_active");
+    }
   }
 
   startPingLoop() {
@@ -158,7 +179,7 @@ export class NetworkClient {
   }
 
   isServerOnline() {
-    return Boolean(this.socket && this.socket.connected);
+    return true; // Central server or P2P WebRTC is always active
   }
 
   startSoloMatch(profile, options = {}) {
@@ -169,19 +190,23 @@ export class NetworkClient {
   }
 
   createRoom(profile, options, callback) {
-    if (!this.isServerOnline()) {
-      if (callback) callback({ success: false, error: "Server offline" });
-      return;
+    this.isLocalSolo = false;
+    if (this.mode === "socket" && this.socket && this.socket.connected) {
+      this.socket.emit("create_room", { profile, options }, callback);
+    } else {
+      this.mode = "p2p";
+      this.p2p.createRoom(profile, options, callback);
     }
-    this.socket.emit("create_room", { profile, options }, callback);
   }
 
   joinRoom(roomId, profile, callback) {
-    if (!this.isServerOnline()) {
-      if (callback) callback({ success: false, error: "Server offline" });
-      return;
+    this.isLocalSolo = false;
+    if (this.mode === "socket" && this.socket && this.socket.connected) {
+      this.socket.emit("join_room", { roomId, profile }, callback);
+    } else {
+      this.mode = "p2p";
+      this.p2p.joinRoom(roomId, profile, callback);
     }
-    this.socket.emit("join_room", { roomId, profile }, callback);
   }
 
   leaveRoom() {
@@ -190,42 +215,70 @@ export class NetworkClient {
       this.isLocalSolo = false;
       return;
     }
+    if (this.mode === "p2p") {
+      this.p2p.leaveRoom();
+      return;
+    }
     if (this.socket && this.socket.connected) {
       this.socket.emit("leave_room");
     }
   }
 
   toggleReady(isReady) {
+    if (this.mode === "p2p") {
+      this.p2p.toggleReady(isReady);
+      return;
+    }
     if (this.socket && this.socket.connected) {
       this.socket.emit("toggle_ready", isReady);
     }
   }
 
   changeTeam(team) {
+    if (this.mode === "p2p") {
+      this.p2p.changeTeam(team);
+      return;
+    }
     if (this.socket && this.socket.connected) {
       this.socket.emit("change_team", team);
     }
   }
 
   updateRoomOptions(options) {
+    if (this.mode === "p2p") {
+      this.p2p.updateRoomOptions(options);
+      return;
+    }
     if (this.socket && this.socket.connected) {
       this.socket.emit("update_room_options", options);
     }
   }
 
   startGame(callback) {
+    if (this.mode === "p2p") {
+      this.p2p.startGame(callback);
+      return;
+    }
     if (this.socket && this.socket.connected) {
       this.socket.emit("start_game", callback);
     }
   }
 
   addBot(callback) {
+    if (this.mode === "p2p") {
+      this.p2p.addBot(callback);
+      return;
+    }
     if (this.socket && this.socket.connected) {
       this.socket.emit("add_bot", callback);
     }
   }
 
   removeBot(botId, callback) {
+    if (this.mode === "p2p") {
+      this.p2p.removeBot(botId, callback);
+      return;
+    }
     if (this.socket && this.socket.connected) {
       this.socket.emit("remove_bot", botId, callback);
     }
@@ -234,6 +287,10 @@ export class NetworkClient {
   sendEmote(emoji) {
     if (this.isLocalSolo) {
       this.trigger("player_emoted", { id: "local_player_1", emoji });
+      return;
+    }
+    if (this.mode === "p2p") {
+      this.p2p.sendEmote(emoji);
       return;
     }
     if (this.socket && this.socket.connected) {
@@ -255,6 +312,10 @@ export class NetworkClient {
       });
       return;
     }
+    if (this.mode === "p2p") {
+      this.p2p.sendTacticalPing(pingData);
+      return;
+    }
     if (this.socket && this.socket.connected) {
       this.socket.emit("send_tactical_ping", pingData);
     }
@@ -266,6 +327,10 @@ export class NetworkClient {
       this.isLocalSolo = false;
       return;
     }
+    if (this.mode === "p2p") {
+      this.p2p.leaveRoom();
+      return;
+    }
     if (this.socket && this.socket.connected) {
       this.socket.emit("return_to_lobby");
     }
@@ -274,6 +339,10 @@ export class NetworkClient {
   sendInput(payload) {
     if (this.isLocalSolo) {
       this.localServer.handleInput(payload);
+      return;
+    }
+    if (this.mode === "p2p") {
+      this.p2p.sendInput(payload);
       return;
     }
     if (this.socket && this.socket.connected) {
