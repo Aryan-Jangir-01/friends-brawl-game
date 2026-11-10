@@ -219,74 +219,40 @@ html, body {
   box-shadow: 0 0 10px var(--cyan-glow);
 }
 
-/* Cyber Armor Skin Chips */
-.skin-picker-row {
+/* Color Palette Dots */
+.color-picker-row {
   display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  margin-bottom: 0.85rem;
-}
-
-.picker-label {
-  font-size: 0.78rem;
-  font-weight: 700;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.85rem;
   color: var(--text-muted);
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
+  margin-bottom: 0.75rem;
 }
 
-.skin-chips-grid {
+.color-options {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
 }
 
-.skin-chip {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 20px;
-  padding: 0.35rem 0.75rem;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  color: #ffffff;
-  user-select: none;
-}
-
-.skin-chip:hover {
-  background: rgba(255, 255, 255, 0.12);
-  transform: translateY(-1px);
-}
-
-.skin-chip:active {
-  transform: scale(0.95);
-}
-
-.skin-gem {
-  width: 12px;
-  height: 12px;
+.color-dot {
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  display: inline-block;
-  transition: transform 0.2s, box-shadow 0.2s;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
-.skin-title {
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.8px;
+.color-dot:hover {
+  transform: scale(1.12);
 }
 
-.skin-chip.active {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: var(--skin-color, #00f0ff);
-  box-shadow: 0 0 12px var(--skin-color, #00f0ff);
-  color: var(--skin-color, #00f0ff);
-}
-
-.skin-chip.active .skin-gem {
-  transform: scale(1.2);
+.color-dot.active {
+  transform: scale(1.22);
+  border-color: #ffffff;
+  box-shadow: 0 0 12px currentColor, 0 0 16px rgba(255, 255, 255, 0.9);
 }
 
 /* Hero Class Chips */

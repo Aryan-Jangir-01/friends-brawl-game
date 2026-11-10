@@ -380,34 +380,25 @@ export class GameRenderer {
       }
 
       // 4. Rotating Gun Barrel & Body
-      // Aim guide laser line for local player (Smooth solid gradient beam + Holographic Crosshair Target)
+      // Aim guide laser line for local player (Dotted laser aiming line with end dot)
       if (p.id === localPlayer?.id) {
         ctx.save();
         ctx.rotate(p.angle);
         ctx.beginPath();
         ctx.moveTo(p.radius + 18, 0);
-        ctx.lineTo(p.radius + 260, 0);
-        const laserGrad = ctx.createLinearGradient(p.radius + 18, 0, p.radius + 260, 0);
-        laserGrad.addColorStop(0, "rgba(0, 240, 255, 0.5)");
-        laserGrad.addColorStop(1, "rgba(0, 240, 255, 0.05)");
-        ctx.strokeStyle = laserGrad;
+        ctx.lineTo(p.radius + 280, 0);
+        ctx.strokeStyle = "rgba(0, 240, 255, 0.5)";
         ctx.lineWidth = 2;
+        ctx.setLineDash([8, 8]);
+        ctx.stroke();
+
+        // Target dot at laser end
         ctx.setLineDash([]);
-        ctx.stroke();
-
-        // Holographic Target Crosshair & Center Dot at laser range
-        const reticleDist = p.radius + 240;
         ctx.beginPath();
-        ctx.arc(reticleDist, 0, 7, 0, Math.PI * 2);
-        ctx.strokeStyle = "rgba(0, 240, 255, 0.8)";
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.arc(reticleDist, 0, 2.5, 0, Math.PI * 2);
-        ctx.fillStyle = "#ffffff";
+        ctx.arc(p.radius + 280, 0, 4, 0, Math.PI * 2);
+        ctx.fillStyle = "#00f0ff";
         ctx.shadowColor = "#00f0ff";
-        ctx.shadowBlur = 8;
+        ctx.shadowBlur = 10;
         ctx.fill();
 
         ctx.restore();

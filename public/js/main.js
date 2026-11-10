@@ -194,11 +194,11 @@ function initProfile() {
     updateAvatarPreview();
   });
 
-  // Cyber Armor Skin Chips Picker
-  const skinChips = document.getElementById("skin-chips-grid");
-  if (skinChips) {
+  // Color Palette Dots Picker
+  const colorOptions = document.getElementById("color-options");
+  if (colorOptions) {
     const savedColor = localStorage.getItem("brawl_player_color") || state.profile.color;
-    skinChips.querySelectorAll(".skin-chip").forEach(btn => {
+    colorOptions.querySelectorAll(".color-dot").forEach(btn => {
       if (btn.dataset.color === savedColor) {
         btn.classList.add("active");
         state.profile.color = savedColor;
@@ -207,13 +207,12 @@ function initProfile() {
       }
 
       btn.addEventListener("click", () => {
-        skinChips.querySelectorAll(".skin-chip").forEach(b => b.classList.remove("active"));
+        colorOptions.querySelectorAll(".color-dot").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
         state.profile.color = btn.dataset.color;
         localStorage.setItem("brawl_player_color", state.profile.color);
         updateAvatarPreview();
-        const title = btn.querySelector(".skin-title")?.textContent || "Custom";
-        showToast(`Selected Armor Skin: ${title}`);
+        showToast("Color Updated!");
       });
     });
   }
