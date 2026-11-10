@@ -211,42 +211,62 @@ export const HERO_CLASSES = {
   striker: {
     name: "Striker",
     icon: "⚡",
-    desc: "Balanced combatant with standard armor and agility",
+    role: "Assault",
+    desc: "Balanced combatant with high agility and rapid lasers",
     maxHealth: 100,
     maxShield: 50,
     speed: 340,
     dashCooldown: 2500,
-    starterWeapon: "blaster"
+    starterWeapon: "blaster",
+    superName: "Overdrive Storm",
+    superDesc: "Shield boost + rapid 360° laser storm",
+    superChargeRequired: 100,
+    stats: { speed: 80, health: 70, firepower: 75 }
   },
   juggernaut: {
     name: "Juggernaut",
     icon: "🛡️",
-    desc: "Heavy armored fortress with high HP and thick shield",
+    role: "Tank",
+    desc: "Heavily armored juggernaut with massive HP and shockwave",
     maxHealth: 140,
     maxShield: 80,
     speed: 295,
     dashCooldown: 3200,
-    starterWeapon: "shotgun"
+    starterWeapon: "shotgun",
+    superName: "Titan Quake",
+    superDesc: "Massive ground slam shockwave destroying obstacles & blasting foes",
+    superChargeRequired: 100,
+    stats: { speed: 50, health: 100, firepower: 85 }
   },
   phantom: {
     name: "Phantom",
     icon: "💨",
-    desc: "Ultra-fast ninja with rapid dash recovery",
+    role: "Assassin",
+    desc: "Speedster with hyper-fast dash and stealth smoke veil",
     maxHealth: 80,
     maxShield: 40,
     speed: 395,
     dashCooldown: 1600,
-    starterWeapon: "plasma"
+    starterWeapon: "plasma",
+    superName: "Shadow Veil",
+    superDesc: "Dense smoke bomb + 100% invisibility for 5 seconds",
+    superChargeRequired: 100,
+    stats: { speed: 100, health: 55, firepower: 70 }
   },
   sniper: {
     name: "Sniper",
     icon: "🎯",
-    desc: "Long-range specialist carrying heavy energy weapons",
+    role: "Sharpshooter",
+    desc: "Long-range specialist equipped with devastating orbital railgun",
     maxHealth: 90,
     maxShield: 40,
     speed: 330,
     dashCooldown: 2800,
-    starterWeapon: "railgun"
+    starterWeapon: "railgun",
+    superName: "Orbital Strike",
+    superDesc: "Massive satellite laser explosion at aim location",
+    superChargeRequired: 100,
+    stats: { speed: 65, health: 60, firepower: 100 }
   }
 };
 

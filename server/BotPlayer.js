@@ -106,6 +106,11 @@ export class BotPlayer {
       if (dist < 260 && Math.random() < 0.25) {
         this.game.triggerDash(player);
       }
+
+      // Super Ability tactic: If charged to 100% and enemy is in combat range, unleash Super!
+      if ((player.superCharge || 0) >= 100 && dist < 420 && Math.random() < 0.45) {
+        this.game.triggerSuper(player);
+      }
     } else {
       // No visible enemy: Wander around or search for weapon/shield
       const item = this.findNearestItem(player);

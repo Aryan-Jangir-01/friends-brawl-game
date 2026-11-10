@@ -121,10 +121,68 @@ function showToast(message) {
   setTimeout(() => toast.remove(), 3200);
 }
 
+// Hero Class Metadata for dynamic UI
+const HERO_INFO = {
+  striker: {
+    role: "Assault",
+    desc: "Balanced combatant with high agility and rapid lasers",
+    stats: { speed: 80, health: 70, power: 75 },
+    superTitle: "⚡ Overdrive Storm",
+    superDesc: "Shield surge + 360° rapid plasma laser storm"
+  },
+  juggernaut: {
+    role: "Tank",
+    desc: "Heavily armored juggernaut with massive HP and shockwave",
+    stats: { speed: 50, health: 100, power: 85 },
+    superTitle: "🛡️ Titan Quake",
+    superDesc: "Ground slam shockwave destroying obstacles & blasting foes"
+  },
+  phantom: {
+    role: "Assassin",
+    desc: "Speedster with hyper-fast dash and stealth smoke veil",
+    stats: { speed: 100, health: 55, power: 70 },
+    superTitle: "💨 Shadow Veil",
+    superDesc: "Dense smoke bomb + 100% invisibility for 5 seconds"
+  },
+  sniper: {
+    role: "Sharpshooter",
+    desc: "Long-range specialist equipped with devastating orbital railgun",
+    stats: { speed: 65, health: 60, power: 100 },
+    superTitle: "🎯 Orbital Strike",
+    superDesc: "Massive satellite laser explosion at aim location"
+  }
+};
+
+function updateHeroShowcase(heroClass) {
+  const info = HERO_INFO[heroClass] || HERO_INFO.striker;
+  const rolePill = document.getElementById("hero-role-pill");
+  const desc = document.getElementById("hero-archetype-desc");
+  const speedVal = document.getElementById("stat-val-speed");
+  const speedBar = document.getElementById("stat-bar-speed");
+  const healthVal = document.getElementById("stat-val-health");
+  const healthBar = document.getElementById("stat-bar-health");
+  const powerVal = document.getElementById("stat-val-power");
+  const powerBar = document.getElementById("stat-bar-power");
+  const superTitle = document.getElementById("hero-super-title");
+  const superDesc = document.getElementById("hero-super-desc");
+
+  if (rolePill) rolePill.textContent = info.role.toUpperCase();
+  if (desc) desc.textContent = info.desc;
+  if (speedVal) speedVal.textContent = `${info.stats.speed}%`;
+  if (speedBar) speedBar.style.width = `${info.stats.speed}%`;
+  if (healthVal) healthVal.textContent = `${info.stats.health}%`;
+  if (healthBar) healthBar.style.width = `${info.stats.health}%`;
+  if (powerVal) powerVal.textContent = `${info.stats.power}%`;
+  if (powerBar) powerBar.style.width = `${info.stats.power}%`;
+  if (superTitle) superTitle.textContent = info.superTitle;
+  if (superDesc) superDesc.textContent = info.superDesc;
+}
+
 // 1. Initialize Profile & UI
 function initProfile() {
   nameInput.value = state.profile.name;
   updateAvatarPreview();
+  updateHeroShowcase(state.profile.avatar);
 
   nameInput.addEventListener("input", (e) => {
     state.profile.name = e.target.value.trim() || "Brawler";
@@ -156,6 +214,7 @@ function initProfile() {
         classChips.querySelectorAll(".class-chip").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
         state.profile.avatar = btn.dataset.class;
+        updateHeroShowcase(state.profile.avatar);
         showToast(`Selected Class: ${btn.textContent}`);
       });
     });
@@ -308,6 +367,23 @@ function initNetwork() {
 
   network.on("player_dashed", (data) => {
     particles.emitDashTrail(data.x, data.y, data.angle);
+  });
+
+  network.on("super_activated", (data) => {
+    audio.playSuper(data.hero);
+    particles.emitSuperEffect(data.hero, data.x, data.y, data.angle);
+    renderer.addScreenShake(data.hero === "juggernaut" ? 18 : 12);
+
+    const isMe = data.playerId === state.localPlayerId;
+    const playerObj = state.latestWorldState?.players?.find(p => p.id === data.playerId);
+    const pName = playerObj ? playerObj.name : "Player";
+
+    if (isMe) {
+      showToast(`⚡ YOU UNLEASHED ${data.superName.toUpperCase()}!`);
+      if (navigator.vibrate) navigator.vibrate([60, 30, 80]);
+    } else {
+      showToast(`💥 ${pName} UNLEASHED ${data.superName.toUpperCase()}!`);
+    }
   });
 
   network.on("item_collected", (data) => {
@@ -539,6 +615,18 @@ function updateHUD(worldState) {
   const secs = worldState.timeRemaining % 60;
   hudTimer.textContent = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 
+  // Team score tracker
+  const hudTeamTracker = document.getElementById("hud-team-tracker");
+  const teamScoreBlue = document.getElementById("team-score-blue");
+  const teamScoreRed = document.getElementById("team-score-red");
+  if (worldState.teamScores && hudTeamTracker && teamScoreBlue && teamScoreRed) {
+    hudTeamTracker.classList.remove("hidden");
+    teamScoreBlue.textContent = worldState.teamScores.blue;
+    teamScoreRed.textContent = worldState.teamScores.red;
+  } else if (hudTeamTracker) {
+    hudTeamTracker.classList.add("hidden");
+  }
+
   // Find local player
   const me = worldState.players?.find(p => p.id === state.localPlayerId);
   if (me) {
@@ -553,6 +641,31 @@ function updateHUD(worldState) {
     const shPct = Math.max(0, Math.min(100, (me.shield / me.maxShield) * 100));
     hudShieldFill.style.width = `${shPct}%`;
     hudShieldText.textContent = Math.ceil(me.shield);
+
+    // Super Meter & Button
+    const btnSuper = document.getElementById("btn-super");
+    const superStatus = document.getElementById("super-btn-status");
+    const superMeterFill = document.getElementById("super-meter-fill");
+    const superCharge = Math.min(100, Math.max(0, me.superCharge || 0));
+
+    if (superMeterFill) {
+      const circ = 207.34;
+      superMeterFill.style.strokeDashoffset = `${circ * (1 - superCharge / 100)}`;
+    }
+
+    if (btnSuper && superStatus) {
+      if (superCharge >= 100) {
+        if (!btnSuper.classList.contains("ready")) {
+          btnSuper.classList.add("ready");
+          audio.playSuperReady();
+          if (navigator.vibrate) navigator.vibrate(40);
+        }
+        superStatus.textContent = "READY!";
+      } else {
+        btnSuper.classList.remove("ready");
+        superStatus.textContent = `${superCharge}%`;
+      }
+    }
 
     // Low Health Vignette
     if (me.health <= 35 && me.isAlive) {
@@ -589,13 +702,65 @@ function showMatchOverModal(data) {
   const winner = data.ranking[0];
   matchOverSubtitle.textContent = winner ? `🏆 Champion: ${winner.name}` : data.reason;
 
+  // Sound and confetti celebration
+  audio.playVictory();
+  particles.emitConfetti(renderer.width / 2, renderer.height / 3, 50);
+
+  // Olympic Cyber Podium Setup
+  const p1 = data.ranking[0];
+  const p2 = data.ranking[1];
+  const p3 = data.ranking[2];
+
+  const col1 = document.getElementById("podium-1");
+  const col2 = document.getElementById("podium-2");
+  const col3 = document.getElementById("podium-3");
+
+  if (p1 && col1) {
+    col1.style.display = "flex";
+    const av = document.getElementById("podium-avatar-1");
+    if (av) {
+      av.style.backgroundColor = p1.color;
+      av.textContent = (p1.name || "P").substring(0, 2).toUpperCase();
+    }
+    document.getElementById("podium-name-1").textContent = p1.name;
+    document.getElementById("podium-score-1").textContent = `${p1.kills} Kills`;
+  }
+
+  if (p2 && col2) {
+    col2.style.display = "flex";
+    const av = document.getElementById("podium-avatar-2");
+    if (av) {
+      av.style.backgroundColor = p2.color;
+      av.textContent = (p2.name || "P").substring(0, 2).toUpperCase();
+    }
+    document.getElementById("podium-name-2").textContent = p2.name;
+    document.getElementById("podium-score-2").textContent = `${p2.kills} Kills`;
+  } else if (col2) {
+    col2.style.display = "none";
+  }
+
+  if (p3 && col3) {
+    col3.style.display = "flex";
+    const av = document.getElementById("podium-avatar-3");
+    if (av) {
+      av.style.backgroundColor = p3.color;
+      av.textContent = (p3.name || "P").substring(0, 2).toUpperCase();
+    }
+    document.getElementById("podium-name-3").textContent = p3.name;
+    document.getElementById("podium-score-3").textContent = `${p3.kills} Kills`;
+  } else if (col3) {
+    col3.style.display = "none";
+  }
+
+  // Leaderboard table
   matchOverRows.innerHTML = "";
   data.ranking.forEach((p, idx) => {
     const row = document.createElement("div");
     row.className = `lb-row ${idx === 0 ? "winner" : ""}`;
+    const badge = p.isMVP ? " 👑" : "";
     row.innerHTML = `
       <span>${idx + 1}</span>
-      <span style="color: ${p.color}; text-align: left;">${escapeHtml(p.name)}</span>
+      <span style="color: ${p.color}; text-align: left;">${escapeHtml(p.name)}${badge}</span>
       <span>${p.kills}</span>
       <span>${p.deaths}</span>
       <span>${p.score}</span>

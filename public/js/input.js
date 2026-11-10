@@ -9,6 +9,7 @@ export class InputManager {
     this.aimAngle = 0;
     this.isShooting = false;
     this.dashRequested = false;
+    this.superRequested = false;
     this.switchWeaponRequested = null;
 
     this.isTouchDevice = false;
@@ -36,6 +37,7 @@ export class InputManager {
     this.touchZoneLeft = document.getElementById("touch-zone-left");
     this.touchZoneRight = document.getElementById("touch-zone-right");
     this.btnDash = document.getElementById("btn-dash");
+    this.btnSuper = document.getElementById("btn-super");
     this.btnSwitchWeapon = document.getElementById("btn-switch-weapon");
     this.dashOverlay = document.getElementById("dash-cooldown-overlay");
 
@@ -74,6 +76,17 @@ export class InputManager {
       });
     }
 
+    if (this.btnSuper) {
+      this.btnSuper.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.triggerSuper();
+      }, { passive: false });
+      this.btnSuper.addEventListener("click", () => {
+        this.triggerSuper();
+      });
+    }
+
     if (this.btnSwitchWeapon) {
       this.btnSwitchWeapon.addEventListener("touchstart", (e) => {
         e.preventDefault();
@@ -91,6 +104,10 @@ export class InputManager {
       if (e.code === "Space") {
         e.preventDefault();
         this.triggerDash();
+      }
+      if (e.code === "KeyR" || e.code === "KeyF") {
+        e.preventDefault();
+        this.triggerSuper();
       }
       if (e.code === "KeyQ" || e.code === "KeyE") {
         this.cycleWeapon();
@@ -273,6 +290,14 @@ export class InputManager {
     }
   }
 
+  triggerSuper() {
+    this.superRequested = true;
+    audio.unlock();
+    if (navigator.vibrate) {
+      navigator.vibrate([40, 20, 40]);
+    }
+  }
+
   cycleWeapon() {
     // Tell server to switch to next available weapon
     const weaponOrder = ["blaster", "shotgun", "plasma", "rocket", "railgun"];
@@ -317,11 +342,13 @@ export class InputManager {
       aimAngle: Math.round(this.aimAngle * 100) / 100,
       isShooting: this.isShooting,
       dashRequested: this.dashRequested,
+      superRequested: this.superRequested,
       switchWeapon: this.switchWeaponRequested
     };
 
     // Reset single-frame requests
     this.dashRequested = false;
+    this.superRequested = false;
     this.switchWeaponRequested = null;
 
     return payload;

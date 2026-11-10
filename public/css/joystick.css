@@ -138,6 +138,65 @@
   margin-top: 2px;
 }
 
+/* Super Ultimate Button */
+.super-btn {
+  width: 72px;
+  height: 72px;
+  border-color: rgba(255, 0, 127, 0.6);
+  background: radial-gradient(circle, rgba(255, 0, 127, 0.25) 0%, rgba(16, 24, 39, 0.95) 100%);
+  box-shadow: 0 0 15px rgba(255, 0, 127, 0.3);
+  position: relative;
+}
+
+.super-meter-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+  pointer-events: none;
+}
+
+.super-meter-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-width: 4;
+}
+
+.super-meter-progress {
+  fill: none;
+  stroke: #ff007f;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-dasharray: 207.34; /* 2 * PI * 33 */
+  stroke-dashoffset: 207.34;
+  transition: stroke-dashoffset 0.15s ease-out, stroke 0.3s;
+}
+
+.super-btn.ready {
+  border-color: #ffea00;
+  background: radial-gradient(circle, rgba(255, 234, 0, 0.3) 0%, rgba(255, 0, 127, 0.4) 100%);
+  box-shadow: 0 0 25px rgba(255, 234, 0, 0.8), 0 0 45px rgba(255, 0, 127, 0.6);
+  animation: superPulse 1.2s infinite alternate;
+}
+
+.super-btn.ready .super-meter-progress {
+  stroke: #ffea00;
+  stroke-dashoffset: 0 !important;
+}
+
+.super-btn.ready #super-btn-status {
+  color: #ffea00;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+@keyframes superPulse {
+  0% { transform: scale(1); box-shadow: 0 0 20px rgba(255, 234, 0, 0.7); }
+  100% { transform: scale(1.08); box-shadow: 0 0 35px rgba(255, 234, 0, 1), 0 0 50px rgba(255, 0, 127, 0.8); }
+}
+
 /* Dash Button */
 .dash-btn {
   border-color: var(--amber-neon);
@@ -246,6 +305,10 @@
   .action-btn {
     width: 54px;
     height: 54px;
+  }
+  .super-btn {
+    width: 58px;
+    height: 58px;
   }
   .action-btn .btn-icon {
     font-size: 1.1rem;

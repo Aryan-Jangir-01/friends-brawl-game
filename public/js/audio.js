@@ -311,6 +311,104 @@ class SoundEngine {
     });
   }
 
+  playSuperReady() {
+    if (!this.ctx || this.isMuted) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(587.33, now); // D5
+    osc.frequency.setValueAtTime(880, now + 0.08); // A5
+    osc.frequency.setValueAtTime(1174.66, now + 0.16); // D6
+
+    gain.gain.setValueAtTime(0.25, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.36);
+  }
+
+  playSuper(hero) {
+    if (!this.ctx || this.isMuted) return;
+    const now = this.ctx.currentTime;
+
+    if (hero === "juggernaut") {
+      // Deep seismic shockwave slam
+      this.playExplosion(1.8);
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(100, now);
+      osc.frequency.exponentialRampToValueAtTime(25, now + 0.6);
+      gain.gain.setValueAtTime(0.5, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.62);
+    } else if (hero === "phantom") {
+      // Ethereal phase shift whoosh
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(900, now);
+      osc.frequency.exponentialRampToValueAtTime(200, now + 0.4);
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.42);
+    } else if (hero === "sniper") {
+      // Orbital strike charge up & thunder blast
+      this.playRailgun();
+      setTimeout(() => this.playExplosion(1.5), 180);
+    } else {
+      // Striker overdrive laser storm
+      const notes = [440, 660, 880, 1100, 1320];
+      notes.forEach((freq, i) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(freq, now + i * 0.05);
+        gain.gain.setValueAtTime(0.2, now + i * 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.05 + 0.15);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now + i * 0.05);
+        osc.stop(now + i * 0.05 + 0.16);
+      });
+    }
+  }
+
+  playVictory() {
+    if (!this.ctx || this.isMuted) return;
+    const now = this.ctx.currentTime;
+    const chords = [
+      [523.25, 659.25, 783.99], // C major
+      [587.33, 739.99, 880],    // D major
+      [659.25, 830.61, 987.77], // E major
+      [783.99, 987.77, 1174.66] // G major fanfare
+    ];
+    chords.forEach((chord, step) => {
+      chord.forEach(freq => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(freq, now + step * 0.12);
+        gain.gain.setValueAtTime(0.15, now + step * 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + step * 0.12 + 0.35);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now + step * 0.12);
+        osc.stop(now + step * 0.12 + 0.36);
+      });
+    });
+  }
+
   startMusic() {
     if (!this.ctx || this.isMuted || this.musicTimer) return;
     const bassline = [110, 110, 130.81, 146.83, 110, 110, 164.81, 146.83];

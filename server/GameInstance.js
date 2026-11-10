@@ -112,6 +112,9 @@ export class GameInstance {
       currentStreak: 0,
       multiKillCount: 0,
       lastKillTime: 0,
+      damageDealt: 0,
+      superCharge: 35, // 0 to 100
+      superInvisEndTime: 0,
 
       // Input buffer from client
       input: {
@@ -178,6 +181,90 @@ export class GameInstance {
     if (inputData.switchWeapon) {
       this.switchPlayerWeapon(player, inputData.switchWeapon);
     }
+    if (inputData.superRequested) {
+      this.triggerSuper(player);
+    }
+  }
+
+  triggerSuper(player) {
+    if ((player.superCharge || 0) < 100 || !player.isAlive) return;
+    player.superCharge = 0;
+
+    const heroClass = HERO_CLASSES[player.avatar] || HERO_CLASSES.striker;
+    const now = Date.now();
+
+    if (player.avatar === "striker") {
+      player.shield = Math.min(player.maxShield + 35, 100);
+      for (let i = 0; i < 16; i++) {
+        const ang = (i / 16) * Math.PI * 2;
+        this.bullets.push({
+          id: `b_${this.bulletIdCounter++}`,
+          shooterId: player.id,
+          weapon: "plasma",
+          x: player.x,
+          y: player.y,
+          startX: player.x,
+          startY: player.y,
+          vx: Math.cos(ang) * 950,
+          vy: Math.sin(ang) * 950,
+          angle: ang,
+          damage: 24,
+          range: 850,
+          radius: 6,
+          color: "#00f0ff",
+          type: "plasma",
+          aoeRadius: 0,
+          distTraveled: 0
+        });
+      }
+    } else if (player.avatar === "juggernaut") {
+      const aoeRadius = 320;
+      for (const target of this.players.values()) {
+        if (!target.isAlive || target.id === player.id) continue;
+        if (this.options.gameMode === "team" && target.team === player.team) continue;
+        const dist = Math.hypot(target.x - player.x, target.y - player.y);
+        if (dist < aoeRadius) {
+          const dmg = Math.round(65 * (1 - dist / aoeRadius)) + 15;
+          this.applyDamageToPlayer(target, dmg, player.id, "quake");
+        }
+      }
+      this.crates.forEach(c => {
+        if (c.hp > 0 && Math.hypot(c.x + c.size / 2 - player.x, c.y + c.size / 2 - player.y) < aoeRadius) {
+          c.hp = 0;
+          this.onCrateDestroyed(c);
+        }
+      });
+    } else if (player.avatar === "phantom") {
+      player.superInvisEndTime = now + 5000;
+    } else if (player.avatar === "sniper") {
+      const strikeX = player.x + Math.cos(player.angle) * 500;
+      const strikeY = player.y + Math.sin(player.angle) * 500;
+      const aoeRadius = 220;
+      for (const target of this.players.values()) {
+        if (!target.isAlive || target.id === player.id) continue;
+        if (this.options.gameMode === "team" && target.team === player.team) continue;
+        const dist = Math.hypot(target.x - strikeX, target.y - strikeY);
+        if (dist < aoeRadius) {
+          const dmg = Math.round(90 * (1 - dist / aoeRadius)) + 20;
+          this.applyDamageToPlayer(target, dmg, player.id, "orbital");
+        }
+      }
+      this.crates.forEach(c => {
+        if (c.hp > 0 && Math.hypot(c.x + c.size / 2 - strikeX, c.y + c.size / 2 - strikeY) < aoeRadius) {
+          c.hp = 0;
+          this.onCrateDestroyed(c);
+        }
+      });
+    }
+
+    this.io.to(this.roomId).emit("super_activated", {
+      playerId: player.id,
+      hero: player.avatar,
+      superName: heroClass.superName,
+      x: player.x,
+      y: player.y,
+      angle: player.angle
+    });
   }
 
   switchPlayerWeapon(player, weaponName) {
@@ -299,16 +386,37 @@ export class GameInstance {
 
     // 5. Check Score Limit
     if (this.options.scoreLimit > 0) {
-      for (const player of this.players.values()) {
-        if (player.score >= this.options.scoreLimit) {
-          this.endMatch(`${player.name} Won! Reached score limit.`);
+      if (this.options.gameMode === "team") {
+        const scores = this.getTeamScores();
+        if (scores.blue >= this.options.scoreLimit) {
+          this.endMatch(`Blue Team Victorious! Reached ${this.options.scoreLimit} points.`);
           return;
+        } else if (scores.red >= this.options.scoreLimit) {
+          this.endMatch(`Red Team Victorious! Reached ${this.options.scoreLimit} points.`);
+          return;
+        }
+      } else {
+        for (const player of this.players.values()) {
+          if (player.score >= this.options.scoreLimit) {
+            this.endMatch(`${player.name} Won! Reached score limit.`);
+            return;
+          }
         }
       }
     }
 
     // 6. Broadcast World State to Room
     this.broadcastState();
+  }
+
+  getTeamScores() {
+    let blue = 0;
+    let red = 0;
+    for (const p of this.players.values()) {
+      if (p.team === "blue") blue += p.kills;
+      else if (p.team === "red") red += p.kills;
+    }
+    return { blue, red };
   }
 
   updatePlayer(player, dt, now) {
@@ -319,6 +427,9 @@ export class GameInstance {
       }
       return;
     }
+
+    // Passive Super Charge over time
+    player.superCharge = Math.min(100, (player.superCharge || 0) + dt * 1.5);
 
     // Check Speed Boost
     let currentSpeed = player.baseSpeed;
@@ -430,37 +541,53 @@ export class GameInstance {
   }
 
   applyItemToPlayer(player, item) {
+    let applied = false;
     switch (item.type) {
       case "health":
-        if (player.health >= player.maxHealth) return false;
-        player.health = Math.min(player.maxHealth, player.health + 40);
-        return true;
+        if (player.health < player.maxHealth) {
+          player.health = Math.min(player.maxHealth, player.health + 40);
+          applied = true;
+        }
+        break;
       case "shield":
-        if (player.shield >= player.maxShield) return false;
-        player.shield = Math.min(player.maxShield, player.shield + 50);
-        return true;
+        if (player.shield < player.maxShield) {
+          player.shield = Math.min(player.maxShield, player.shield + 50);
+          applied = true;
+        }
+        break;
       case "boost":
         player.speedBoostEndTime = Date.now() + 8000;
-        return true;
+        applied = true;
+        break;
       case "shotgun":
         player.weapons.shotgun = { ammo: (player.weapons.shotgun?.ammo || 0) + 15 };
         player.currentWeapon = "shotgun";
-        return true;
+        applied = true;
+        break;
       case "plasma":
         player.weapons.plasma = { ammo: (player.weapons.plasma?.ammo || 0) + 30 };
         player.currentWeapon = "plasma";
-        return true;
+        applied = true;
+        break;
       case "rocket":
         player.weapons.rocket = { ammo: (player.weapons.rocket?.ammo || 0) + 6 };
         player.currentWeapon = "rocket";
-        return true;
+        applied = true;
+        break;
       case "railgun":
         player.weapons.railgun = { ammo: (player.weapons.railgun?.ammo || 0) + 5 };
         player.currentWeapon = "railgun";
-        return true;
+        applied = true;
+        break;
       default:
-        return false;
+        applied = false;
     }
+
+    if (applied) {
+      // Bonus super charge on collecting any item
+      player.superCharge = Math.min(100, (player.superCharge || 0) + 15);
+    }
+    return applied;
   }
 
   checkBushOverlap(x, y) {
@@ -705,9 +832,11 @@ export class GameInstance {
     }
 
     const attacker = this.players.get(attackerId);
-    if (attacker) {
-      attacker.damageDealt += amount;
+    if (attacker && attacker.id !== target.id) {
+      attacker.damageDealt = (attacker.damageDealt || 0) + amount;
+      attacker.superCharge = Math.min(100, (attacker.superCharge || 0) + Math.round(amount * 0.45));
     }
+    target.superCharge = Math.min(100, (target.superCharge || 0) + Math.round(amount * 0.2));
 
     // Damage indicator event
     this.io.to(this.roomId).emit("player_hit", {
@@ -728,6 +857,7 @@ export class GameInstance {
       if (attacker && attacker.id !== target.id) {
         attacker.kills += 1;
         attacker.score += 1;
+        attacker.superCharge = Math.min(100, (attacker.superCharge || 0) + 25);
         attacker.currentStreak = (attacker.currentStreak || 0) + 1;
 
         const now = Date.now();
@@ -893,16 +1023,32 @@ export class GameInstance {
         id: p.id,
         name: p.name,
         color: p.color,
+        avatar: p.avatar,
+        team: p.team,
         kills: p.kills,
         deaths: p.deaths,
         score: p.score,
-        damageDealt: p.damageDealt
+        damageDealt: p.damageDealt || 0
       }))
-      .sort((a, b) => b.score - a.score || b.kills - a.kills);
+      .sort((a, b) => b.score - a.score || b.kills - a.kills || b.damageDealt - a.damageDealt);
+
+    let maxDamage = 0;
+    let maxKills = 0;
+    ranking.forEach(r => {
+      if (r.damageDealt > maxDamage) maxDamage = r.damageDealt;
+      if (r.kills > maxKills) maxKills = r.kills;
+    });
+
+    ranking.forEach((r, idx) => {
+      r.isMVP = idx === 0;
+      r.isTopDamage = r.damageDealt > 0 && r.damageDealt === maxDamage;
+      r.isTopKills = r.kills > 0 && r.kills === maxKills;
+    });
 
     this.io.to(this.roomId).emit("match_ended", {
       reason,
-      ranking
+      ranking,
+      teamScores: this.options.gameMode === "team" ? this.getTeamScores() : null
     });
   }
 
@@ -929,6 +1075,9 @@ export class GameInstance {
         kills: p.kills,
         deaths: p.deaths,
         score: p.score,
+        damageDealt: p.damageDealt || 0,
+        superCharge: Math.round(p.superCharge || 0),
+        isInvisible: Date.now() < (p.superInvisEndTime || 0),
         inBush: p.inBush,
         speedBoost: Date.now() < p.speedBoostEndTime
       });
@@ -946,6 +1095,7 @@ export class GameInstance {
     this.io.to(this.roomId).emit("game_state", {
       t: Date.now(),
       timeRemaining: Math.ceil(this.timeRemaining),
+      teamScores: this.options.gameMode === "team" ? this.getTeamScores() : null,
       players: playersList,
       bullets: bulletsList,
       items: this.groundItems,

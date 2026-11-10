@@ -16,6 +16,7 @@ async function runTest() {
   let stateReceivedCount = 0;
   let dashReceived = false;
   let weaponFiredReceived = false;
+  let superChargeVerified = false;
 
   await new Promise(resolve => {
     let connected = 0;
@@ -71,6 +72,9 @@ async function runTest() {
 
   clientA.on("game_state", (state) => {
     stateReceivedCount++;
+    if (state.players && state.players[0] && typeof state.players[0].superCharge === "number") {
+      superChargeVerified = true;
+    }
   });
 
   // Client A starts game
@@ -103,11 +107,12 @@ async function runTest() {
   console.log("- Total Game States received by Client A:", stateReceivedCount);
   console.log("- Dash event received:", dashReceived);
   console.log("- Weapon fired event received:", weaponFiredReceived);
+  console.log("- Super Charge verified in game_state:", superChargeVerified);
 
   clientA.disconnect();
   clientB.disconnect();
 
-  if (roomCreated && gameStartedReceivedA && gameStartedReceivedB && stateReceivedCount > 10 && dashReceived && weaponFiredReceived) {
+  if (roomCreated && gameStartedReceivedA && gameStartedReceivedB && stateReceivedCount > 10 && dashReceived && weaponFiredReceived && superChargeVerified) {
     console.log("✅ ALL MULTIPLAYER TEST ASSERTIONS PASSED PERFECTLY!");
     process.exit(0);
   } else {

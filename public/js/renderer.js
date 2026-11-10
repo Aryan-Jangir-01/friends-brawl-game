@@ -19,6 +19,7 @@ export class GameRenderer {
     this.targetCamY = 900;
     this.screenShake = 0;
     this.activeEmotes = new Map(); // playerId -> { emoji, endTime }
+    this.recoil = new Map(); // playerId -> timestamp
 
     this.resize();
     window.addEventListener("resize", () => this.resize());
@@ -46,6 +47,10 @@ export class GameRenderer {
 
   addPlayerEmote(playerId, emoji) {
     this.activeEmotes.set(playerId, { emoji, endTime: Date.now() + 2500 });
+  }
+
+  addPlayerRecoil(playerId) {
+    this.recoil.set(playerId, Date.now());
   }
 
   updateCamera(targetX, targetY, dt) {
@@ -321,11 +326,19 @@ export class GameRenderer {
         if (!isTeammate) return; // Completely invisible to opponents!
       }
 
+      // Invisibility logic (e.g. Phantom's Shadow Veil Super)
+      if (p.isInvisible && p.id !== localPlayer?.id) {
+        const isTeammate = localPlayer?.team && p.team === localPlayer.team;
+        if (!isTeammate) return; // Completely hidden from enemies!
+      }
+
       ctx.save();
       ctx.translate(p.x, p.y);
 
-      // If local player in bush, make slightly translucent
-      if (p.inBush) {
+      // Translucency for stealth / invisibility
+      if (p.isInvisible) {
+        ctx.globalAlpha = 0.35;
+      } else if (p.inBush) {
         ctx.globalAlpha = 0.55;
       }
 
@@ -340,6 +353,18 @@ export class GameRenderer {
         ctx.beginPath();
         ctx.arc(0, 0, p.radius * 1.4, 0, Math.PI * 2);
         ctx.fillStyle = "rgba(0, 240, 255, 0.25)";
+        ctx.fill();
+      }
+
+      // 2b. Super Charged Aura when at 100%
+      if ((p.superCharge || 0) >= 100) {
+        const pulse = Math.sin(Date.now() / 140) * 3;
+        ctx.beginPath();
+        ctx.arc(0, 0, p.radius + 9 + pulse, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(255, 234, 0, 0.75)";
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        ctx.fillStyle = "rgba(255, 234, 0, 0.14)";
         ctx.fill();
       }
 
@@ -372,11 +397,18 @@ export class GameRenderer {
       ctx.save();
       ctx.rotate(p.angle);
 
-      // Gun Barrel
+      // Gun Barrel with kickback recoil
+      const lastFire = this.recoil.get(p.id) || 0;
+      const elapsed = Date.now() - lastFire;
+      let kick = 0;
+      if (elapsed < 110) {
+        kick = (1 - elapsed / 110) * 5;
+      }
+
       ctx.fillStyle = "#334155";
-      ctx.fillRect(p.radius * 0.4, -4, 18, 8);
+      ctx.fillRect(p.radius * 0.4 - kick, -4, 18, 8);
       ctx.fillStyle = "#0f172a";
-      ctx.fillRect(p.radius * 0.4 + 14, -3, 6, 6);
+      ctx.fillRect(p.radius * 0.4 + 14 - kick, -3, 6, 6);
 
       // Hands
       ctx.fillStyle = p.color;

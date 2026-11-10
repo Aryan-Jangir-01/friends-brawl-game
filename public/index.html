@@ -29,7 +29,14 @@
           <button id="btn-hud-sound" class="btn-small-icon" title="Toggle Sound">🔊</button>
           <button id="btn-hud-fullscreen" class="btn-small-icon" title="Toggle Fullscreen">⛶</button>
         </div>
-        <div class="hud-match-timer" id="hud-timer">05:00</div>
+        <div class="hud-center-group">
+          <div class="hud-match-timer" id="hud-timer">05:00</div>
+          <div id="hud-team-tracker" class="hud-team-tracker hidden">
+            <span class="team-score blue-score">🔵 <b id="team-score-blue">0</b></span>
+            <span class="team-vs">VS</span>
+            <span class="team-score red-score"><b id="team-score-red">0</b> 🔴</span>
+          </div>
+        </div>
         <div class="hud-score-tracker">
           <span class="score-label">KILLS:</span>
           <span id="hud-player-kills" class="score-num">0</span>
@@ -106,6 +113,17 @@
 
         <!-- Action Buttons on Right Side -->
         <div class="action-buttons-group">
+          <!-- Super Ultimate Button -->
+          <button id="btn-super" class="action-btn super-btn" aria-label="Super Ability">
+            <svg class="super-meter-svg" viewBox="0 0 76 76">
+              <circle class="super-meter-bg" cx="38" cy="38" r="33"></circle>
+              <circle id="super-meter-fill" class="super-meter-progress" cx="38" cy="38" r="33"></circle>
+            </svg>
+            <span id="super-btn-icon" class="btn-icon">💥</span>
+            <span id="super-btn-status" class="btn-subtext">35%</span>
+            <div id="super-ready-aura" class="super-ready-aura hidden"></div>
+          </button>
+
           <!-- Switch Weapon Button -->
           <button id="btn-switch-weapon" class="action-btn weapon-btn" aria-label="Switch Weapon">
             <span class="btn-icon">🔄</span>
@@ -142,9 +160,38 @@
 
     <!-- Match Over Modal -->
     <div id="modal-match-over" class="modal-overlay hidden">
-      <div class="modal-card">
+      <div class="modal-card match-over-card">
         <h2 id="match-over-title" class="neon-title">MATCH FINISHED</h2>
         <p id="match-over-subtitle" class="neon-subtitle">Winner: Player 1</p>
+
+        <!-- Olympic Cyber Podium for Top 3 -->
+        <div id="podium-container" class="podium-container">
+          <!-- 2nd Place (Silver) -->
+          <div id="podium-2" class="podium-col silver-col">
+            <div class="podium-badge">🥈 2ND</div>
+            <div id="podium-avatar-2" class="podium-avatar">P2</div>
+            <div id="podium-name-2" class="podium-name">Player 2</div>
+            <div id="podium-score-2" class="podium-score">0 pts</div>
+            <div class="podium-pedestal silver-pedestal">2</div>
+          </div>
+          <!-- 1st Place (Gold / MVP) -->
+          <div id="podium-1" class="podium-col gold-col">
+            <div class="podium-crown">👑 MVP</div>
+            <div class="podium-badge">🥇 1ST</div>
+            <div id="podium-avatar-1" class="podium-avatar">P1</div>
+            <div id="podium-name-1" class="podium-name">Player 1</div>
+            <div id="podium-score-1" class="podium-score">0 pts</div>
+            <div class="podium-pedestal gold-pedestal">1</div>
+          </div>
+          <!-- 3rd Place (Bronze) -->
+          <div id="podium-3" class="podium-col bronze-col">
+            <div class="podium-badge">🥉 3RD</div>
+            <div id="podium-avatar-3" class="podium-avatar">P3</div>
+            <div id="podium-name-3" class="podium-name">Player 3</div>
+            <div id="podium-score-3" class="podium-score">0 pts</div>
+            <div class="podium-pedestal bronze-pedestal">3</div>
+          </div>
+        </div>
 
         <div class="leaderboard-table">
           <div class="lb-header">
@@ -216,6 +263,37 @@
             <button class="class-chip" data-class="juggernaut" title="Heavy HP & Shield">🛡️ Juggernaut</button>
             <button class="class-chip" data-class="phantom" title="Fast & Quick Dash">💨 Phantom</button>
             <button class="class-chip" data-class="sniper" title="Long Range Railgun">🎯 Sniper</button>
+          </div>
+        </div>
+
+        <!-- Dynamic Cyber Hero Showcase Card -->
+        <div id="hero-showcase" class="hero-showcase-box">
+          <div class="hero-header-line">
+            <div class="hero-role-pill" id="hero-role-pill">ASSAULT</div>
+            <div class="hero-archetype-desc" id="hero-archetype-desc">Balanced combatant with high agility and rapid lasers</div>
+          </div>
+
+          <!-- Hero Combat Stats -->
+          <div class="hero-stats-grid">
+            <div class="stat-col">
+              <div class="stat-header"><span>⚡ AGILITY</span><b id="stat-val-speed">80%</b></div>
+              <div class="stat-bar-track"><div id="stat-bar-speed" class="stat-bar-fill speed-fill" style="width: 80%;"></div></div>
+            </div>
+            <div class="stat-col">
+              <div class="stat-header"><span>🛡️ ARMOR</span><b id="stat-val-health">70%</b></div>
+              <div class="stat-bar-track"><div id="stat-bar-health" class="stat-bar-fill health-fill" style="width: 70%;"></div></div>
+            </div>
+            <div class="stat-col">
+              <div class="stat-header"><span>💥 FIREPOWER</span><b id="stat-val-power">75%</b></div>
+              <div class="stat-bar-track"><div id="stat-bar-power" class="stat-bar-fill power-fill" style="width: 75%;"></div></div>
+            </div>
+          </div>
+
+          <!-- Super Ability Preview -->
+          <div class="hero-super-preview">
+            <div class="super-badge">ULTIMATE SUPER</div>
+            <div class="super-title" id="hero-super-title">⚡ Overdrive Storm</div>
+            <div class="super-desc" id="hero-super-desc">Shield surge + 360° rapid plasma laser storm</div>
           </div>
         </div>
       </div>
