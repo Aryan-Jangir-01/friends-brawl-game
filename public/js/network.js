@@ -91,6 +91,10 @@ export class NetworkClient {
     this.socket.on("super_activated", (data) => {
       this.trigger("super_activated", data);
     });
+
+    this.socket.on("tactical_ping", (data) => {
+      this.trigger("tactical_ping", data);
+    });
   }
 
   startPingLoop() {

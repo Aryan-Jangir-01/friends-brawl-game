@@ -228,6 +228,20 @@ export class RoomManager {
     });
   }
 
+  sendTacticalPing(socket, pingData) {
+    const room = this.rooms.get(socket.roomId);
+    if (!room) return;
+    const player = room.players.get(socket.id);
+    this.io.to(room.id).emit("tactical_ping", {
+      playerId: socket.id,
+      playerName: player ? player.name : "Player",
+      playerColor: player ? player.color : "#00f0ff",
+      type: pingData.type || "attack",
+      text: pingData.text || "ATTACK!",
+      icon: pingData.icon || "⚔️"
+    });
+  }
+
   returnToLobby(socket) {
     const room = this.rooms.get(socket.roomId);
     if (!room || room.hostId !== socket.id) return;

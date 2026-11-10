@@ -28,7 +28,19 @@ An action-packed, 2D top-down hero shooter & brawl arena designed specifically f
 
 ---
 
-## 🚀 How to Run and Play
+## ☁️ 1-Click Free 24/7 Deployment (Direct from GitHub)
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Aryan-Jangir-01/friends-brawl-game)
+
+Deploy your permanent live game link directly connected to this GitHub repo in 60 seconds:
+1. Click the **Deploy to Render** button above (or visit [render.com](https://render.com) and click **New > Web Service**).
+2. Sign in with GitHub and select repository **`Aryan-Jangir-01/friends-brawl-game`**.
+3. Click **Deploy Web Service**.
+4. Render will automatically build and give you a permanent 24/7 HTTPS URL (e.g., `https://friends-brawl-game.onrender.com`) that never expires!
+
+---
+
+## 🚀 How to Run and Play Locally
 
 ### Step 1: Start the Server on your Computer
 Open terminal in the project folder and run:

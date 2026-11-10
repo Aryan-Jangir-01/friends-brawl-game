@@ -147,6 +147,10 @@ io.on("connection", (socket) => {
     roomManager.sendEmote(socket, emoji);
   });
 
+  socket.on("send_tactical_ping", (pingData) => {
+    roomManager.sendTacticalPing(socket, pingData);
+  });
+
   socket.on("return_to_lobby", () => {
     roomManager.returnToLobby(socket);
   });
