@@ -1,0 +1,28 @@
+{
+  "name": "friends-brawl-arena",
+  "version": "1.0.0",
+  "description": "Cross-phone multiplayer top-down action arena game",
+  "main": "server/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "keywords": [
+    "multiplayer",
+    "action-game",
+    "mobile-game",
+    "socketio",
+    "canvas"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.21.2",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.4"
+  }
+}

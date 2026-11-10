@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>BRAWL ZONE - Multiplayer Mobile Action Arena</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0a0e17">
+
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/joystick.css">
+</head>
+<body>
+  <!-- Canvas Screen -->
+  <div id="game-container">
+    <canvas id="game-canvas"></canvas>
+
+    <!-- In-Game HUD Overlay -->
+    <div id="hud-overlay" class="hidden">
+      <!-- Top Status Bar -->
+      <div class="hud-top-bar">
+        <div class="hud-room-tag">
+          <span class="icon">📍</span> <span id="hud-room-code">ROOM-????</span>
+          <span id="hud-ping-badge" class="ping-badge">24ms</span>
+          <button id="btn-hud-fullscreen" class="btn-small-icon" title="Toggle Fullscreen">⛶</button>
+        </div>
+        <div class="hud-match-timer" id="hud-timer">05:00</div>
+        <div class="hud-score-tracker">
+          <span class="score-label">KILLS:</span>
+          <span id="hud-player-kills" class="score-num">0</span>
+        </div>
+      </div>
+
+      <!-- Real-time Kill Feed -->
+      <div id="kill-feed" class="kill-feed"></div>
+
+      <!-- Mini Map Radar -->
+      <div class="mini-map-wrapper">
+        <canvas id="mini-map-canvas" width="130" height="100"></canvas>
+      </div>
+
+      <!-- Low Health Vignette -->
+      <div id="low-health-vignette" class="low-health-vignette"></div>
+
+      <!-- Bottom Player Stats Bar -->
+      <div class="hud-bottom-bar">
+        <!-- Health & Shield Bars -->
+        <div class="bars-container">
+          <!-- Shield Bar -->
+          <div class="bar-row">
+            <span class="bar-icon">🛡️</span>
+            <div class="meter-frame shield-frame">
+              <div id="hud-shield-fill" class="meter-fill shield-fill" style="width: 50%;"></div>
+            </div>
+            <span id="hud-shield-text" class="bar-text">50</span>
+          </div>
+
+          <!-- Health Bar -->
+          <div class="bar-row">
+            <span class="bar-icon">❤️</span>
+            <div class="meter-frame health-frame">
+              <div id="hud-health-fill" class="meter-fill health-fill" style="width: 100%;"></div>
+            </div>
+            <span id="hud-health-text" class="bar-text">100</span>
+          </div>
+        </div>
+
+        <!-- Weapon & Ammo Display -->
+        <div class="weapon-display-box" id="hud-weapon-box">
+          <div class="weapon-info">
+            <div id="hud-weapon-name" class="weapon-name">BLASTER</div>
+            <div id="hud-ammo-count" class="ammo-count">∞</div>
+          </div>
+          <div id="hud-weapon-icon" class="weapon-icon">🔫</div>
+        </div>
+      </div>
+
+      <!-- Mobile Touch Controls Layer (Hidden on desktop if mouse moves, but active on touch) -->
+      <div id="touch-controls" class="touch-layer">
+        <!-- Left Zone for Move Joystick (floating) -->
+        <div id="touch-zone-left" class="touch-zone">
+          <div id="move-joystick" class="joystick-ring hidden">
+            <div id="move-joystick-knob" class="joystick-knob"></div>
+          </div>
+          <div class="joystick-hint">Drag Left to Move</div>
+        </div>
+
+        <!-- Right Zone for Aim & Fire Joystick (floating) -->
+        <div id="touch-zone-right" class="touch-zone">
+          <div id="aim-joystick" class="joystick-ring hidden aim-ring">
+            <div id="aim-joystick-knob" class="joystick-knob aim-knob"></div>
+          </div>
+          <div class="joystick-hint">Drag Right to Aim & Fire</div>
+        </div>
+
+        <!-- Action Buttons on Right Side -->
+        <div class="action-buttons-group">
+          <!-- Switch Weapon Button -->
+          <button id="btn-switch-weapon" class="action-btn weapon-btn" aria-label="Switch Weapon">
+            <span class="btn-icon">🔄</span>
+            <span class="btn-subtext">SWAP</span>
+          </button>
+
+          <!-- Dash / Jet Boost Button -->
+          <button id="btn-dash" class="action-btn dash-btn" aria-label="Dash">
+            <span class="btn-icon">⚡</span>
+            <span class="btn-subtext">DASH</span>
+            <div id="dash-cooldown-overlay" class="cooldown-overlay"></div>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Match Over Modal -->
+    <div id="modal-match-over" class="modal-overlay hidden">
+      <div class="modal-card">
+        <h2 id="match-over-title" class="neon-title">MATCH FINISHED</h2>
+        <p id="match-over-subtitle" class="neon-subtitle">Winner: Player 1</p>
+
+        <div class="leaderboard-table">
+          <div class="lb-header">
+            <span>#</span>
+            <span>PLAYER</span>
+            <span>KILLS</span>
+            <span>DEATHS</span>
+            <span>SCORE</span>
+          </div>
+          <div id="match-over-rows" class="lb-rows"></div>
+        </div>
+
+        <div class="modal-actions">
+          <button id="btn-rematch" class="btn btn-primary">BACK TO LOBBY</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Menu / Lobby Overlay -->
+  <div id="lobby-screen" class="lobby-screen">
+    <div class="lobby-background-glow"></div>
+
+    <div class="lobby-content">
+      <!-- Title Header -->
+      <div class="game-branding">
+        <div class="top-util-row">
+          <button id="btn-lobby-fullscreen" class="btn-small" title="Fullscreen">⛶ Fullscreen</button>
+        </div>
+        <h1 class="game-title">BRAWL <span class="highlight">ZONE</span></h1>
+        <p class="game-tagline">Multi-Phone Action Arena • Instant Wi-Fi & Online Play</p>
+      </div>
+
+      <!-- Player Profile Customizer Card -->
+      <div class="glass-card profile-card">
+        <h3>PLAYER SETUP</h3>
+        <div class="profile-row">
+          <div class="avatar-preview-box">
+            <div id="avatar-preview" class="avatar-circle" style="background-color: #00f0ff;">
+              <span id="avatar-initials">P1</span>
+            </div>
+          </div>
+          <div class="profile-inputs">
+            <label for="player-name-input">Your Hero Name</label>
+            <input type="text" id="player-name-input" maxlength="12" placeholder="Hero Name" value="Brawler">
+          </div>
+        </div>
+
+        <!-- Color Palette -->
+        <div class="color-picker-row">
+          <span>Armor Color:</span>
+          <div class="color-options" id="color-options">
+            <button class="color-dot active" data-color="#00f0ff" style="background:#00f0ff;"></button>
+            <button class="color-dot" data-color="#ff3366" style="background:#ff3366;"></button>
+            <button class="color-dot" data-color="#10b981" style="background:#10b981;"></button>
+            <button class="color-dot" data-color="#f59e0b" style="background:#f59e0b;"></button>
+            <button class="color-dot" data-color="#a855f7" style="background:#a855f7;"></button>
+            <button class="color-dot" data-color="#ec4899" style="background:#ec4899;"></button>
+            <button class="color-dot" data-color="#3b82f6" style="background:#3b82f6;"></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs / Sections: Main Menu vs Active Room -->
+      <div id="view-room-selection" class="room-selection-view">
+        <div class="cards-grid">
+          <!-- Create Room Card -->
+          <div class="glass-card action-card">
+            <div class="card-badge">HOST</div>
+            <h3>CREATE NEW ROOM</h3>
+            <p>Start a game room on this phone/device. Friends can scan the QR code or enter code to join.</p>
+            <button id="btn-create-room" class="btn btn-primary full-width">CREATE ROOM 🚀</button>
+          </div>
+
+          <!-- Join Room Card -->
+          <div class="glass-card action-card">
+            <div class="card-badge">JOIN</div>
+            <h3>JOIN WITH CODE</h3>
+            <p>Enter the 4-letter Room Code from your friend's screen:</p>
+            <div class="join-input-group">
+              <input type="text" id="input-room-code" maxlength="8" placeholder="e.g. AB12" uppercase>
+              <button id="btn-join-room" class="btn btn-secondary">JOIN 🎮</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- How to connect banner -->
+        <div class="glass-card info-card">
+          <h4>📱 How to play with friends right now:</h4>
+          <ol>
+            <li>Make sure everyone is connected to the <b>same Wi-Fi</b> or <b>Mobile Hotspot</b>.</li>
+            <li>One friend taps <b>"CREATE ROOM"</b>.</li>
+            <li>Other friends open their phone camera, <b>scan the QR Code</b> on the host screen (or type the URL/Room code), and jump in instantly!</li>
+          </ol>
+          <div id="lan-url-banner" class="lan-url-box">
+            <span>Mobile Link: </span><b id="lan-url-text">Loading network info...</b>
+            <button id="btn-copy-url" class="btn-small">Copy</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- In-Lobby Waiting Room View (Shown when in a room) -->
+      <div id="view-active-room" class="active-room-view hidden">
+        <div class="glass-card room-details-card">
+          <div class="room-header-flex">
+            <div>
+              <span class="subtext">ROOM CODE</span>
+              <h2 id="room-code-display" class="room-code-tag">----</h2>
+            </div>
+            <div class="room-header-actions">
+              <button id="btn-share-room" class="btn btn-secondary btn-icon-only" title="Share / Copy Link">🔗</button>
+              <button id="btn-show-qr" class="btn btn-secondary btn-icon-only" title="Show QR Code">📷 QR</button>
+              <button id="btn-leave-room" class="btn btn-danger btn-icon-only" title="Leave Room">✕</button>
+            </div>
+          </div>
+
+          <!-- Room Options (Editable by Host) -->
+          <div class="room-settings-row">
+            <div class="setting-item">
+              <label>Game Mode</label>
+              <select id="select-game-mode">
+                <option value="ffa">Free For All (Deathmatch)</option>
+                <option value="team">Team Battle (Red vs Blue)</option>
+              </select>
+            </div>
+            <div class="setting-item">
+              <label>Kills to Win</label>
+              <select id="select-score-limit">
+                <option value="10">10 Kills</option>
+                <option value="15" selected>15 Kills</option>
+                <option value="25">25 Kills</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Players in Room List -->
+          <div class="players-section">
+            <div class="section-title">PLAYERS CONNECTED (<span id="player-count">0</span>)</div>
+            <div id="lobby-player-list" class="players-grid"></div>
+          </div>
+
+          <!-- Ready / Start Actions -->
+          <div class="lobby-action-footer">
+            <button id="btn-toggle-ready" class="btn btn-secondary">TOGGLE READY ✔️</button>
+            <button id="btn-start-game" class="btn btn-primary btn-large hidden">START MATCH ⚔️</button>
+          </div>
+          <div id="host-hint" class="host-hint text-center">Waiting for host to start the game...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- QR Code Modal Popup -->
+  <div id="modal-qr" class="modal-overlay hidden">
+    <div class="modal-card qr-card">
+      <button id="btn-close-qr" class="modal-close">✕</button>
+      <h3>SCAN TO JOIN GAME</h3>
+      <p>Scan with any phone's camera (iPhone or Android):</p>
+      <div class="qr-image-wrapper">
+        <img id="qr-image" src="" alt="Room QR Code">
+      </div>
+      <div class="qr-url-box">
+        <span id="qr-url-text">http://...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notifications -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Load Scripts -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="/js/main.js"></script>
+</body>
+</html>
