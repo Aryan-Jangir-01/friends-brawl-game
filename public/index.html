@@ -60,6 +60,22 @@
       <!-- Low Health Vignette -->
       <div id="low-health-vignette" class="low-health-vignette"></div>
 
+      <!-- Match Start Countdown Overlay (3... 2... 1... BRAWL!) -->
+      <div id="match-countdown-overlay" class="match-countdown-overlay hidden">
+        <div id="countdown-num" class="countdown-num">3</div>
+        <div id="countdown-sub" class="countdown-sub">GET READY!</div>
+      </div>
+
+      <!-- Respawn Countdown Overlay -->
+      <div id="respawn-overlay" class="respawn-overlay hidden">
+        <div class="respawn-title">ELIMINATED</div>
+        <div class="respawn-timer-box">
+          <span class="respawn-timer-label">RESPAWNING IN</span>
+          <span id="respawn-countdown-text" class="respawn-countdown-text">3.5</span>
+        </div>
+        <div class="respawn-tip">💡 Tip: Grab Shield & Health crates to stay alive!</div>
+      </div>
+
       <!-- Bottom Player Stats Bar -->
       <div class="hud-bottom-bar">
         <!-- Health & Shield Bars -->
@@ -146,16 +162,28 @@
           </button>
         </div>
 
-        <!-- Floating Quick Emote Wheel -->
+        <!-- Floating Quick Emote & Tactical Wheel -->
         <div id="emote-wheel" class="emote-wheel hidden">
-          <button class="emote-item" data-emoji="🔥">🔥</button>
-          <button class="emote-item" data-emoji="💀">💀</button>
-          <button class="emote-item" data-emoji="👑">👑</button>
-          <button class="emote-item" data-emoji="😂">😂</button>
-          <button class="emote-item" data-emoji="⚡">⚡</button>
-          <button class="emote-item" data-emoji="🛡️">🛡️</button>
-          <button class="emote-item" data-emoji="🚀">🚀</button>
-          <button class="emote-item" data-emoji="💣">💣</button>
+          <div class="wheel-tabs">
+            <button id="tab-emotes" class="wheel-tab active">EMOJIS</button>
+            <button id="tab-tactical" class="wheel-tab">PINGS</button>
+          </div>
+          <div id="wheel-emotes-grid" class="wheel-grid">
+            <button class="emote-item" data-emoji="🔥">🔥</button>
+            <button class="emote-item" data-emoji="💀">💀</button>
+            <button class="emote-item" data-emoji="👑">👑</button>
+            <button class="emote-item" data-emoji="😂">😂</button>
+            <button class="emote-item" data-emoji="⚡">⚡</button>
+            <button class="emote-item" data-emoji="🛡️">🛡️</button>
+            <button class="emote-item" data-emoji="🚀">🚀</button>
+            <button class="emote-item" data-emoji="💣">💣</button>
+          </div>
+          <div id="wheel-tactical-grid" class="wheel-grid hidden">
+            <button class="tactical-item" data-icon="⚔️" data-text="ATTACK!" data-type="attack">⚔️ ATTACK</button>
+            <button class="tactical-item" data-icon="🛡️" data-text="DEFEND!" data-type="defend">🛡️ DEFEND</button>
+            <button class="tactical-item" data-icon="🚨" data-text="HELP ME!" data-type="help">🚨 HELP</button>
+            <button class="tactical-item" data-icon="👍" data-text="NICE SHOT!" data-type="praise">👍 NICE</button>
+          </div>
         </div>
       </div>
     </div>

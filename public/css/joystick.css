@@ -241,7 +241,7 @@
   background: rgba(168, 85, 247, 0.3);
 }
 
-/* Emote Wheel Popup */
+/* Emote & Tactical Wheel Popup */
 .emote-wheel {
   position: absolute;
   right: 95px;
@@ -252,12 +252,78 @@
   border: 1px solid var(--purple-neon);
   box-shadow: 0 0 25px rgba(168, 85, 247, 0.5);
   border-radius: 16px;
-  padding: 8px;
-  display: grid;
-  grid-template-columns: repeat(4, 46px);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
   z-index: 30;
   animation: popScale 0.15s ease-out;
+  min-width: 216px;
+}
+
+.wheel-tabs {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 6px;
+}
+
+.wheel-tab {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 5px 0;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.wheel-tab.active {
+  background: rgba(168, 85, 247, 0.3);
+  border-color: var(--purple-neon);
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
+}
+
+.wheel-grid {
+  display: grid;
+  gap: 8px;
+}
+
+#wheel-emotes-grid {
+  grid-template-columns: repeat(4, 46px);
+}
+
+#wheel-tactical-grid {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.tactical-item {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 8px 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: transform 0.1s, background 0.2s, border-color 0.2s;
+  white-space: nowrap;
+}
+
+.tactical-item:active {
+  transform: scale(0.92);
+  background: rgba(0, 240, 255, 0.25);
+  border-color: var(--cyan-neon);
 }
 
 @keyframes popScale {

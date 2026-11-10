@@ -158,6 +158,12 @@ export class NetworkClient {
     }
   }
 
+  sendTacticalPing(pingData) {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit("send_tactical_ping", pingData);
+    }
+  }
+
   returnToLobby() {
     this.socket.emit("return_to_lobby");
   }

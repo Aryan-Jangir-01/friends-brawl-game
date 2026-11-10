@@ -274,7 +274,7 @@ function initNetwork() {
 
     if (hudRoomCode) hudRoomCode.textContent = state.currentRoom?.id || "ROOM";
     audio.startMusic();
-    showToast("⚔️ MATCH STARTED! FIGHT!");
+    triggerMatchCountdown();
   });
 
   network.on("game_state", (worldState) => {
@@ -340,6 +340,7 @@ function initNetwork() {
     if (data.victimId === state.localPlayerId) {
       showToast(`💀 You were eliminated by ${data.killEvent.killerName}! Respawning...`);
       if (navigator.vibrate) navigator.vibrate([50, 30, 70]);
+      triggerRespawnCountdown(3.5);
     }
   });
 
@@ -415,6 +416,31 @@ function initNetwork() {
   network.on("player_emoted", (data) => {
     renderer.addPlayerEmote(data.playerId, data.emoji);
     audio.playEmoteSound();
+  });
+
+  network.on("tactical_ping", (data) => {
+    audio.playTacticalPing();
+    const isMe = data.playerId === state.localPlayerId;
+    const msg = `${data.icon} ${data.playerName}: ${data.text}`;
+    showToast(msg);
+
+    const player = state.latestWorldState?.players?.find(p => p.id === data.playerId);
+    if (player) {
+      particles.addFloatingText(player.x, player.y - 32, `${data.icon} ${data.text}`, data.playerColor || "#00f0ff", 20);
+    }
+  });
+
+  network.on("player_respawned", (data) => {
+    if (data.id === state.localPlayerId) {
+      if (respawnInterval) {
+        clearInterval(respawnInterval);
+        respawnInterval = null;
+      }
+      const overlay = document.getElementById("respawn-overlay");
+      if (overlay) overlay.classList.add("hidden");
+      showToast("🛡️ RESPAWNED! READY FOR COMBAT!");
+      particles.emitSuperEffect("striker", data.x, data.y, 0);
+    }
   });
 }
 
@@ -823,20 +849,113 @@ document.getElementById("btn-remove-bot")?.addEventListener("click", () => {
   });
 });
 
-// Emote Wheel
+// Match Start Countdown (3... 2... 1... BRAWL!)
+function triggerMatchCountdown() {
+  const overlay = document.getElementById("match-countdown-overlay");
+  const num = document.getElementById("countdown-num");
+  const sub = document.getElementById("countdown-sub");
+  if (!overlay || !num || !sub) return;
+
+  overlay.classList.remove("hidden");
+  let count = 3;
+  num.className = "countdown-num";
+  num.textContent = count;
+  sub.textContent = "GET READY!";
+  audio.playCountdownBeep(false);
+
+  const timer = setInterval(() => {
+    count--;
+    if (count > 0) {
+      num.className = "countdown-num";
+      num.textContent = count;
+      sub.textContent = count === 1 ? "LOCK AND LOAD!" : "GET READY!";
+      audio.playCountdownBeep(false);
+    } else if (count === 0) {
+      num.className = "countdown-num brawl-go";
+      num.textContent = "BRAWL!";
+      sub.textContent = "ELIMINATE ALL FOES!";
+      audio.playCountdownBeep(true);
+      renderer.addScreenShake(12);
+    } else {
+      clearInterval(timer);
+      overlay.classList.add("hidden");
+    }
+  }, 900);
+}
+
+// Respawn Countdown Overlay
+let respawnInterval = null;
+function triggerRespawnCountdown(seconds = 3.5) {
+  const overlay = document.getElementById("respawn-overlay");
+  const timerText = document.getElementById("respawn-countdown-text");
+  if (!overlay || !timerText) return;
+
+  if (respawnInterval) clearInterval(respawnInterval);
+  overlay.classList.remove("hidden");
+
+  let remaining = seconds;
+  timerText.textContent = remaining.toFixed(1);
+
+  respawnInterval = setInterval(() => {
+    remaining -= 0.1;
+    if (remaining <= 0) {
+      clearInterval(respawnInterval);
+      respawnInterval = null;
+      overlay.classList.add("hidden");
+    } else {
+      timerText.textContent = Math.max(0, remaining).toFixed(1);
+    }
+  }, 100);
+}
+
+// Emote & Tactical Wheel
 const btnEmote = document.getElementById("btn-emote");
 const emoteWheel = document.getElementById("emote-wheel");
+const tabEmotes = document.getElementById("tab-emotes");
+const tabTactical = document.getElementById("tab-tactical");
+const wheelEmotesGrid = document.getElementById("wheel-emotes-grid");
+const wheelTacticalGrid = document.getElementById("wheel-tactical-grid");
+
 if (btnEmote && emoteWheel) {
   btnEmote.addEventListener("click", (e) => {
     e.stopPropagation();
     emoteWheel.classList.toggle("hidden");
   });
 
+  if (tabEmotes && tabTactical && wheelEmotesGrid && wheelTacticalGrid) {
+    tabEmotes.addEventListener("click", (e) => {
+      e.stopPropagation();
+      tabEmotes.classList.add("active");
+      tabTactical.classList.remove("active");
+      wheelEmotesGrid.classList.remove("hidden");
+      wheelTacticalGrid.classList.add("hidden");
+    });
+
+    tabTactical.addEventListener("click", (e) => {
+      e.stopPropagation();
+      tabTactical.classList.add("active");
+      tabEmotes.classList.remove("active");
+      wheelTacticalGrid.classList.remove("hidden");
+      wheelEmotesGrid.classList.add("hidden");
+    });
+  }
+
   emoteWheel.querySelectorAll(".emote-item").forEach(item => {
     item.addEventListener("click", (e) => {
       e.stopPropagation();
       const emoji = item.dataset.emoji;
       network.sendEmote(emoji);
+      emoteWheel.classList.add("hidden");
+    });
+  });
+
+  emoteWheel.querySelectorAll(".tactical-item").forEach(item => {
+    item.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const type = item.dataset.type;
+      const text = item.dataset.text;
+      const icon = item.dataset.icon;
+      network.sendTacticalPing({ type, text, icon });
       emoteWheel.classList.add("hidden");
     });
   });
