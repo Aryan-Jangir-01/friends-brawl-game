@@ -1,5 +1,5 @@
 // public/sw.js
-const CACHE_NAME = "brawl-zone-v4";
+const CACHE_NAME = "brawl-zone-v5";
 const ASSETS = [
   "/",
   "/index.html",

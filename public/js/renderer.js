@@ -380,7 +380,7 @@ export class GameRenderer {
       }
 
       // 4. Rotating Gun Barrel & Body
-      // Aim guide laser line for local player (Smooth solid gradient beam)
+      // Aim guide laser line for local player (Smooth solid gradient beam + Holographic Crosshair Target)
       if (p.id === localPlayer?.id) {
         ctx.save();
         ctx.rotate(p.angle);
@@ -388,12 +388,28 @@ export class GameRenderer {
         ctx.moveTo(p.radius + 18, 0);
         ctx.lineTo(p.radius + 260, 0);
         const laserGrad = ctx.createLinearGradient(p.radius + 18, 0, p.radius + 260, 0);
-        laserGrad.addColorStop(0, "rgba(0, 240, 255, 0.45)");
-        laserGrad.addColorStop(1, "rgba(0, 240, 255, 0.0)");
+        laserGrad.addColorStop(0, "rgba(0, 240, 255, 0.5)");
+        laserGrad.addColorStop(1, "rgba(0, 240, 255, 0.05)");
         ctx.strokeStyle = laserGrad;
         ctx.lineWidth = 2;
         ctx.setLineDash([]);
         ctx.stroke();
+
+        // Holographic Target Crosshair & Center Dot at laser range
+        const reticleDist = p.radius + 240;
+        ctx.beginPath();
+        ctx.arc(reticleDist, 0, 7, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(0, 240, 255, 0.8)";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(reticleDist, 0, 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = "#ffffff";
+        ctx.shadowColor = "#00f0ff";
+        ctx.shadowBlur = 8;
+        ctx.fill();
+
         ctx.restore();
       }
 
@@ -564,19 +580,41 @@ export class GameRenderer {
       mCtx.fillRect(w.x * sx, w.y * sy, w.w * sx, w.h * sy);
     });
 
+    // Crates on minimap
+    if (worldState.crates) {
+      mCtx.fillStyle = "rgba(245, 158, 11, 0.75)";
+      worldState.crates.forEach(c => {
+        mCtx.fillRect(c.x * sx - 1, c.y * sy - 1, 2, 2);
+      });
+    }
+
     // Players on minimap
     if (worldState.players) {
+      const me = worldState.players.find(p => p.id === localPlayerId);
       worldState.players.forEach(p => {
         if (!p.isAlive) return;
+        const isMe = p.id === localPlayerId;
+        const isTeammate = me && me.team && p.team && me.team === p.team;
+
+        // Hide opponents in stealth or bushes
+        if (!isMe && !isTeammate && (p.inBush || p.isInvisible)) return;
+
         mCtx.beginPath();
         const px = p.x * sx;
         const py = p.y * sy;
-        mCtx.arc(px, py, p.id === localPlayerId ? 4 : 2.5, 0, Math.PI * 2);
-        mCtx.fillStyle = p.id === localPlayerId ? "#00f0ff" : "#ef4444";
+        mCtx.arc(px, py, isMe ? 4 : 2.5, 0, Math.PI * 2);
+
+        if (isMe) {
+          mCtx.fillStyle = "#00f0ff";
+        } else if (isTeammate) {
+          mCtx.fillStyle = "#10b981"; // friendly teammate green
+        } else {
+          mCtx.fillStyle = "#ef4444"; // opponent red
+        }
         mCtx.fill();
 
         // Local player ping ring
-        if (p.id === localPlayerId) {
+        if (isMe) {
           mCtx.strokeStyle = "#ffffff";
           mCtx.lineWidth = 1;
           mCtx.stroke();

@@ -184,7 +184,7 @@ function updateHeroShowcase(heroClass) {
 // 1. Initialize Profile & UI
 function initProfile() {
   nameInput.value = state.profile.name;
-  state.profile.color = HERO_INFO[state.profile.avatar]?.color || "#00f0ff";
+  state.profile.color = localStorage.getItem("brawl_player_color") || HERO_INFO[state.profile.avatar]?.color || "#00f0ff";
   updateAvatarPreview();
   updateHeroShowcase(state.profile.avatar);
 
@@ -194,6 +194,30 @@ function initProfile() {
     updateAvatarPreview();
   });
 
+  // Cyber Armor Skin Chips Picker
+  const skinChips = document.getElementById("skin-chips-grid");
+  if (skinChips) {
+    const savedColor = localStorage.getItem("brawl_player_color") || state.profile.color;
+    skinChips.querySelectorAll(".skin-chip").forEach(btn => {
+      if (btn.dataset.color === savedColor) {
+        btn.classList.add("active");
+        state.profile.color = savedColor;
+      } else {
+        btn.classList.remove("active");
+      }
+
+      btn.addEventListener("click", () => {
+        skinChips.querySelectorAll(".skin-chip").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        state.profile.color = btn.dataset.color;
+        localStorage.setItem("brawl_player_color", state.profile.color);
+        updateAvatarPreview();
+        const title = btn.querySelector(".skin-title")?.textContent || "Custom";
+        showToast(`Selected Armor Skin: ${title}`);
+      });
+    });
+  }
+
   // Hero Class Picker
   const classChips = document.getElementById("class-chips");
   if (classChips) {
@@ -202,8 +226,6 @@ function initProfile() {
         classChips.querySelectorAll(".class-chip").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
         state.profile.avatar = btn.dataset.class;
-        state.profile.color = HERO_INFO[state.profile.avatar]?.color || "#00f0ff";
-        localStorage.setItem("brawl_player_color", state.profile.color);
         updateAvatarPreview();
         updateHeroShowcase(state.profile.avatar);
         showToast(`Selected Class: ${btn.textContent}`);
