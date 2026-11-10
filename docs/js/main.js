@@ -1033,10 +1033,10 @@ if (btnHudSound) {
 initProfile();
 fetchNetworkInfo();
 
-// PWA Service Worker Registration
+// Force unregister all legacy service workers and clear caches
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    for (const r of regs) r.unregister();
   });
 }
 

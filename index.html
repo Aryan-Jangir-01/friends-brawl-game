@@ -7,12 +7,28 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#0a0e17">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <script>
+    // Force unregister legacy service worker caches immediately
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        for (var r of regs) r.unregister();
+      });
+    }
+    if ('caches' in window) {
+      caches.keys().then(function(names) {
+        for (var n of names) caches.delete(n);
+      });
+    }
+  </script>
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
   <link rel="apple-touch-icon" href="./icons/icon.svg">
 
-  <link rel="stylesheet" href="./css/style.css">
-  <link rel="stylesheet" href="./css/joystick.css">
+  <link rel="stylesheet" href="./css/style.css?v=20261111_02">
+  <link rel="stylesheet" href="./css/joystick.css?v=20261111_02">
 </head>
 <body>
   <!-- Canvas Screen -->
@@ -255,8 +271,8 @@
         <h1 class="game-title">BRAWL <span class="highlight">ZONE</span></h1>
         <p class="game-tagline">Multi-Phone Action Arena • Instant Wi-Fi & Online Play</p>
         <div id="server-connection-tag" style="margin-top: 6px; font-size: 0.8rem; color: #94a3b8; display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: rgba(15,23,42,0.6); padding: 4px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
-          <span id="server-status-dot" style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#eab308;"></span>
-          <span id="server-status-text">Cloud Server: Checking...</span>
+          <span id="server-status-dot" style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#10b981;"></span>
+          <span id="server-status-text">Multiplayer: 🟢 Online (P2P Ready)</span>
         </div>
       </div>
 
@@ -462,8 +478,8 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Load Scripts: Local bundled socket.io and peerjs for 100% reliable serverless online & P2P multiplayer -->
-  <script src="./js/socket.io.min.js"></script>
-  <script src="./js/peerjs.min.js"></script>
-  <script type="module" src="./js/main.js"></script>
+  <script src="./js/socket.io.min.js?v=20261111_02"></script>
+  <script src="./js/peerjs.min.js?v=20261111_02"></script>
+  <script type="module" src="./js/main.js?v=20261111_02"></script>
 </body>
 </html>
