@@ -31,7 +31,7 @@ html, body {
   background-color: var(--bg-dark);
   color: var(--text-main);
   font-family: var(--font-family);
-  touch-action: none; /* Prevents unwanted browser gestures on mobile */
+  -webkit-text-size-adjust: 100%;
 }
 
 /* Container */
@@ -41,6 +41,7 @@ html, body {
   height: 100vh;
   overflow: hidden;
   background: #0a0e17;
+  touch-action: none;
 }
 
 #game-canvas {
@@ -63,8 +64,9 @@ html, body {
   height: 100vh;
   background: radial-gradient(circle at 50% 30%, #151f32 0%, #080b12 85%);
   z-index: 50;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-y !important;
   display: flex;
   justify-content: center;
   align-items: flex-start;

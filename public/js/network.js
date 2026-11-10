@@ -87,6 +87,10 @@ export class NetworkClient {
     this.socket.on("killstreak_achieved", (data) => {
       this.trigger("killstreak_achieved", data);
     });
+
+    this.socket.on("super_activated", (data) => {
+      this.trigger("super_activated", data);
+    });
   }
 
   startPingLoop() {

@@ -95,19 +95,21 @@
 
       <!-- Mobile Touch Controls Layer (Hidden on desktop if mouse moves, but active on touch) -->
       <div id="touch-controls" class="touch-layer">
-        <!-- Left Zone for Move Joystick (floating) -->
+        <!-- Floating Joysticks (Positioned directly by touch coords) -->
+        <div id="move-joystick" class="joystick-ring hidden">
+          <div id="move-joystick-knob" class="joystick-knob"></div>
+        </div>
+        <div id="aim-joystick" class="joystick-ring hidden aim-ring">
+          <div id="aim-joystick-knob" class="joystick-knob aim-knob"></div>
+        </div>
+
+        <!-- Left Zone for Move Touch Detection -->
         <div id="touch-zone-left" class="touch-zone">
-          <div id="move-joystick" class="joystick-ring hidden">
-            <div id="move-joystick-knob" class="joystick-knob"></div>
-          </div>
           <div class="joystick-hint">Drag Left to Move</div>
         </div>
 
-        <!-- Right Zone for Aim & Fire Joystick (floating) -->
+        <!-- Right Zone for Aim & Fire Touch Detection -->
         <div id="touch-zone-right" class="touch-zone">
-          <div id="aim-joystick" class="joystick-ring hidden aim-ring">
-            <div id="aim-joystick-knob" class="joystick-knob aim-knob"></div>
-          </div>
           <div class="joystick-hint">Drag Right to Aim & Fire</div>
         </div>
 
