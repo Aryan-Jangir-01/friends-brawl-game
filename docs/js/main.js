@@ -535,20 +535,27 @@ btnCreateRoom.addEventListener("click", () => {
   });
 });
 
+inputRoomCode?.addEventListener("input", (e) => {
+  e.target.value = e.target.value.toUpperCase();
+});
+
 btnJoinRoom.addEventListener("click", () => {
   audio.unlock();
-  const code = inputRoomCode.value.trim().toUpperCase();
-  if (!code) return showToast("Please enter a room code");
-  joinSpecificRoom(code);
+  const rawCode = inputRoomCode.value.trim().toUpperCase();
+  const cleanCode = rawCode.replace(/^BZ[-_ ]?/i, "").replace(/[^A-Z0-9]/g, "");
+  if (!cleanCode) return showToast("Please enter a room code");
+  joinSpecificRoom(cleanCode);
 });
 
 function joinSpecificRoom(code) {
-  network.joinRoom(code, state.profile, (res) => {
+  const cleanCode = (code || "").toUpperCase().replace(/^BZ[-_ ]?/i, "").replace(/[^A-Z0-9]/g, "").trim();
+  if (!cleanCode) return showToast("Invalid room code");
+  network.joinRoom(cleanCode, state.profile, (res) => {
     if (res.success) {
       state.currentRoom = res.room;
       state.isHost = res.player?.isHost || false;
       switchToRoomView(res.room);
-      showToast(`Joined Room ${code}!`);
+      showToast(`Joined Room ${cleanCode}!`);
     } else {
       showToast(`Failed to join: ${res.error}`);
     }

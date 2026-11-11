@@ -71,8 +71,12 @@ export class P2PManager {
 
   createRoom(profile, options, callback) {
     this.isHost = true;
-    const randomCode = Math.random().toString(36).substring(2, 6).toUpperCase();
-    const roomId = `BZ-${randomCode}`;
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let randomCode = "";
+    for (let i = 0; i < 4; i++) {
+      randomCode += chars[Math.floor(Math.random() * chars.length)];
+    }
+    const roomId = randomCode;
     this.localPlayerId = `host_${randomCode}`;
 
     this.room = {
@@ -222,7 +226,7 @@ export class P2PManager {
 
   joinRoom(roomCode, profile, callback) {
     this.isHost = false;
-    const cleanCode = roomCode.replace(/^BZ-/i, "").toLowerCase();
+    const cleanCode = (roomCode || "").toUpperCase().replace(/^BZ[-_ ]?/i, "").replace(/[^A-Z0-9]/g, "").trim().toLowerCase();
     const targetPeerId = `brawlz-${cleanCode}`;
 
     if (!this.peer || this.peer.destroyed) {
