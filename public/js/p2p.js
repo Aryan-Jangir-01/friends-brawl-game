@@ -12,18 +12,18 @@ const PEER_CONFIG = {
       { urls: "stun:openrelay.metered.ca:80" },
       {
         urls: "turn:openrelay.metered.ca:80",
-        username: "openrelay",
-        credential: "openrelay"
+        username: "openrelayproject",
+        credential: "openrelayproject"
       },
       {
         urls: "turn:openrelay.metered.ca:443",
-        username: "openrelay",
-        credential: "openrelay"
+        username: "openrelayproject",
+        credential: "openrelayproject"
       },
       {
         urls: "turn:openrelay.metered.ca:443?transport=tcp",
-        username: "openrelay",
-        credential: "openrelay"
+        username: "openrelayproject",
+        credential: "openrelayproject"
       }
     ],
     iceCandidatePoolSize: 10
@@ -259,6 +259,13 @@ export class P2PManager {
       if (conn && conn.open) {
         conn.send({ type: "join_accepted", room: this.room, playerId: guestPlayerId });
         if (this.game) {
+          this.game.addPlayer(guestPlayerId, {
+            name: player.name,
+            color: player.color,
+            avatar: player.avatar,
+            team: player.team,
+            isBot: false
+          }, false);
           conn.send({
             type: "game_started",
             data: { map: this.game.map, options: this.game.options }
@@ -663,9 +670,10 @@ export class P2PManager {
   }
 
   broadcast(msg) {
+    const isDroppable = msg && msg.type === "game_state";
     for (const [peerId, conn] of this.connections.entries()) {
       if (conn && conn.open) {
-        if (conn.dataChannel && conn.dataChannel.bufferedAmount > 32768) {
+        if (isDroppable && conn.dataChannel && conn.dataChannel.bufferedAmount > 32768) {
           continue;
         }
         try {

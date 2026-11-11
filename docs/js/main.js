@@ -1148,6 +1148,28 @@ if ("serviceWorker" in navigator) {
   });
 }
 
+const btnForceUpdate = document.getElementById("btn-force-update");
+if (btnForceUpdate) {
+  btnForceUpdate.addEventListener("click", async () => {
+    showToast("Clearing cache & reloading... 🔄");
+    if ("caches" in window) {
+      try {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      } catch (e) {}
+    }
+    if ("serviceWorker" in navigator) {
+      try {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const r of regs) await r.unregister();
+      } catch (e) {}
+    }
+    setTimeout(() => {
+      window.location.href = window.location.origin + window.location.pathname + "?t=" + Date.now();
+    }, 300);
+  });
+}
+
 // PWA Install Prompt
 let deferredInstallPrompt = null;
 const btnInstallApp = document.getElementById("btn-install-app");
