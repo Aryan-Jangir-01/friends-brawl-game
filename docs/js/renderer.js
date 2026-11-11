@@ -17,12 +17,21 @@ export class GameRenderer {
     this.camY = 900;
     this.targetCamX = 1200;
     this.targetCamY = 900;
+    this.hasSnappedFirstFrame = false;
     this.screenShake = 0;
     this.activeEmotes = new Map(); // playerId -> { emoji, endTime }
     this.recoil = new Map(); // playerId -> timestamp
 
     this.resize();
     window.addEventListener("resize", () => this.resize());
+  }
+
+  resetCamera(x = 1200, y = 900) {
+    this.camX = x;
+    this.camY = y;
+    this.targetCamX = x;
+    this.targetCamY = y;
+    this.hasSnappedFirstFrame = false;
   }
 
   resize() {

@@ -4,6 +4,7 @@ import { ParticleSystem } from "./particles.js";
 import { InputManager } from "./input.js";
 import { GameRenderer } from "./renderer.js";
 import { NetworkClient } from "./network.js";
+import { MAPS } from "./engine/MapData.js";
 
 // Global Game State
 const state = {
@@ -241,13 +242,6 @@ function updateAvatarPreview() {
 
 // 2. Fetch Network Info (LAN IP / Join URL)
 async function fetchNetworkInfo() {
-  const fullUrl = window.location.origin + window.location.pathname;
-  lanUrlText.textContent = fullUrl;
-  btnCopyUrl.onclick = () => {
-    navigator.clipboard.writeText(fullUrl);
-    showToast("Copied Mobile Play URL!");
-  };
-
   try {
     const res = await fetch(network.getApiUrl("/api/network-info"));
     const data = await res.json();
@@ -258,10 +252,10 @@ async function fetchNetworkInfo() {
         showToast("Copied Mobile Play URL!");
       };
     }
-  } catch (err) {}
+  } catch (err) {
+    lanUrlText.textContent = window.location.origin;
+  }
 }
-
-let hasAutoJoinedUrlRoom = false;
 
 // 3. Network & Lobby Event Wiring
 function initNetwork() {
@@ -273,14 +267,6 @@ function initNetwork() {
   network.on("p2p_active", () => {
     if (statusDot) statusDot.style.background = "#10b981";
     if (statusText) statusText.textContent = "Multiplayer: Online (P2P Ready)";
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomParam = urlParams.get("room");
-    if (roomParam && !hasAutoJoinedUrlRoom) {
-      hasAutoJoinedUrlRoom = true;
-      inputRoomCode.value = roomParam;
-      joinSpecificRoom(roomParam);
-    }
   });
 
   network.on("connected", (socketId) => {
@@ -290,24 +276,11 @@ function initNetwork() {
     if (statusDot) statusDot.style.background = "#10b981";
     if (statusText) statusText.textContent = "Multiplayer: Online";
 
+    // Check for room query parameter in URL (e.g. ?room=XYZ)
     const urlParams = new URLSearchParams(window.location.search);
     const roomParam = urlParams.get("room");
-    if (roomParam && !hasAutoJoinedUrlRoom) {
-      hasAutoJoinedUrlRoom = true;
-      inputRoomCode.value = roomParam;
+    if (roomParam) {
       joinSpecificRoom(roomParam);
-    }
-  });
-
-  network.on("disconnected", () => {
-    showToast("⚠️ Disconnected from Room Host.");
-    if (state.gameRunning) {
-      state.gameRunning = false;
-      audio.stopMusic();
-      hudOverlay.classList.add("hidden");
-      lobbyScreen.classList.remove("hidden");
-      viewActiveRoom.classList.add("hidden");
-      viewRoomSelection.classList.remove("hidden");
     }
   });
 
@@ -326,18 +299,42 @@ function initNetwork() {
   });
 
   network.on("game_started", (startData) => {
-    state.mapData = startData.map;
+    console.log("Game started received:", startData);
+    const chosenMapId = startData?.options?.mapId || state.currentRoom?.options?.mapId || "cyber_arena";
+    state.mapData = (startData && startData.map) ? startData.map : (MAPS[chosenMapId] || MAPS.cyber_arena);
     state.gameRunning = true;
+
+    // Reset camera state so it snaps directly to player on start
+    renderer.resetCamera();
+    renderer.resize();
+
     lobbyScreen.classList.add("hidden");
     hudOverlay.classList.remove("hidden");
     modalMatchOver.classList.add("hidden");
 
-    if (hudRoomCode) hudRoomCode.textContent = state.currentRoom?.id || "ROOM";
+    if (hudRoomCode) hudRoomCode.textContent = state.currentRoom?.id || "BRAWL";
     audio.startMusic();
     triggerMatchCountdown();
   });
 
   network.on("game_state", (worldState) => {
+    if (!worldState) return;
+
+    // Reconstitute any compact crate coordinates if needed
+    if (worldState.crates && state.mapData?.crates) {
+      for (const c of worldState.crates) {
+        if (c.x === undefined) {
+          const baseCrate = state.mapData.crates.find(bc => bc.id === c.id);
+          if (baseCrate) {
+            c.x = baseCrate.x;
+            c.y = baseCrate.y;
+            c.size = baseCrate.size;
+            c.maxHp = baseCrate.maxHp;
+          }
+        }
+      }
+    }
+
     state.latestWorldState = worldState;
     updateHUD(worldState);
   });
@@ -546,26 +543,12 @@ btnJoinRoom.addEventListener("click", () => {
 });
 
 function joinSpecificRoom(code) {
-  showToast(`Connecting to Room ${code}... ⏳`);
-  if (btnJoinRoom) {
-    btnJoinRoom.disabled = true;
-    btnJoinRoom.textContent = "JOINING...";
-  }
-
   network.joinRoom(code, state.profile, (res) => {
-    if (btnJoinRoom) {
-      btnJoinRoom.disabled = false;
-      btnJoinRoom.textContent = "JOIN";
-    }
-
     if (res.success) {
       state.currentRoom = res.room;
       state.isHost = res.player?.isHost || false;
-      if (network.p2p.localPlayerId) {
-        state.localPlayerId = network.p2p.localPlayerId;
-      }
       switchToRoomView(res.room);
-      showToast(`Joined Room ${code}! ⚔️`);
+      showToast(`Joined Room ${code}!`);
     } else {
       showToast(`Failed to join: ${res.error}`);
     }
@@ -901,17 +884,54 @@ function gameLoop(time) {
   const dt = Math.min((time - lastFrameTime) / 1000, 0.1);
   lastFrameTime = time;
 
-  if (state.gameRunning && state.latestWorldState && state.mapData) {
-    const me = state.latestWorldState.players?.find(p => p.id === state.localPlayerId);
+  if (state.gameRunning) {
+    // Ensure mapData is never null
+    if (!state.mapData) {
+      const chosenMapId = state.currentRoom?.options?.mapId || "cyber_arena";
+      state.mapData = MAPS[chosenMapId] || MAPS.cyber_arena;
+    }
+
+    // Active world state (fallback to room players while waiting for first packet)
+    const world = state.latestWorldState || {
+      players: (state.currentRoom?.players || []).map(p => ({
+        id: p.id,
+        name: p.name,
+        color: p.color,
+        avatar: p.avatar,
+        team: p.team,
+        x: 1200,
+        y: 900,
+        angle: 0,
+        health: 100,
+        maxHealth: 100,
+        shield: 50,
+        maxShield: 50,
+        isAlive: true,
+        currentWeapon: "blaster",
+        ammo: Infinity
+      })),
+      bullets: [],
+      items: [],
+      crates: state.mapData?.crates || []
+    };
+
+    const me = world.players?.find(p => p.id === state.localPlayerId);
 
     // Update Camera
-    if (me) {
+    if (me && me.x && me.y) {
+      if (!renderer.hasSnappedFirstFrame) {
+        renderer.camX = me.x;
+        renderer.camY = me.y;
+        renderer.targetCamX = me.x;
+        renderer.targetCamY = me.y;
+        renderer.hasSnappedFirstFrame = true;
+      }
       renderer.updateCamera(me.x, me.y, dt);
     }
 
-    // Input polling and network broadcast (throttled to ~45 Hz)
+    // Input polling and network broadcast (throttled to ~25 Hz / 40ms)
     const now = Date.now();
-    if (now - state.lastInputTime >= 22) {
+    if (now - state.lastInputTime >= 40) {
       state.lastInputTime = now;
       const screenCenter = me ? {
         x: renderer.width / 2,
@@ -926,7 +946,7 @@ function gameLoop(time) {
     particles.update(dt);
 
     // Render Canvas
-    renderer.render(state.latestWorldState, state.localPlayerId, state.mapData, dt);
+    renderer.render(world, state.localPlayerId, state.mapData, dt);
   }
 
   requestAnimationFrame(gameLoop);
