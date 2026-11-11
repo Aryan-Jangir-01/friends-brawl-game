@@ -241,6 +241,13 @@ function updateAvatarPreview() {
 
 // 2. Fetch Network Info (LAN IP / Join URL)
 async function fetchNetworkInfo() {
+  const fullUrl = window.location.origin + window.location.pathname;
+  lanUrlText.textContent = fullUrl;
+  btnCopyUrl.onclick = () => {
+    navigator.clipboard.writeText(fullUrl);
+    showToast("Copied Mobile Play URL!");
+  };
+
   try {
     const res = await fetch(network.getApiUrl("/api/network-info"));
     const data = await res.json();
@@ -251,10 +258,10 @@ async function fetchNetworkInfo() {
         showToast("Copied Mobile Play URL!");
       };
     }
-  } catch (err) {
-    lanUrlText.textContent = window.location.origin;
-  }
+  } catch (err) {}
 }
+
+let hasAutoJoinedUrlRoom = false;
 
 // 3. Network & Lobby Event Wiring
 function initNetwork() {
@@ -266,6 +273,14 @@ function initNetwork() {
   network.on("p2p_active", () => {
     if (statusDot) statusDot.style.background = "#10b981";
     if (statusText) statusText.textContent = "Multiplayer: Online (P2P Ready)";
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomParam = urlParams.get("room");
+    if (roomParam && !hasAutoJoinedUrlRoom) {
+      hasAutoJoinedUrlRoom = true;
+      inputRoomCode.value = roomParam;
+      joinSpecificRoom(roomParam);
+    }
   });
 
   network.on("connected", (socketId) => {
@@ -275,11 +290,24 @@ function initNetwork() {
     if (statusDot) statusDot.style.background = "#10b981";
     if (statusText) statusText.textContent = "Multiplayer: Online";
 
-    // Check for room query parameter in URL (e.g. ?room=XYZ)
     const urlParams = new URLSearchParams(window.location.search);
     const roomParam = urlParams.get("room");
-    if (roomParam) {
+    if (roomParam && !hasAutoJoinedUrlRoom) {
+      hasAutoJoinedUrlRoom = true;
+      inputRoomCode.value = roomParam;
       joinSpecificRoom(roomParam);
+    }
+  });
+
+  network.on("disconnected", () => {
+    showToast("⚠️ Disconnected from Room Host.");
+    if (state.gameRunning) {
+      state.gameRunning = false;
+      audio.stopMusic();
+      hudOverlay.classList.add("hidden");
+      lobbyScreen.classList.remove("hidden");
+      viewActiveRoom.classList.add("hidden");
+      viewRoomSelection.classList.remove("hidden");
     }
   });
 
@@ -518,12 +546,26 @@ btnJoinRoom.addEventListener("click", () => {
 });
 
 function joinSpecificRoom(code) {
+  showToast(`Connecting to Room ${code}... ⏳`);
+  if (btnJoinRoom) {
+    btnJoinRoom.disabled = true;
+    btnJoinRoom.textContent = "JOINING...";
+  }
+
   network.joinRoom(code, state.profile, (res) => {
+    if (btnJoinRoom) {
+      btnJoinRoom.disabled = false;
+      btnJoinRoom.textContent = "JOIN";
+    }
+
     if (res.success) {
       state.currentRoom = res.room;
       state.isHost = res.player?.isHost || false;
+      if (network.p2p.localPlayerId) {
+        state.localPlayerId = network.p2p.localPlayerId;
+      }
       switchToRoomView(res.room);
-      showToast(`Joined Room ${code}!`);
+      showToast(`Joined Room ${code}! ⚔️`);
     } else {
       showToast(`Failed to join: ${res.error}`);
     }

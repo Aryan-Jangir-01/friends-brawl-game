@@ -20,12 +20,12 @@ export class NetworkClient {
       return customServer.replace(/\/+$/, "");
     }
 
-    // If hosted on GitHub Pages (e.g. *.github.io) or itch.io, connect to Render backend if available
-    if (window.location.hostname.includes("github.io") || window.location.hostname.includes("itch.io")) {
-      return "https://friends-brawl-game.onrender.com";
+    // Default: same origin (when running with local Node server on localhost:3000)
+    // On static hosting (like github.io), empty return signals pure P2P mode
+    if (window.location.hostname.includes("github.io") || window.location.hostname.includes("itch.io") || window.location.protocol === "file:") {
+      return "";
     }
 
-    // Default: same origin (when running on localhost:3000 or directly on Render)
     return "";
   }
 
@@ -37,15 +37,21 @@ export class NetworkClient {
   }
 
   connect() {
-    // Always initialize P2P as default/fallback for guaranteed online multiplayer
-    this.p2p.init();
+    const urlParams = new URLSearchParams(window.location.search);
+    const customServer = urlParams.get("server") || localStorage.getItem("brawl_custom_server");
+    const isStaticHost = window.location.hostname.includes("github.io") || window.location.hostname.includes("itch.io") || window.location.protocol === "file:";
 
-    if (typeof io === "undefined") {
-      console.log("Running in PeerJS P2P multiplayer mode");
+    // If on GitHub Pages and no custom server is specified, activate serverless WebRTC P2P immediately
+    if ((isStaticHost && !customServer) || typeof io === "undefined") {
+      console.log("Using serverless WebRTC PeerJS P2P multiplayer");
       this.mode = "p2p";
+      this.p2p.init();
       this.trigger("p2p_active");
       return;
     }
+
+    // Always initialize P2P as fallback
+    this.p2p.init();
 
     const serverUrl = this.getServerUrl();
     const socketOptions = {
@@ -328,7 +334,7 @@ export class NetworkClient {
       return;
     }
     if (this.mode === "p2p") {
-      this.p2p.leaveRoom();
+      this.p2p.returnToLobby();
       return;
     }
     if (this.socket && this.socket.connected) {
