@@ -127,6 +127,181 @@ export class P2PManager {
     }
   }
 
+  quickPlay(profile, callback) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const arenaTag = (urlParams.get("arena") || "public")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "") || "public";
+    const targetPeerId = `brawlz-arena-${arenaTag}`;
+
+    console.log(`[QuickPlay] Searching for Live Public Arena: ${targetPeerId}...`);
+
+    let resolved = false;
+    let peerErrorHandler = null;
+
+    // Fast check: if no host responds in 3.2s, become the host
+    const hostClaimTimer = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        cleanup();
+        console.log(`[QuickPlay] No live host found on ${targetPeerId}. Becoming Arena Host!`);
+        this.hostQuickArena(targetPeerId, arenaTag, profile, callback);
+      }
+    }, 3200);
+
+    const cleanup = () => {
+      clearTimeout(hostClaimTimer);
+      if (peerErrorHandler && this.peer) {
+        try { this.peer.off("error", peerErrorHandler); } catch (e) {}
+      }
+    };
+
+    if (!this.peer || this.peer.destroyed) {
+      this.init();
+    } else if (this.peer.disconnected) {
+      try { this.peer.reconnect(); } catch (e) {}
+    }
+
+    const attemptJoin = () => {
+      try {
+        const conn = this.peer.connect(targetPeerId, { reliable: true, serialization: "json" });
+        this.hostConn = conn;
+
+        const onOpen = () => {
+          console.log("[QuickPlay] Connected to Live Arena Host:", targetPeerId);
+          conn.send({ type: "join_request", profile });
+          this.startPingLoop();
+        };
+
+        if (conn.open) onOpen();
+        else conn.on("open", onOpen);
+
+        conn.on("data", (msg) => {
+          if (!msg || !msg.type) return;
+
+          if (msg.type === "join_accepted") {
+            if (!resolved) {
+              resolved = true;
+              cleanup();
+              this.localPlayerId = msg.playerId;
+              this.room = msg.room;
+              this.isHost = false;
+              this.networkClient.trigger("connected", this.localPlayerId);
+              if (callback) callback({ success: true, isHost: false, room: msg.room });
+            }
+          } else if (msg.type === "game_started") {
+            this.networkClient.trigger("game_started", msg.data);
+          } else if (msg.type === "game_state") {
+            this.networkClient.trigger("game_state", msg.data);
+          } else if (msg.type === "p2p_pong") {
+            const rtt = Date.now() - msg.t;
+            this.networkClient.ping = Math.round(rtt / 2);
+            this.networkClient.trigger("ping_update", this.networkClient.ping);
+          } else {
+            this.networkClient.trigger(msg.type, msg.data);
+          }
+        });
+
+        conn.on("error", (err) => {
+          console.warn("[QuickPlay] Connect error:", err);
+        });
+
+        conn.on("close", () => {
+          console.log("[QuickPlay] Arena connection closed");
+          this.networkClient.trigger("disconnected");
+        });
+      } catch (err) {
+        console.warn("[QuickPlay] Attempt join threw:", err);
+      }
+    };
+
+    peerErrorHandler = (err) => {
+      if (err.type === "peer-unavailable" && !resolved) {
+        resolved = true;
+        cleanup();
+        console.log(`[QuickPlay] Target peer not found, becoming Host of ${targetPeerId}`);
+        this.hostQuickArena(targetPeerId, arenaTag, profile, callback);
+      }
+    };
+
+    this.peer.on("error", peerErrorHandler);
+
+    if (this.peer.open) {
+      attemptJoin();
+    } else {
+      this.peer.once("open", () => {
+        attemptJoin();
+      });
+    }
+  }
+
+  hostQuickArena(targetPeerId, arenaTag, profile, callback) {
+    this.isHost = true;
+    this.localPlayerId = `host_${Date.now().toString(36)}`;
+
+    this.room = {
+      id: arenaTag.toUpperCase(),
+      hostId: this.localPlayerId,
+      options: {
+        gameMode: "ffa",
+        scoreLimit: 25,
+        matchDuration: 600,
+        mapId: "cyber_arena"
+      },
+      players: [
+        {
+          id: this.localPlayerId,
+          name: profile.name || "Hero",
+          color: profile.color || "#00f0ff",
+          avatar: profile.avatar || "striker",
+          team: "blue",
+          isHost: true,
+          isReady: true,
+          isBot: false
+        }
+      ]
+    };
+
+    if (this.peer) {
+      try { this.peer.destroy(); } catch (e) {}
+      this.peer = null;
+    }
+
+    this.peer = new Peer(targetPeerId, PEER_CONFIG);
+
+    this.peer.on("open", (id) => {
+      this.peerId = id;
+      console.log("[QuickPlay Host] Live Arena open and listening on Peer ID:", id);
+      this.networkClient.trigger("connected", this.localPlayerId);
+
+      // Start game engine immediately!
+      this.startGame(() => {
+        this.addBot();
+        this.addBot();
+      });
+
+      if (callback) callback({ success: true, isHost: true, room: this.room });
+    });
+
+    this.peer.on("connection", (conn) => {
+      this.handleGuestConnection(conn);
+    });
+
+    this.peer.on("disconnected", () => {
+      try { this.peer.reconnect(); } catch (e) {}
+    });
+
+    this.peer.on("error", (err) => {
+      console.warn("[QuickPlay Host] Peer error:", err);
+      if (err.type === "unavailable-id") {
+        console.log("[QuickPlay Host] ID claimed by someone else, joining them!");
+        setTimeout(() => this.quickPlay(profile, callback), 400);
+      }
+    });
+
+    this.setupSignalingWatchdog();
+  }
+
   createRoom(profile, options, callback) {
     this.isHost = true;
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -270,6 +445,9 @@ export class P2PManager {
             type: "game_started",
             data: { map: this.game.map, options: this.game.options }
           });
+          const joinPing = { id: guestPlayerId, playerName: player.name, icon: "⚔️", text: "JOINED THE BATTLE!", playerColor: player.color };
+          this.broadcast({ type: "tactical_ping", data: joinPing });
+          this.networkClient.trigger("tactical_ping", joinPing);
         }
       }
     } else if (msg.type === "player_input") {
@@ -376,7 +554,7 @@ export class P2PManager {
       }
 
       try {
-        const conn = this.peer.connect(targetPeerId, { reliable: true });
+        const conn = this.peer.connect(targetPeerId, { reliable: true, serialization: "json" });
         activeConn = conn;
         this.hostConn = conn;
 
@@ -528,53 +706,53 @@ export class P2PManager {
 
     const players = worldState.players?.map(p => ({
       id: p.id,
-      name: p.name,
-      color: p.color,
-      avatar: p.avatar,
-      team: p.team,
-      x: Math.round(p.x * 10) / 10,
-      y: Math.round(p.y * 10) / 10,
-      angle: Math.round(p.angle * 100) / 100,
-      health: p.health,
-      maxHealth: p.maxHealth,
-      shield: p.shield,
-      maxShield: p.maxShield,
-      isAlive: p.isAlive,
-      isDashing: p.isDashing,
-      currentWeapon: p.currentWeapon,
-      ammo: p.ammo,
-      kills: p.kills,
-      deaths: p.deaths,
-      score: p.score,
+      name: p.name || "Player",
+      color: p.color || "#00f0ff",
+      avatar: p.avatar || "striker",
+      team: p.team || "blue",
+      x: Math.round((p.x || 0) * 10) / 10,
+      y: Math.round((p.y || 0) * 10) / 10,
+      angle: Math.round((p.angle || 0) * 100) / 100,
+      health: Math.round(p.health || 0),
+      maxHealth: Math.round(p.maxHealth || 100),
+      shield: Math.round(p.shield || 0),
+      maxShield: Math.round(p.maxShield || 50),
+      isAlive: Boolean(p.isAlive),
+      isDashing: Boolean(p.isDashing),
+      currentWeapon: p.currentWeapon || "blaster",
+      ammo: (!isFinite(p.ammo) || p.ammo === -1) ? -1 : Math.round(p.ammo),
+      kills: Math.round(p.kills || 0),
+      deaths: Math.round(p.deaths || 0),
+      score: Math.round(p.score || 0),
       superCharge: Math.round(p.superCharge || 0),
-      isInvisible: p.isInvisible,
-      inBush: p.inBush,
-      speedBoost: p.speedBoost
+      isInvisible: Boolean(p.isInvisible),
+      inBush: Boolean(p.inBush),
+      speedBoost: Boolean(p.speedBoost)
     }));
 
     const bullets = worldState.bullets?.map(b => ({
       id: b.id,
-      x: Math.round(b.x),
-      y: Math.round(b.y),
-      radius: b.radius,
-      color: b.color,
-      type: b.type
+      x: Math.round(b.x || 0),
+      y: Math.round(b.y || 0),
+      radius: Math.round(b.radius || 4),
+      color: b.color || "#00f0ff",
+      type: b.type || "blaster"
     }));
 
     const crates = worldState.crates?.map(c => ({
       id: c.id,
-      hp: c.hp,
-      maxHp: c.maxHp,
-      x: c.x,
-      y: c.y,
-      size: c.size
+      hp: Math.round(c.hp || 0),
+      maxHp: Math.round(c.maxHp || 100),
+      x: Math.round(c.x || 0),
+      y: Math.round(c.y || 0),
+      size: Math.round(c.size || 40)
     }));
 
     this.broadcast({
       type: "game_state",
       data: {
-        t: worldState.t,
-        timeRemaining: worldState.timeRemaining,
+        t: worldState.t || Date.now(),
+        timeRemaining: Math.round(worldState.timeRemaining || 0),
         teamScores: worldState.teamScores,
         players,
         bullets,

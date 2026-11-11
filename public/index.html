@@ -40,8 +40,10 @@
       <!-- Top Status Bar -->
       <div class="hud-top-bar">
         <div class="hud-room-tag">
-          <span class="icon">📍</span> <span id="hud-room-code">ROOM-????</span>
+          <span class="icon">📍</span> <span id="hud-room-code">ARENA</span>
           <span id="hud-ping-badge" class="ping-badge">24ms</span>
+          <span id="hud-players-count" style="font-size: 0.75rem; color: #00f0ff; font-weight: 800; margin: 0 4px;">👥 1 IN ARENA</span>
+          <button id="btn-hud-invite" class="btn-small-icon" style="background: rgba(168, 85, 247, 0.4); border: 1px solid #a855f7; color: #fff; font-size: 0.75rem; padding: 4px 8px; border-radius: 6px; cursor: pointer; font-weight: 700;" title="Invite Friends to Battle">📲 INVITE</button>
           <button id="btn-hud-sound" class="btn-small-icon" title="Toggle Sound">🔊</button>
           <button id="btn-hud-fullscreen" class="btn-small-icon" title="Toggle Fullscreen">⛶</button>
         </div>
@@ -275,7 +277,7 @@
           <span id="server-status-text">Multiplayer: 🟢 Online (P2P Ready)</span>
         </div>
         <div id="build-version-tag" style="margin-top: 5px; font-size: 0.72rem; color: #64748b; display: flex; align-items: center; justify-content: center; gap: 8px;">
-          <span>Build: <b style="color: #00f0ff;">v1.3.0 (Build 08)</b></span>
+          <span>Build: <b style="color: #00f0ff;">v1.4.0 (Instant Arena Drop-In)</b></span>
           <button id="btn-force-update" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); color: #cbd5e1; font-size: 0.7rem; padding: 2px 8px; border-radius: 6px; cursor: pointer;" title="Clear cache and reload">🔄 Reload & Clear Cache</button>
         </div>
       </div>
@@ -354,28 +356,45 @@
 
       <!-- Navigation Tabs / Sections: Main Menu vs Active Room -->
       <div id="view-room-selection" class="room-selection-view">
+        <!-- Instant Drop-In Public Arena Card (Top Priority) -->
+        <div class="glass-card action-card" style="border-color: #00f0ff; background: linear-gradient(135deg, rgba(0, 240, 255, 0.16), rgba(168, 85, 247, 0.2)); box-shadow: 0 0 30px rgba(0, 240, 255, 0.35); margin-bottom: 1.25rem; border-width: 2px;">
+          <div class="card-badge" style="background: linear-gradient(135deg, #00f0ff, #a855f7); color: #090d16; font-weight: 900; letter-spacing: 0.5px;">🔥 ONE-CLICK MULTIPLAYER (INSTANT FIGHT)</div>
+          <h2 style="font-size: 1.65rem; color: #fff; margin: 8px 0; text-shadow: 0 0 12px rgba(0, 240, 255, 0.6);">⚔️ LIVE BATTLE ARENA (PLAY WITH FRIENDS) ⚔️</h2>
+          <p style="color: #e2e8f0; font-size: 1rem; margin-bottom: 14px; line-height: 1.4;">
+            <b>Bina kisi room code ya setup ke!</b> Bas niche <span style="color:#00f0ff; font-weight:700;">'BATTLE NOW'</span> dabao aur aapke sabhi dost ek hi arena mein real-time mein ladenge!
+          </p>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button id="btn-quick-play" class="btn btn-primary" style="flex: 2; min-width: 220px; font-size: 1.2rem; padding: 15px 22px; font-weight: 900; background: linear-gradient(135deg, #00f0ff, #0284c7); box-shadow: 0 0 25px rgba(0, 240, 255, 0.45); text-transform: uppercase;">
+              ⚔️ BATTLE NOW (DROP IN) ⚔️
+            </button>
+            <button id="btn-share-invite-link" class="btn btn-secondary" style="flex: 1; min-width: 150px; font-weight: 800; font-size: 1rem; border-color: #a855f7; color: #d8b4fe; background: rgba(168, 85, 247, 0.15);" title="Share link with friends">
+              📲 INVITE FRIENDS
+            </button>
+          </div>
+        </div>
+
         <div class="cards-grid">
           <!-- Solo Practice Card -->
           <div class="glass-card action-card practice-card" style="border-color: rgba(16, 185, 129, 0.4);">
             <div class="card-badge" style="background: rgba(16, 185, 129, 0.2); border-color: #10b981; color: #10b981;">SOLO PLAY</div>
             <h3>🤖 PLAY VS BOTS (OFFLINE)</h3>
-            <p>Play instantly in your browser right now against AI bots with zero server or Wi-Fi needed!</p>
+            <p>Practice moves and weapons offline against AI bots with zero Wi-Fi or server needed!</p>
             <button id="btn-practice-bots" class="btn btn-secondary full-width" style="border-color: #10b981; color: #10b981; font-weight: 700; background: rgba(16, 185, 129, 0.1);">PLAY VS BOTS NOW ⚔️</button>
           </div>
 
-          <!-- Create Room Card -->
+          <!-- Create Private Room Card -->
           <div class="glass-card action-card">
-            <div class="card-badge">HOST</div>
-            <h3>CREATE NEW ROOM</h3>
-            <p>Start a multiplayer room. Friends can scan the QR code or enter code to battle.</p>
-            <button id="btn-create-room" class="btn btn-primary full-width">CREATE ROOM 🚀</button>
+            <div class="card-badge">PRIVATE</div>
+            <h3>CREATE PRIVATE ROOM</h3>
+            <p>Start a custom room with a unique code for your private group match.</p>
+            <button id="btn-create-room" class="btn btn-secondary full-width">CREATE ROOM 🚀</button>
           </div>
 
-          <!-- Join Room Card -->
+          <!-- Join Private Room Card -->
           <div class="glass-card action-card">
             <div class="card-badge">JOIN</div>
             <h3>JOIN WITH CODE</h3>
-            <p>Enter the 4-letter Room Code from your friend's screen:</p>
+            <p>Enter private room code from your friend's screen:</p>
             <div class="join-input-group">
               <input type="text" id="input-room-code" maxlength="8" placeholder="e.g. WYW8" uppercase autocomplete="off" autocorrect="off" autocapitalize="characters">
               <button id="btn-join-room" class="btn btn-secondary">JOIN 🎮</button>
@@ -384,17 +403,13 @@
         </div>
 
         <!-- How to connect banner -->
-        <div class="glass-card info-card">
-          <h4>📱 How to play with friends right now:</h4>
-          <ol>
-            <li>Make sure everyone is connected to the <b>same Wi-Fi</b> or <b>Mobile Hotspot</b>.</li>
-            <li>One friend taps <b>"CREATE ROOM"</b>.</li>
-            <li>Other friends open their phone camera, <b>scan the QR Code</b> on the host screen (or type the URL/Room code), and jump in instantly!</li>
+        <div class="glass-card info-card" style="border-color: rgba(168, 85, 247, 0.35);">
+          <h4>⚡ How to fight with your friends right now:</h4>
+          <ol style="margin-left: 1.2rem; line-height: 1.6; color: #cbd5e1;">
+            <li>Tap <b style="color: #00f0ff;">"⚔️ BATTLE NOW (DROP IN)"</b> to immediately jump into the battle arena!</li>
+            <li>Tap <b style="color: #d8b4fe;">"📲 INVITE FRIENDS"</b> to send the game link to your friends on WhatsApp.</li>
+            <li>When your friends open the link and tap <b style="color: #00f0ff;">"BATTLE NOW"</b>, they will drop right into your arena and you can fight each other!</li>
           </ol>
-          <div id="lan-url-banner" class="lan-url-box">
-            <span>Mobile Link: </span><b id="lan-url-text">Loading network info...</b>
-            <button id="btn-copy-url" class="btn-small">Copy</button>
-          </div>
         </div>
       </div>
 
@@ -483,8 +498,8 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Load Scripts: Local bundled socket.io and peerjs for 100% reliable serverless online & P2P multiplayer -->
-  <script src="./js/socket.io.min.js?v=20261111_08"></script>
-  <script src="./js/peerjs.min.js?v=20261111_08"></script>
-  <script type="module" src="./js/main.js?v=20261111_08"></script>
+  <script src="./js/socket.io.min.js?v=20261111_09"></script>
+  <script src="./js/peerjs.min.js?v=20261111_09"></script>
+  <script type="module" src="./js/main.js?v=20261111_09"></script>
 </body>
 </html>

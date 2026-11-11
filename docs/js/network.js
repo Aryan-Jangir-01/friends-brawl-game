@@ -195,6 +195,12 @@ export class NetworkClient {
     return result;
   }
 
+  quickPlay(profile, callback) {
+    this.isLocalSolo = false;
+    this.mode = "p2p";
+    this.p2p.quickPlay(profile, callback);
+  }
+
   createRoom(profile, options, callback) {
     this.isLocalSolo = false;
     if (this.mode === "socket" && this.socket && this.socket.connected) {

@@ -242,18 +242,21 @@ function updateAvatarPreview() {
 
 // 2. Fetch Network Info (LAN IP / Join URL)
 async function fetchNetworkInfo() {
+  if (!lanUrlText) return;
   try {
     const res = await fetch(network.getApiUrl("/api/network-info"));
     const data = await res.json();
-    if (data.joinUrl) {
+    if (data.joinUrl && lanUrlText) {
       lanUrlText.textContent = data.joinUrl;
-      btnCopyUrl.onclick = () => {
-        navigator.clipboard.writeText(data.joinUrl);
-        showToast("Copied Mobile Play URL!");
-      };
+      if (btnCopyUrl) {
+        btnCopyUrl.onclick = () => {
+          navigator.clipboard.writeText(data.joinUrl);
+          showToast("Copied Mobile Play URL!");
+        };
+      }
     }
   } catch (err) {
-    lanUrlText.textContent = window.location.origin;
+    if (lanUrlText) lanUrlText.textContent = window.location.origin;
   }
 }
 
@@ -308,6 +311,19 @@ function initNetwork() {
   network.on("lobby_updated", (room) => {
     state.currentRoom = room;
     renderLobbyRoom(room);
+  });
+
+  network.on("disconnected", () => {
+    console.log("Disconnected from match");
+    if (state.gameRunning) {
+      showToast("⚠️ Match ended or connection lost. Returning to lobby...");
+      setTimeout(() => {
+        state.gameRunning = false;
+        hudOverlay.classList.add("hidden");
+        lobbyScreen.classList.remove("hidden");
+        state.currentRoom = null;
+      }, 1200);
+    }
   });
 
   network.on("game_started", (startData) => {
@@ -514,10 +530,79 @@ function initNetwork() {
 }
 
 // 4. Lobby Actions
+// Quick Play: Drop-in Public Arena
+const btnQuickPlay = document.getElementById("btn-quick-play");
+if (btnQuickPlay) {
+  btnQuickPlay.addEventListener("click", () => {
+    audio.unlock();
+    audio.playClick();
+    btnQuickPlay.disabled = true;
+    btnQuickPlay.textContent = "JOINING ARENA... ⚔️";
+    showToast("Connecting to live Battle Arena... 🚀");
+
+    network.quickPlay(state.profile, (res) => {
+      btnQuickPlay.disabled = false;
+      btnQuickPlay.textContent = "⚔️ BATTLE NOW (DROP IN) ⚔️";
+      if (res.success) {
+        state.currentRoom = res.room;
+        state.isHost = res.isHost;
+
+        // Transition straight into the game arena!
+        lobbyScreen.classList.add("hidden");
+        hudOverlay.classList.remove("hidden");
+        modalMatchOver.classList.add("hidden");
+
+        renderer.resetCamera();
+        renderer.resize();
+        state.gameRunning = true;
+        audio.startMusic();
+        showToast("⚔️ IN BATTLE! FIGHT YOUR FRIENDS!");
+      } else {
+        showToast(`Could not enter arena: ${res.error}`);
+      }
+    });
+  });
+}
+
+const btnShareInvite = document.getElementById("btn-share-invite-link");
+if (btnShareInvite) {
+  btnShareInvite.addEventListener("click", () => {
+    const playUrl = `${window.location.origin}${window.location.pathname}`;
+    const shareText = "⚔️ Come fight me right now in Brawl Zone! Tap the link and hit 'BATTLE NOW' to jump straight into my arena!";
+    if (navigator.share) {
+      navigator.share({
+        title: "Brawl Zone - Fight with me!",
+        text: shareText,
+        url: playUrl
+      }).catch(() => {});
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(playUrl);
+      showToast("Game Link Copied! Send to friends on WhatsApp 📋");
+    }
+  });
+}
+
+const btnHudInvite = document.getElementById("btn-hud-invite");
+if (btnHudInvite) {
+  btnHudInvite.addEventListener("click", () => {
+    const playUrl = `${window.location.origin}${window.location.pathname}`;
+    const shareText = "⚔️ Come fight me right now in Brawl Zone! Tap the link and hit 'BATTLE NOW' to jump straight into my arena!";
+    if (navigator.share) {
+      navigator.share({
+        title: "Brawl Zone - Fight with me!",
+        text: shareText,
+        url: playUrl
+      }).catch(() => {});
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(playUrl);
+      showToast("Game Link Copied! Send to friends on WhatsApp 📋");
+    }
+  });
+}
+
 const btnPracticeBots = document.getElementById("btn-practice-bots");
 if (btnPracticeBots) {
   btnPracticeBots.addEventListener("click", () => {
-    initAudio();
     audio.unlock();
     audio.playClick();
     renderer.resize();
@@ -757,6 +842,13 @@ function updateHUD(worldState) {
   const secs = worldState.timeRemaining % 60;
   hudTimer.textContent = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 
+  // Live Arena Players Count
+  const hudPlayersCount = document.getElementById("hud-players-count");
+  if (hudPlayersCount && worldState.players) {
+    const humanCount = worldState.players.filter(p => !p.isBot).length;
+    hudPlayersCount.textContent = `👥 ${humanCount} IN ARENA`;
+  }
+
   // Team score tracker
   const hudTeamTracker = document.getElementById("hud-team-tracker");
   const teamScoreBlue = document.getElementById("team-score-blue");
@@ -818,7 +910,7 @@ function updateHUD(worldState) {
 
     // Weapon & Ammo
     hudWeaponName.textContent = me.currentWeapon.toUpperCase();
-    hudAmmoCount.textContent = me.ammo === Infinity ? "∞" : me.ammo;
+    hudAmmoCount.textContent = (me.ammo === Infinity || me.ammo === -1) ? "∞" : me.ammo;
     window.__currentLocalWeapon = me.currentWeapon;
 
     let icon = "🔫";
@@ -1197,10 +1289,17 @@ if (btnInstallApp) {
 
 initNetwork();
 
-// Check for room query parameter in URL (e.g. ?room=XYZ)
+// Check for room / arena query parameter in URL (e.g. ?arena=public, ?battle=1, or ?room=XYZ)
 const urlParams = new URLSearchParams(window.location.search);
 const roomParam = urlParams.get("room");
-if (roomParam) {
+const arenaParam = urlParams.get("arena");
+const autoBattle = urlParams.get("battle") || urlParams.get("play");
+
+if (arenaParam || autoBattle) {
+  setTimeout(() => {
+    btnQuickPlay?.click();
+  }, 600);
+} else if (roomParam) {
   const cleanParam = roomParam.toUpperCase().replace(/^BZ[-_ ]?/i, "").replace(/[^A-Z0-9]/g, "").trim();
   if (inputRoomCode) inputRoomCode.value = cleanParam;
   setTimeout(() => {
