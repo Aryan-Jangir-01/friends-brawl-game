@@ -582,6 +582,23 @@ if (btnShareInvite) {
   });
 }
 
+const btnHudBack = document.getElementById("btn-hud-back");
+if (btnHudBack) {
+  btnHudBack.addEventListener("click", () => {
+    audio.unlock();
+    audio.playClick();
+    audio.stopMusic();
+    state.gameRunning = false;
+    network.leaveRoom();
+    state.currentRoom = null;
+    state.isHost = false;
+    hudOverlay.classList.add("hidden");
+    lobbyScreen.classList.remove("hidden");
+    modalMatchOver.classList.add("hidden");
+    showToast("Returned to Lobby 🏠");
+  });
+}
+
 const btnHudInvite = document.getElementById("btn-hud-invite");
 if (btnHudInvite) {
   btnHudInvite.addEventListener("click", () => {

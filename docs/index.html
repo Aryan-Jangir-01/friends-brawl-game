@@ -27,8 +27,8 @@
   <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
   <link rel="apple-touch-icon" href="./icons/icon.svg">
 
-  <link rel="stylesheet" href="./css/style.css?v=20261111_05">
-  <link rel="stylesheet" href="./css/joystick.css?v=20261111_05">
+  <link rel="stylesheet" href="./css/style.css?v=20261111_10">
+  <link rel="stylesheet" href="./css/joystick.css?v=20261111_10">
 </head>
 <body>
   <!-- Canvas Screen -->
@@ -39,13 +39,20 @@
     <div id="hud-overlay" class="hidden">
       <!-- Top Status Bar -->
       <div class="hud-top-bar">
-        <div class="hud-room-tag">
-          <span class="icon">📍</span> <span id="hud-room-code">ARENA</span>
-          <span id="hud-ping-badge" class="ping-badge">24ms</span>
-          <span id="hud-players-count" style="font-size: 0.75rem; color: #00f0ff; font-weight: 800; margin: 0 4px;">👥 1 IN ARENA</span>
-          <button id="btn-hud-invite" class="btn-small-icon" style="background: rgba(168, 85, 247, 0.4); border: 1px solid #a855f7; color: #fff; font-size: 0.75rem; padding: 4px 8px; border-radius: 6px; cursor: pointer; font-weight: 700;" title="Invite Friends to Battle">📲 INVITE</button>
-          <button id="btn-hud-sound" class="btn-small-icon" title="Toggle Sound">🔊</button>
-          <button id="btn-hud-fullscreen" class="btn-small-icon" title="Toggle Fullscreen">⛶</button>
+        <div class="hud-left-group">
+          <!-- Back Arrow to Return to Lobby -->
+          <button id="btn-hud-back" class="hud-back-btn" title="Back to Lobby">
+            <span class="back-arrow">‹</span>
+            <span class="back-text">LOBBY</span>
+          </button>
+          <div class="hud-room-tag">
+            <span class="icon">📍</span> <span id="hud-room-code">ARENA</span>
+            <span id="hud-ping-badge" class="ping-badge">24ms</span>
+            <span id="hud-players-count" style="font-size: 0.75rem; color: #00f0ff; font-weight: 800; margin: 0 4px;">👥 1 IN ARENA</span>
+            <button id="btn-hud-invite" class="btn-small-icon" style="background: rgba(168, 85, 247, 0.4); border: 1px solid #a855f7; color: #fff; font-size: 0.75rem; padding: 4px 8px; border-radius: 6px; cursor: pointer; font-weight: 700;" title="Invite Friends to Battle">📲 INVITE</button>
+            <button id="btn-hud-sound" class="btn-small-icon" title="Toggle Sound">🔊</button>
+            <button id="btn-hud-fullscreen" class="btn-small-icon" title="Toggle Fullscreen">⛶</button>
+          </div>
         </div>
         <div class="hud-center-group">
           <div class="hud-match-timer" id="hud-timer">05:00</div>
