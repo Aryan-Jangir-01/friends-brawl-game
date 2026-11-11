@@ -6,8 +6,27 @@ const PEER_CONFIG = {
   config: {
     iceServers: [
       { urls: "stun:stun.l.google.com:19302" },
-      { urls: "stun:global.stun.twilio.com:3478" }
-    ]
+      { urls: "stun:stun1.l.google.com:19302" },
+      { urls: "stun:stun2.l.google.com:19302" },
+      { urls: "stun:stun.cloudflare.com:3478" },
+      { urls: "stun:openrelay.metered.ca:80" },
+      {
+        urls: "turn:openrelay.metered.ca:80",
+        username: "openrelay",
+        credential: "openrelay"
+      },
+      {
+        urls: "turn:openrelay.metered.ca:443",
+        username: "openrelay",
+        credential: "openrelay"
+      },
+      {
+        urls: "turn:openrelay.metered.ca:443?transport=tcp",
+        username: "openrelay",
+        credential: "openrelay"
+      }
+    ],
+    iceCandidatePoolSize: 10
   }
 };
 
@@ -23,11 +42,59 @@ export class P2PManager {
     this.localPlayerId = null;
     this.hostConn = null;
     this.pingInterval = null;
+    this.watchdogInterval = null;
+    this._visibilityBound = false;
+  }
+
+  setupSignalingWatchdog() {
+    if (this.watchdogInterval) clearInterval(this.watchdogInterval);
+    this.watchdogInterval = setInterval(() => {
+      if (this.peer && !this.peer.destroyed) {
+        if (this.peer.disconnected) {
+          console.log("[P2P] Signaling socket disconnected. Auto-reconnecting...");
+          try {
+            this.peer.reconnect();
+            this.networkClient.trigger("signaling_status", { connected: false, reconnecting: true });
+          } catch (e) {
+            console.warn("[P2P] reconnect error:", e);
+          }
+        } else {
+          // Keepalive heartbeat over PeerJS WebSocket to prevent idle timeout
+          try {
+            if (this.peer.socket && this.peer.socket._ws && this.peer.socket._ws.readyState === WebSocket.OPEN) {
+              this.peer.socket.send({ type: "HEARTBEAT" });
+            }
+          } catch (e) {}
+        }
+      }
+    }, 4500);
+
+    // Watch for document visibility changes (e.g. user switched apps and returned)
+    if (typeof document !== "undefined" && !this._visibilityBound) {
+      this._visibilityBound = true;
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+          console.log("[P2P] Document became visible. Checking signaling connection...");
+          if (this.peer && !this.peer.destroyed && this.peer.disconnected) {
+            try { this.peer.reconnect(); } catch (e) {}
+          }
+        }
+      });
+      window.addEventListener("focus", () => {
+        if (this.peer && !this.peer.destroyed && this.peer.disconnected) {
+          try { this.peer.reconnect(); } catch (e) {}
+        }
+      });
+    }
   }
 
   init() {
     if (typeof Peer === "undefined") {
       console.warn("PeerJS library not loaded");
+      return;
+    }
+    // Never re-init if this peer is actively hosting a room
+    if (this.isHost && this.room && this.peer && !this.peer.destroyed) {
       return;
     }
     if (this.peer && !this.peer.destroyed && !this.peer.disconnected) return;
@@ -37,14 +104,26 @@ export class P2PManager {
 
       this.peer.on("open", (id) => {
         this.peerId = id;
-        console.log("P2P ready with Peer ID:", id);
+        console.log("[P2P] Ready with Peer ID:", id);
+        this.networkClient.trigger("signaling_status", { connected: true, reconnecting: false });
+      });
+
+      this.peer.on("disconnected", () => {
+        console.log("[P2P] Peer signaling disconnected, auto-reconnecting...");
+        this.networkClient.trigger("signaling_status", { connected: false, reconnecting: true });
+        try { this.peer.reconnect(); } catch (e) {}
       });
 
       this.peer.on("error", (err) => {
-        console.warn("P2P error:", err.type || err);
+        console.warn("[P2P] Peer warning/error:", err.type || err);
+        if (err.type === "disconnected" || err.type === "network") {
+          try { this.peer.reconnect(); } catch (e) {}
+        }
       });
+
+      this.setupSignalingWatchdog();
     } catch (e) {
-      console.warn("P2P init exception:", e);
+      console.warn("[P2P] init exception:", e);
     }
   }
 
@@ -91,29 +170,39 @@ export class P2PManager {
 
     this.peer.on("open", (id) => {
       this.peerId = id;
-      console.log("Hosted Room Peer open:", id);
-
-      this.peer.on("connection", (conn) => {
-        this.handleGuestConnection(conn);
-      });
-
+      console.log("[P2P Host] Hosted Room Peer open:", id);
       this.networkClient.trigger("connected", this.localPlayerId);
+      this.networkClient.trigger("signaling_status", { connected: true, reconnecting: false });
       if (callback) callback({ success: true, room: this.room });
     });
 
+    this.peer.on("connection", (conn) => {
+      this.handleGuestConnection(conn);
+    });
+
+    this.peer.on("disconnected", () => {
+      console.log("[P2P Host] Host signaling disconnected. Auto-reconnecting...");
+      this.networkClient.trigger("signaling_status", { connected: false, reconnecting: true });
+      try { this.peer.reconnect(); } catch (e) {}
+    });
+
     this.peer.on("error", (err) => {
-      console.warn("Host peer error:", err);
+      console.warn("[P2P Host] Host peer error:", err);
       if (err.type === "unavailable-id") {
         // ID clash, retry with a fresh code
         return this.createRoom(profile, options, callback);
       }
-      if (callback) callback({ success: false, error: err.type || "Peer creation failed" });
+      if (err.type === "disconnected" || err.type === "network") {
+        try { this.peer.reconnect(); } catch (e) {}
+      }
     });
+
+    this.setupSignalingWatchdog();
   }
 
   handleGuestConnection(conn) {
     const setup = () => {
-      console.log("Guest connected and open:", conn.peer);
+      console.log("[P2P Host] Guest connected and open:", conn.peer);
       this.connections.set(conn.peer, conn);
 
       conn.on("data", (data) => {
@@ -121,13 +210,13 @@ export class P2PManager {
       });
 
       conn.on("close", () => {
-        console.log("Guest disconnected:", conn.peer);
+        console.log("[P2P Host] Guest disconnected:", conn.peer);
         this.connections.delete(conn.peer);
         this.handleGuestDisconnect(conn.peer);
       });
 
       conn.on("error", (err) => {
-        console.warn("Guest conn error:", err);
+        console.warn("[P2P Host] Guest conn error:", err);
       });
     };
 
@@ -143,20 +232,24 @@ export class P2PManager {
 
     if (msg.type === "join_request") {
       const guestPlayerId = `guest_${peerId}`;
-      const existing = this.room?.players.find(p => p.id === guestPlayerId);
-      if (!existing && this.room) {
-        const newPlayer = {
+      let player = this.room?.players.find(p => p.id === guestPlayerId || p.peerId === peerId);
+      if (!player && this.room) {
+        player = {
           id: guestPlayerId,
           peerId,
-          name: msg.profile.name || "Guest",
-          color: msg.profile.color || "#ff007f",
-          avatar: msg.profile.avatar || "striker",
+          name: msg.profile?.name || "Guest",
+          color: msg.profile?.color || "#ff007f",
+          avatar: msg.profile?.avatar || "striker",
           team: this.room.options.gameMode === "team" ? (this.room.players.length % 2 === 0 ? "blue" : "red") : "blue",
           isHost: false,
           isReady: false,
           isBot: false
         };
-        this.room.players.push(newPlayer);
+        this.room.players.push(player);
+      } else if (player) {
+        if (msg.profile?.name) player.name = msg.profile.name;
+        if (msg.profile?.color) player.color = msg.profile.color;
+        if (msg.profile?.avatar) player.avatar = msg.profile.avatar;
       }
 
       this.broadcast({ type: "lobby_updated", data: this.room });
@@ -165,6 +258,12 @@ export class P2PManager {
       const conn = this.connections.get(peerId);
       if (conn && conn.open) {
         conn.send({ type: "join_accepted", room: this.room, playerId: guestPlayerId });
+        if (this.game) {
+          conn.send({
+            type: "game_started",
+            data: { map: this.game.map, options: this.game.options }
+          });
+        }
       }
     } else if (msg.type === "player_input") {
       if (this.game) {
@@ -226,93 +325,142 @@ export class P2PManager {
 
     const targetPeerId = `brawlz-${cleanCode}`;
 
-    if (!this.peer || this.peer.destroyed || this.peer.disconnected) {
-      if (this.peer) {
-        try { this.peer.destroy(); } catch (e) {}
-        this.peer = null;
-      }
-      this.peer = new Peer(PEER_CONFIG);
+    if (!this.peer || this.peer.destroyed) {
+      this.init();
+    } else if (this.peer.disconnected) {
+      try { this.peer.reconnect(); } catch (e) {}
     }
 
     let hasResponded = false;
-    const connectTimeout = setTimeout(() => {
-      if (!hasResponded) {
-        hasResponded = true;
-        if (callback) callback({ success: false, error: "Could not find host. Check the room code!" });
+    let attemptCount = 0;
+    const maxAttempts = 3;
+    let activeConn = null;
+    let peerErrorHandler = null;
+    let retryTimer = null;
+
+    const cleanup = () => {
+      if (retryTimer) clearTimeout(retryTimer);
+      if (peerErrorHandler && this.peer) {
+        try { this.peer.off("error", peerErrorHandler); } catch (e) {}
       }
-    }, 8000);
-
-    const connectToHost = () => {
-      const conn = this.peer.connect(targetPeerId, { reliable: true });
-      this.hostConn = conn;
-
-      const onConnOpen = () => {
-        console.log("Connected to Host peer:", targetPeerId);
-        conn.send({ type: "join_request", profile });
-        this.startPingLoop();
-      };
-
-      if (conn.open) {
-        onConnOpen();
-      } else {
-        conn.on("open", onConnOpen);
-      }
-
-      conn.on("data", (msg) => {
-        if (!msg || !msg.type) return;
-
-        if (msg.type === "join_accepted") {
-          clearTimeout(connectTimeout);
-          hasResponded = true;
-          this.localPlayerId = msg.playerId;
-          this.room = msg.room;
-          this.networkClient.trigger("connected", this.localPlayerId);
-          if (callback) callback({ success: true, room: msg.room, player: { isHost: false } });
-        } else if (msg.type === "lobby_updated") {
-          this.room = msg.data;
-          this.networkClient.trigger("lobby_updated", msg.data);
-        } else if (msg.type === "game_started") {
-          console.log("P2P guest received game_started:", msg.data);
-          this.networkClient.trigger("game_started", msg.data);
-        } else if (msg.type === "game_state") {
-          this.networkClient.trigger("game_state", msg.data);
-        } else if (msg.type === "p2p_pong") {
-          const rtt = Date.now() - msg.t;
-          this.networkClient.ping = Math.round(rtt / 2);
-          this.networkClient.trigger("ping_update", this.networkClient.ping);
-        } else {
-          this.networkClient.trigger(msg.type, msg.data);
-        }
-      });
-
-      conn.on("error", (err) => {
-        console.warn("Connection to host error:", err);
-        clearTimeout(connectTimeout);
-        if (!hasResponded) {
-          hasResponded = true;
-          if (callback) callback({ success: false, error: "Host not found or room code invalid" });
-        }
-      });
-
-      conn.on("close", () => {
-        console.log("Host connection closed");
-        if (this.pingInterval) clearInterval(this.pingInterval);
-        this.networkClient.trigger("disconnected");
-      });
     };
 
-    if (this.peer.open) {
-      connectToHost();
-    } else {
-      this.peer.on("open", () => connectToHost());
-      this.peer.on("error", (err) => {
-        clearTimeout(connectTimeout);
-        if (!hasResponded) {
-          hasResponded = true;
-          if (callback) callback({ success: false, error: "Could not connect to room server." });
+    const overallTimeout = setTimeout(() => {
+      if (!hasResponded) {
+        hasResponded = true;
+        cleanup();
+        if (callback) {
+          callback({
+            success: false,
+            error: `Could not connect to room "${cleanCode.toUpperCase()}". Check the code and make sure Host is in the room!`
+          });
         }
+      }
+    }, 18000);
+
+    const attemptConnect = () => {
+      if (hasResponded) return;
+      attemptCount++;
+      console.log(`[P2P Guest] Connecting to host: ${targetPeerId} (Attempt ${attemptCount}/${maxAttempts})...`);
+
+      if (activeConn) {
+        try { activeConn.close(); } catch (e) {}
+        activeConn = null;
+      }
+
+      try {
+        const conn = this.peer.connect(targetPeerId, { reliable: true });
+        activeConn = conn;
+        this.hostConn = conn;
+
+        const onConnOpen = () => {
+          if (hasResponded) return;
+          console.log("[P2P Guest] Connected and open to host:", targetPeerId);
+          conn.send({ type: "join_request", profile });
+          this.startPingLoop();
+        };
+
+        if (conn.open) {
+          onConnOpen();
+        } else {
+          conn.on("open", onConnOpen);
+        }
+
+        conn.on("data", (msg) => {
+          if (!msg || !msg.type) return;
+
+          if (msg.type === "join_accepted") {
+            clearTimeout(overallTimeout);
+            hasResponded = true;
+            cleanup();
+            this.localPlayerId = msg.playerId;
+            this.room = msg.room;
+            this.networkClient.trigger("connected", this.localPlayerId);
+            if (callback) callback({ success: true, room: msg.room, player: { isHost: false } });
+          } else if (msg.type === "lobby_updated") {
+            this.room = msg.data;
+            this.networkClient.trigger("lobby_updated", msg.data);
+          } else if (msg.type === "game_started") {
+            console.log("P2P guest received game_started:", msg.data);
+            this.networkClient.trigger("game_started", msg.data);
+          } else if (msg.type === "game_state") {
+            this.networkClient.trigger("game_state", msg.data);
+          } else if (msg.type === "p2p_pong") {
+            const rtt = Date.now() - msg.t;
+            this.networkClient.ping = Math.round(rtt / 2);
+            this.networkClient.trigger("ping_update", this.networkClient.ping);
+          } else {
+            this.networkClient.trigger(msg.type, msg.data);
+          }
+        });
+
+        conn.on("error", (err) => {
+          console.warn("[P2P Guest] Connection to host error:", err);
+        });
+
+        conn.on("close", () => {
+          console.log("[P2P Guest] Host connection closed");
+          if (this.pingInterval) clearInterval(this.pingInterval);
+          this.networkClient.trigger("disconnected");
+        });
+      } catch (e) {
+        console.warn("[P2P Guest] connect call error:", e);
+      }
+    };
+
+    peerErrorHandler = (err) => {
+      console.warn("[P2P Guest] Peer error event:", err.type || err);
+      if (err.type === "peer-unavailable" && !hasResponded) {
+        if (attemptCount < maxAttempts) {
+          console.log(`[P2P Guest] Host peer unavailable on attempt ${attemptCount}. Retrying in 1.8s...`);
+          retryTimer = setTimeout(() => {
+            if (!hasResponded) attemptConnect();
+          }, 1800);
+        } else {
+          clearTimeout(overallTimeout);
+          hasResponded = true;
+          cleanup();
+          if (callback) {
+            callback({
+              success: false,
+              error: `Room code "${cleanCode.toUpperCase()}" not found. Ask Host to check their screen!`
+            });
+          }
+        }
+      }
+    };
+
+    this.peer.on("error", peerErrorHandler);
+
+    if (this.peer.open) {
+      attemptConnect();
+    } else {
+      this.peer.once("open", () => {
+        attemptConnect();
       });
     }
+
+    this.setupSignalingWatchdog();
   }
 
   startPingLoop() {
@@ -541,7 +689,7 @@ export class P2PManager {
       this.pingInterval = null;
     }
     if (this.hostConn) {
-      this.hostConn.close();
+      try { this.hostConn.close(); } catch (e) {}
       this.hostConn = null;
     }
     this.room = null;

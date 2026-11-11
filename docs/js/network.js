@@ -54,9 +54,8 @@ export class NetworkClient {
     const serverUrl = this.getServerUrl();
     const socketOptions = {
       transports: ["websocket", "polling"],
-      reconnectionAttempts: 4,
-      reconnectionDelay: 2000,
-      timeout: 3500
+      reconnectionAttempts: 1,
+      timeout: 2500
     };
 
     console.log("Attempting server connect to:", serverUrl || "(same-origin)");
@@ -70,10 +69,13 @@ export class NetworkClient {
         this.trigger("connected", this.socket.id);
       });
 
-      this.socket.on("connect_error", () => {
+      this.socket.once("connect_error", () => {
         console.log("Central server unreachable, activating WebRTC P2P Multiplayer");
+        try { this.socket.disconnect(); } catch (e) {}
         this.mode = "p2p";
-        this.p2p.init();
+        if (!this.p2p.isHost) {
+          this.p2p.init();
+        }
         this.trigger("p2p_active");
       });
 

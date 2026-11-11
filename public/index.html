@@ -399,8 +399,9 @@
         <div class="glass-card room-details-card">
           <div class="room-header-flex">
             <div>
-              <span class="subtext">ROOM CODE</span>
-              <h2 id="room-code-display" class="room-code-tag">----</h2>
+              <span class="subtext">ROOM CODE (TAP TO COPY)</span>
+              <h2 id="room-code-display" class="room-code-tag" title="Tap to copy code">----</h2>
+              <div id="lobby-connection-status" style="font-size: 0.75rem; color: #10b981; margin-top: 2px; font-weight: 600;">🟢 Room Live (Waiting for friends)</div>
             </div>
             <div class="room-header-actions">
               <button id="btn-share-room" class="btn btn-secondary btn-icon-only" title="Share / Copy Link">🔗</button>
@@ -478,8 +479,8 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Load Scripts: Local bundled socket.io and peerjs for 100% reliable serverless online & P2P multiplayer -->
-  <script src="./js/socket.io.min.js?v=20261111_05"></script>
-  <script src="./js/peerjs.min.js?v=20261111_05"></script>
-  <script type="module" src="./js/main.js?v=20261111_05"></script>
+  <script src="./js/socket.io.min.js?v=20261111_06"></script>
+  <script src="./js/peerjs.min.js?v=20261111_06"></script>
+  <script type="module" src="./js/main.js?v=20261111_06"></script>
 </body>
 </html>

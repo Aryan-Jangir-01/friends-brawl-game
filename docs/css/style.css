@@ -483,6 +483,13 @@ html, body {
   letter-spacing: 4px;
   color: var(--cyan-neon);
   text-shadow: 0 0 12px var(--cyan-glow);
+  cursor: pointer;
+  user-select: all;
+  transition: transform 0.1s ease;
+}
+
+.room-code-tag:active {
+  transform: scale(0.96);
 }
 
 .room-header-actions {

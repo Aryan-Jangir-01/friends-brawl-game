@@ -269,19 +269,31 @@ function initNetwork() {
     if (statusText) statusText.textContent = "Multiplayer: Online (P2P Ready)";
   });
 
+  network.on("signaling_status", (status) => {
+    const lobbyStatus = document.getElementById("lobby-connection-status");
+    if (status.connected) {
+      if (statusDot) statusDot.style.background = "#10b981";
+      if (statusText) statusText.textContent = "Multiplayer: Online (P2P Ready)";
+      if (lobbyStatus) {
+        lobbyStatus.style.color = "#10b981";
+        lobbyStatus.textContent = "🟢 Room Live (Waiting for friends)";
+      }
+    } else if (status.reconnecting) {
+      if (statusDot) statusDot.style.background = "#f59e0b";
+      if (statusText) statusText.textContent = "Multiplayer: 🟡 Reconnecting signaling...";
+      if (lobbyStatus) {
+        lobbyStatus.style.color = "#f59e0b";
+        lobbyStatus.textContent = "🟡 Reconnecting signaling...";
+      }
+    }
+  });
+
   network.on("connected", (socketId) => {
     state.localPlayerId = socketId;
     console.log("Registered local ID:", socketId);
 
     if (statusDot) statusDot.style.background = "#10b981";
     if (statusText) statusText.textContent = "Multiplayer: Online";
-
-    // Check for room query parameter in URL (e.g. ?room=XYZ)
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomParam = urlParams.get("room");
-    if (roomParam) {
-      joinSpecificRoom(roomParam);
-    }
   });
 
   network.on("ping_update", (ping) => {
@@ -523,7 +535,11 @@ if (btnPracticeBots) {
 
 btnCreateRoom.addEventListener("click", () => {
   audio.unlock();
+  btnCreateRoom.disabled = true;
+  btnCreateRoom.textContent = "CREATING... 🚀";
   network.createRoom(state.profile, { gameMode: "ffa", scoreLimit: 15 }, (res) => {
+    btnCreateRoom.disabled = false;
+    btnCreateRoom.textContent = "CREATE ROOM 🚀";
     if (res.success) {
       state.currentRoom = res.room;
       state.isHost = true;
@@ -550,7 +566,20 @@ btnJoinRoom.addEventListener("click", () => {
 function joinSpecificRoom(code) {
   const cleanCode = (code || "").toUpperCase().replace(/^BZ[-_ ]?/i, "").replace(/[^A-Z0-9]/g, "").trim();
   if (!cleanCode) return showToast("Invalid room code");
+
+  if (btnJoinRoom) {
+    btnJoinRoom.disabled = true;
+    btnJoinRoom.textContent = "JOINING... ⏳";
+  }
+
+  showToast(`Connecting to Room ${cleanCode}...`);
+
   network.joinRoom(cleanCode, state.profile, (res) => {
+    if (btnJoinRoom) {
+      btnJoinRoom.disabled = false;
+      btnJoinRoom.textContent = "JOIN 🎮";
+    }
+
     if (res.success) {
       state.currentRoom = res.room;
       state.isHost = res.player?.isHost || false;
@@ -650,6 +679,16 @@ function switchToRoomView(room) {
 function renderLobbyRoom(room) {
   if (!room) return;
   roomCodeDisplay.textContent = room.id;
+  roomCodeDisplay.style.cursor = "pointer";
+  roomCodeDisplay.title = "Tap to copy Room Code";
+  roomCodeDisplay.onclick = () => {
+    if (state.currentRoom?.id) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(state.currentRoom.id).catch(() => {});
+      }
+      showToast(`Copied Room Code: ${state.currentRoom.id}! 📋`);
+    }
+  };
   playerCount.textContent = room.players.length;
 
   const isMeHost = room.hostId === state.localPlayerId;
@@ -1135,4 +1174,16 @@ if (btnInstallApp) {
 }
 
 initNetwork();
+
+// Check for room query parameter in URL (e.g. ?room=XYZ)
+const urlParams = new URLSearchParams(window.location.search);
+const roomParam = urlParams.get("room");
+if (roomParam) {
+  const cleanParam = roomParam.toUpperCase().replace(/^BZ[-_ ]?/i, "").replace(/[^A-Z0-9]/g, "").trim();
+  if (inputRoomCode) inputRoomCode.value = cleanParam;
+  setTimeout(() => {
+    joinSpecificRoom(cleanParam);
+  }, 800);
+}
+
 requestAnimationFrame(gameLoop);
