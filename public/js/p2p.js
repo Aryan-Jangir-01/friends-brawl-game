@@ -8,20 +8,21 @@ const PEER_CONFIG = {
       { urls: "stun:stun.l.google.com:19302" },
       { urls: "stun:stun1.l.google.com:19302" },
       { urls: "stun:stun2.l.google.com:19302" },
-      { urls: "stun:stun3.l.google.com:19302" },
-      { urls: "stun:stun4.l.google.com:19302" },
       { urls: "stun:stun.cloudflare.com:3478" },
       { urls: "stun:openrelay.metered.ca:80" },
       {
         urls: [
+          "turn:eu-0.turn.peerjs.com:3478",
+          "turn:us-0.turn.peerjs.com:3478"
+        ],
+        username: "peerjs",
+        credential: "peerjsp"
+      },
+      {
+        urls: [
           "turn:openrelay.metered.ca:80",
           "turn:openrelay.metered.ca:443",
-          "turn:openrelay.metered.ca:443?transport=tcp",
-          "turns:openrelay.metered.ca:443?transport=tcp",
-          "turn:relay.metered.ca:80",
-          "turn:relay.metered.ca:443",
-          "turn:relay.metered.ca:443?transport=tcp",
-          "turns:relay.metered.ca:443?transport=tcp"
+          "turn:openrelay.metered.ca:443?transport=tcp"
         ],
         username: "openrelayproject",
         credential: "openrelayproject"
@@ -132,23 +133,34 @@ export class P2PManager {
 
     let resolved = false;
     let peerErrorHandler = null;
-
-    // Give WebRTC STUN/TURN connection 14s for multiple phones on mobile networks to complete ICE negotiation
-    const hostClaimTimer = setTimeout(() => {
-      if (!resolved) {
-        resolved = true;
-        cleanup();
-        console.log(`[QuickPlay] No live host found on ${targetPeerId}. Becoming Arena Host!`);
-        this.hostQuickArena(targetPeerId, arenaTag, profile, callback);
-      }
-    }, 14000);
+    let retryTimer = null;
+    let hostClaimTimer = null;
 
     const cleanup = () => {
-      clearTimeout(hostClaimTimer);
+      if (hostClaimTimer) clearTimeout(hostClaimTimer);
+      if (retryTimer) clearTimeout(retryTimer);
       if (peerErrorHandler && this.peer) {
         try { this.peer.off("error", peerErrorHandler); } catch (e) {}
       }
     };
+
+    // Fast check: Give WebRTC STUN/TURN connection 9s before falling back to hosting
+    hostClaimTimer = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        cleanup();
+        console.log(`[QuickPlay] Host on ${targetPeerId} did not respond. Becoming Arena Host!`);
+        this.hostQuickArena(targetPeerId, arenaTag, profile, callback);
+      }
+    }, 9000);
+
+    // Mid-way assist: If connection is taking more than 3.5s, retry attemptJoin
+    retryTimer = setTimeout(() => {
+      if (!resolved && (!this.hostConn || !this.hostConn.open)) {
+        console.log(`[QuickPlay] Still waiting for ${targetPeerId}. Retrying join attempt...`);
+        attemptJoin();
+      }
+    }, 3500);
 
     // Ensure clean non-host client peer
     if (this.isHost || !this.peer || this.peer.destroyed) {
@@ -304,7 +316,7 @@ export class P2PManager {
 
     this.peer.on("error", (err) => {
       console.warn("[QuickPlay Host] Peer error:", err);
-      if (err.type === "unavailable-id") {
+      if (!hostOpened && err.type === "unavailable-id") {
         clearTimeout(hostTimeout);
         console.log("[QuickPlay Host] ID claimed by someone else, joining them as guest!");
         try { this.peer.destroy(); } catch (e) {}
@@ -314,6 +326,8 @@ export class P2PManager {
           this.init();
           this.quickPlay(profile, callback);
         }, 300);
+      } else if (hostOpened && this.peer && !this.peer.destroyed && this.peer.disconnected) {
+        try { this.peer.reconnect(); } catch (e) {}
       }
     });
 

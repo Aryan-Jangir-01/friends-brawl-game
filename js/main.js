@@ -581,9 +581,9 @@ if (btnQuickPlay) {
       if (!finished) {
         btnQuickPlay.disabled = false;
         btnQuickPlay.textContent = "⚔️ BATTLE NOW (DROP IN) ⚔️";
-        showToast("⚠️ Connection took longer than usual. Tap again if arena didn't open.");
+        showToast("⚠️ Reconnecting to arena... Please tap again if not opened.");
       }
-    }, 16000);
+    }, 11000);
 
     network.quickPlay(state.profile, (res) => {
       finished = true;
