@@ -1,5 +1,5 @@
 // public/js/p2p.js
-import { GameInstance } from "./engine/GameInstance.js?v=20261113_06";
+import { GameInstance } from "./engine/GameInstance.js?v=20261113_07";
 
 const PEER_CONFIG = {
   debug: 1,
@@ -48,6 +48,8 @@ export class P2PManager {
     this.pingInterval = null;
     this.watchdogInterval = null;
     this._visibilityBound = false;
+    this.userLeftVoluntarily = false;
+    this.migrationTimeout = null;
   }
 
   setupSignalingWatchdog() {
@@ -125,6 +127,12 @@ export class P2PManager {
   }
 
   quickPlay(profile, callback) {
+    this.userLeftVoluntarily = false;
+    if (this.migrationTimeout) {
+      clearTimeout(this.migrationTimeout);
+      this.migrationTimeout = null;
+    }
+
     const urlParams = new URLSearchParams(window.location.search);
     const arenaTag = (urlParams.get("arena") || "public")
       .toLowerCase()
@@ -139,6 +147,7 @@ export class P2PManager {
 
     const cleanup = () => {
       if (hostClaimTimer) clearTimeout(hostClaimTimer);
+      this.quickPlayHostClaimTimer = null;
       if (peerErrorHandler && this.peer) {
         try { this.peer.off("error", peerErrorHandler); } catch (e) {}
       }
@@ -146,6 +155,7 @@ export class P2PManager {
 
     // Fast check: If host does not respond within 3.2s, claim host role
     hostClaimTimer = setTimeout(() => {
+      if (this.userLeftVoluntarily) return;
       if (!resolved) {
         resolved = true;
         cleanup();
@@ -153,6 +163,7 @@ export class P2PManager {
         this.hostQuickArena(targetPeerId, arenaTag, profile, callback);
       }
     }, 3200);
+    this.quickPlayHostClaimTimer = hostClaimTimer;
 
     const attemptJoin = () => {
       if (resolved) return;
@@ -203,6 +214,7 @@ export class P2PManager {
 
         conn.on("error", (err) => {
           console.warn("[QuickPlay] Connect error to host:", err);
+          if (this.userLeftVoluntarily) return;
           if (!resolved) {
             resolved = true;
             cleanup();
@@ -213,6 +225,10 @@ export class P2PManager {
 
         conn.on("close", () => {
           console.log("[QuickPlay] Arena connection closed");
+          if (this.userLeftVoluntarily) {
+            console.log("[QuickPlay] User voluntarily left match. Skipping host migration/rejoin.");
+            return;
+          }
           if (!resolved) {
             resolved = true;
             cleanup();
@@ -221,7 +237,9 @@ export class P2PManager {
           } else {
             console.log("[QuickPlay] Host left battle! Migrating arena host...");
             this.networkClient.trigger("host_migrating");
-            setTimeout(() => {
+            if (this.migrationTimeout) clearTimeout(this.migrationTimeout);
+            this.migrationTimeout = setTimeout(() => {
+              if (this.userLeftVoluntarily) return;
               this.quickPlay(profile, (res) => {
                 if (res.success) {
                   console.log("[QuickPlay] Reconnected to arena via host migration!");
@@ -232,6 +250,7 @@ export class P2PManager {
         });
       } catch (err) {
         console.warn("[QuickPlay] Attempt join threw:", err);
+        if (this.userLeftVoluntarily) return;
         if (!resolved) {
           resolved = true;
           cleanup();
@@ -242,6 +261,7 @@ export class P2PManager {
 
     peerErrorHandler = (err) => {
       console.warn("[QuickPlay] Peer error:", err.type || err);
+      if (this.userLeftVoluntarily) return;
       if (err.type === "peer-unavailable" && !resolved) {
         resolved = true;
         cleanup();
@@ -335,10 +355,20 @@ export class P2PManager {
         if (callback) callback({ success: false, error: "Signaling server connection timeout" });
       }
     }, 6500);
+    this.hostOpeningTimeout = hostTimeout;
 
     this.peer.on("open", (id) => {
       hostOpened = true;
       clearTimeout(hostTimeout);
+      this.hostOpeningTimeout = null;
+
+      if (this.userLeftVoluntarily) {
+        console.log("[QuickPlay Host] User voluntarily left match before host peer opened. Destroying host peer.");
+        try { this.peer.destroy(); } catch (e) {}
+        this.peer = null;
+        return;
+      }
+
       this.peerId = id;
       console.log("[QuickPlay Host] Live Arena open and listening on Peer ID:", id);
       this.networkClient.trigger("connected", this.localPlayerId);
@@ -352,22 +382,31 @@ export class P2PManager {
     });
 
     this.peer.on("connection", (conn) => {
+      if (this.userLeftVoluntarily) {
+        try { conn.close(); } catch (e) {}
+        return;
+      }
       this.handleGuestConnection(conn);
     });
 
     this.peer.on("disconnected", () => {
+      if (this.userLeftVoluntarily) return;
       try { this.peer.reconnect(); } catch (e) {}
     });
 
     this.peer.on("error", (err) => {
       console.warn("[QuickPlay Host] Peer error:", err);
+      if (this.userLeftVoluntarily) return;
       if (!hostOpened && err.type === "unavailable-id") {
         clearTimeout(hostTimeout);
+        this.hostOpeningTimeout = null;
         console.log("[QuickPlay Host] ID claimed by someone else, joining them as guest!");
         try { this.peer.destroy(); } catch (e) {}
         this.peer = null;
         this.isHost = false;
-        setTimeout(() => {
+        if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = setTimeout(() => {
+          if (this.userLeftVoluntarily) return;
           this.init();
           this.quickPlay(profile, callback);
         }, 300);
@@ -380,6 +419,11 @@ export class P2PManager {
   }
 
   createRoom(profile, options, callback) {
+    this.userLeftVoluntarily = false;
+    if (this.migrationTimeout) {
+      clearTimeout(this.migrationTimeout);
+      this.migrationTimeout = null;
+    }
     this.isHost = true;
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     let randomCode = "";
@@ -987,6 +1031,34 @@ export class P2PManager {
   }
 
   leaveRoom() {
+    this.userLeftVoluntarily = true;
+
+    // Clear any pending timers that could trigger auto-join or reconnect
+    if (this.migrationTimeout) {
+      clearTimeout(this.migrationTimeout);
+      this.migrationTimeout = null;
+    }
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    if (this.quickPlayHostClaimTimer) {
+      clearTimeout(this.quickPlayHostClaimTimer);
+      this.quickPlayHostClaimTimer = null;
+    }
+    if (this.hostOpeningTimeout) {
+      clearTimeout(this.hostOpeningTimeout);
+      this.hostOpeningTimeout = null;
+    }
+    if (this.joinRetryTimer) {
+      clearTimeout(this.joinRetryTimer);
+      this.joinRetryTimer = null;
+    }
+    if (this.joinOverallTimeout) {
+      clearTimeout(this.joinOverallTimeout);
+      this.joinOverallTimeout = null;
+    }
+
     const wasHost = this.isHost;
     if (this.game) {
       this.game.stop();

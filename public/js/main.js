@@ -1,10 +1,10 @@
 // public/js/main.js
-import { audio } from "./audio.js?v=20261113_06";
-import { ParticleSystem } from "./particles.js?v=20261113_06";
-import { InputManager } from "./input.js?v=20261113_06";
-import { GameRenderer } from "./renderer.js?v=20261113_06";
-import { NetworkClient } from "./network.js?v=20261113_06";
-import { MAPS } from "./engine/MapData.js?v=20261113_06";
+import { audio } from "./audio.js?v=20261113_07";
+import { ParticleSystem } from "./particles.js?v=20261113_07";
+import { InputManager } from "./input.js?v=20261113_07";
+import { GameRenderer } from "./renderer.js?v=20261113_07";
+import { NetworkClient } from "./network.js?v=20261113_07";
+import { MAPS } from "./engine/MapData.js?v=20261113_07";
 
 // Global Game State
 const state = {
@@ -355,6 +355,12 @@ function initNetwork() {
   });
 
   network.on("game_started", (startData) => {
+    // GUARD: If user has returned to lobby, ignore stray arena start events
+    if (!state.currentRoom) {
+      console.log("[GameStarted] Ignored because player is currently in lobby.");
+      return;
+    }
+
     console.log("Game started received:", startData);
     const chosenMapId = startData?.options?.mapId || state.currentRoom?.options?.mapId || "cyber_arena";
     state.mapData = (startData && startData.map) ? startData.map : (MAPS[chosenMapId] || MAPS.cyber_arena);
@@ -375,6 +381,7 @@ function initNetwork() {
   });
 
   network.on("game_state", (worldState) => {
+    if (!state.currentRoom || !state.gameRunning) return;
     if (!worldState) return;
 
     // Reconstitute any compact crate coordinates if needed
@@ -398,6 +405,7 @@ function initNetwork() {
 
   // Gameplay Events
   network.on("weapon_fired", (data) => {
+    if (!state.gameRunning) return;
     if (data.weapon === "shotgun") audio.playShotgun();
     else if (data.weapon === "plasma") audio.playPlasma();
     else if (data.weapon === "rocket") audio.playRocketLaunch();
@@ -415,6 +423,7 @@ function initNetwork() {
   });
 
   network.on("bullet_impact", (data) => {
+    if (!state.gameRunning) return;
     if (data.aoeRadius > 0) {
       audio.playExplosion(1.2);
       particles.emitExplosion(data.x, data.y, data.aoeRadius);
@@ -425,6 +434,7 @@ function initNetwork() {
   });
 
   network.on("player_hit", (data) => {
+    if (!state.gameRunning) return;
     audio.playPlayerHit();
     const isMe = data.targetId === state.localPlayerId;
     const color = isMe ? "#ef4444" : "#ffea00";
@@ -443,6 +453,7 @@ function initNetwork() {
   });
 
   network.on("player_killed", (data) => {
+    if (!state.gameRunning) return;
     audio.playKillSting();
     addKillFeedItem(data.killEvent);
 
@@ -459,6 +470,7 @@ function initNetwork() {
   });
 
   network.on("killstreak_achieved", (data) => {
+    if (!state.gameRunning) return;
     audio.playStreakFanfare();
     const banner = document.getElementById("killstreak-banner");
     const title = document.getElementById("streak-text");
@@ -472,10 +484,12 @@ function initNetwork() {
   });
 
   network.on("player_dashed", (data) => {
+    if (!state.gameRunning) return;
     particles.emitDashTrail(data.x, data.y, data.angle);
   });
 
   network.on("super_activated", (data) => {
+    if (!state.gameRunning) return;
     audio.playSuper(data.hero);
     particles.emitSuperEffect(data.hero, data.x, data.y, data.angle);
     renderer.addScreenShake(data.hero === "juggernaut" ? 18 : 12);
@@ -493,6 +507,7 @@ function initNetwork() {
   });
 
   network.on("item_collected", (data) => {
+    if (!state.gameRunning) return;
     audio.playPickup(data.type);
     if (data.playerId === state.localPlayerId) {
       const label = `+${data.type.toUpperCase()}`;
@@ -507,6 +522,7 @@ function initNetwork() {
   });
 
   network.on("crate_destroyed", (data) => {
+    if (!state.gameRunning) return;
     audio.playExplosion(0.8);
     particles.emitExplosion(data.x + 25, data.y + 25, 50, "#eab308");
   });
@@ -675,9 +691,22 @@ if (btnHudBack) {
     network.leaveRoom();
     state.currentRoom = null;
     state.isHost = false;
+    state.latestWorldState = null;
     hudOverlay.classList.add("hidden");
     lobbyScreen.classList.remove("hidden");
     modalMatchOver.classList.add("hidden");
+
+    // Reset BATTLE NOW button so it is clean for next tap
+    if (btnQuickPlay) {
+      btnQuickPlay.disabled = false;
+      btnQuickPlay.textContent = "⚔️ BATTLE NOW (DROP IN) ⚔️";
+    }
+
+    // Clean URL query parameters so browser back/reload doesn't re-trigger battle
+    try {
+      window.history.replaceState({ screen: "lobby" }, document.title, window.location.pathname);
+    } catch (e) {}
+
     showToast("Returned to Lobby 🏠");
   });
 }
@@ -805,8 +834,16 @@ btnLeaveRoom.addEventListener("click", () => {
   network.leaveRoom();
   state.currentRoom = null;
   state.isHost = false;
+  state.latestWorldState = null;
   viewActiveRoom.classList.add("hidden");
   viewRoomSelection.classList.remove("hidden");
+  if (btnQuickPlay) {
+    btnQuickPlay.disabled = false;
+    btnQuickPlay.textContent = "⚔️ BATTLE NOW (DROP IN) ⚔️";
+  }
+  try {
+    window.history.replaceState({ screen: "lobby" }, document.title, window.location.pathname);
+  } catch (e) {}
 });
 
 btnToggleReady.addEventListener("click", () => {
@@ -1195,21 +1232,48 @@ if (btnMatchOverBack) {
     network.leaveRoom();
     state.currentRoom = null;
     state.isHost = false;
+    state.latestWorldState = null;
     modalMatchOver.classList.add("hidden");
     hudOverlay.classList.add("hidden");
     lobbyScreen.classList.remove("hidden");
+
+    // Reset BATTLE NOW button state
+    if (btnQuickPlay) {
+      btnQuickPlay.disabled = false;
+      btnQuickPlay.textContent = "⚔️ BATTLE NOW (DROP IN) ⚔️";
+    }
+
+    try {
+      window.history.replaceState({ screen: "lobby" }, document.title, window.location.pathname);
+    } catch (e) {}
+
     showToast("Returned to Lobby 🏠");
   });
 }
 
 btnRematch.addEventListener("click", () => {
-  if (state.isHost) {
-    network.returnToLobby();
-  } else {
-    modalMatchOver.classList.add("hidden");
-    lobbyScreen.classList.remove("hidden");
-    hudOverlay.classList.add("hidden");
+  audio.unlock();
+  audio.playClick();
+  audio.stopMusic();
+  state.gameRunning = false;
+  network.leaveRoom();
+  state.currentRoom = null;
+  state.isHost = false;
+  state.latestWorldState = null;
+  modalMatchOver.classList.add("hidden");
+  hudOverlay.classList.add("hidden");
+  lobbyScreen.classList.remove("hidden");
+
+  if (btnQuickPlay) {
+    btnQuickPlay.disabled = false;
+    btnQuickPlay.textContent = "⚔️ BATTLE NOW (DROP IN) ⚔️";
   }
+
+  try {
+    window.history.replaceState({ screen: "lobby" }, document.title, window.location.pathname);
+  } catch (e) {}
+
+  showToast("Returned to Lobby 🏠");
 });
 
 // 7. Main Game Loop (60 FPS)
@@ -1480,6 +1544,13 @@ const urlParams = new URLSearchParams(window.location.search);
 const roomParam = urlParams.get("room");
 const arenaParam = urlParams.get("arena");
 const autoBattle = urlParams.get("battle") || urlParams.get("play");
+
+// Immediately sanitize URL so browser back / reload does not loop back into battle
+if (arenaParam || autoBattle || roomParam) {
+  try {
+    window.history.replaceState({ screen: "lobby" }, document.title, window.location.pathname);
+  } catch (e) {}
+}
 
 if (arenaParam || autoBattle) {
   setTimeout(() => {
