@@ -1,5 +1,5 @@
 // public/js/input.js
-import { audio } from "./audio.js?v=20261113_04";
+import { audio } from "./audio.js?v=20261113_05";
 
 export class InputManager {
   constructor(canvas) {
@@ -44,8 +44,18 @@ export class InputManager {
     // Dash cooldown visual
     this.lastDashTime = 0;
     this.dashCooldownMs = 2500;
+    this.canvasRect = { left: 0, top: 0 };
+    this.updateCanvasRect();
 
     this.initListeners();
+    window.addEventListener("resize", () => this.updateCanvasRect());
+  }
+
+  updateCanvasRect() {
+    if (this.canvas) {
+      const r = this.canvas.getBoundingClientRect();
+      this.canvasRect = { left: r.left, top: r.top };
+    }
   }
 
   initListeners() {
@@ -144,12 +154,12 @@ export class InputManager {
     e.preventDefault();
     this.isTouchDevice = true;
     audio.unlock();
+    this.updateCanvasRect();
 
     for (const touch of e.changedTouches) {
       if (this.leftTouchId === null) {
         this.leftTouchId = touch.identifier;
-        const rect = this.canvas.getBoundingClientRect();
-        this.leftCenter = { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+        this.leftCenter = { x: touch.clientX - this.canvasRect.left, y: touch.clientY - this.canvasRect.top };
         this.leftPos = { ...this.leftCenter };
 
         this.moveRing.style.left = `${this.leftCenter.x}px`;
@@ -167,9 +177,8 @@ export class InputManager {
 
     for (const touch of e.changedTouches) {
       if (touch.identifier === this.leftTouchId) {
-        const rect = this.canvas.getBoundingClientRect();
-        const curX = touch.clientX - rect.left;
-        const curY = touch.clientY - rect.top;
+        const curX = touch.clientX - this.canvasRect.left;
+        const curY = touch.clientY - this.canvasRect.top;
 
         let dx = curX - this.leftCenter.x;
         let dy = curY - this.leftCenter.y;
@@ -206,12 +215,12 @@ export class InputManager {
     e.preventDefault();
     this.isTouchDevice = true;
     audio.unlock();
+    this.updateCanvasRect();
 
     for (const touch of e.changedTouches) {
       if (this.rightTouchId === null) {
         this.rightTouchId = touch.identifier;
-        const rect = this.canvas.getBoundingClientRect();
-        this.rightCenter = { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+        this.rightCenter = { x: touch.clientX - this.canvasRect.left, y: touch.clientY - this.canvasRect.top };
         this.rightPos = { ...this.rightCenter };
 
         this.aimRing.style.left = `${this.rightCenter.x}px`;
@@ -230,9 +239,8 @@ export class InputManager {
 
     for (const touch of e.changedTouches) {
       if (touch.identifier === this.rightTouchId) {
-        const rect = this.canvas.getBoundingClientRect();
-        const curX = touch.clientX - rect.left;
-        const curY = touch.clientY - rect.top;
+        const curX = touch.clientX - this.canvasRect.left;
+        const curY = touch.clientY - this.canvasRect.top;
 
         let dx = curX - this.rightCenter.x;
         let dy = curY - this.rightCenter.y;

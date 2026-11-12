@@ -1,5 +1,5 @@
 // public/js/engine/LocalGameServer.js
-import { GameInstance } from "./GameInstance.js?v=20261113_04";
+import { GameInstance } from "./GameInstance.js?v=20261113_05";
 
 export class LocalGameServer {
   constructor(networkClient) {

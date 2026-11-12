@@ -1,10 +1,10 @@
 // public/js/main.js
-import { audio } from "./audio.js?v=20261113_04";
-import { ParticleSystem } from "./particles.js?v=20261113_04";
-import { InputManager } from "./input.js?v=20261113_04";
-import { GameRenderer } from "./renderer.js?v=20261113_04";
-import { NetworkClient } from "./network.js?v=20261113_04";
-import { MAPS } from "./engine/MapData.js?v=20261113_04";
+import { audio } from "./audio.js?v=20261113_05";
+import { ParticleSystem } from "./particles.js?v=20261113_05";
+import { InputManager } from "./input.js?v=20261113_05";
+import { GameRenderer } from "./renderer.js?v=20261113_05";
+import { NetworkClient } from "./network.js?v=20261113_05";
+import { MAPS } from "./engine/MapData.js?v=20261113_05";
 
 // Global Game State
 const state = {
@@ -76,6 +76,30 @@ const hudAmmoCount = document.getElementById("hud-ammo-count");
 const hudWeaponIcon = document.getElementById("hud-weapon-icon");
 const lowHealthVignette = document.getElementById("low-health-vignette");
 const killFeed = document.getElementById("kill-feed");
+const btnSuper = document.getElementById("btn-super");
+const superStatus = document.getElementById("super-btn-status");
+const superMeterFill = document.getElementById("super-meter-fill");
+const hudPlayersCount = document.getElementById("hud-players-count");
+const hudTeamTracker = document.getElementById("hud-team-tracker");
+const teamScoreBlue = document.getElementById("team-score-blue");
+const teamScoreRed = document.getElementById("team-score-red");
+
+// Memoized HUD State Cache to eliminate DOM layout thrashing on mobile
+const lastHUDState = {
+  timer: "",
+  playersCount: "",
+  teamScores: "",
+  kills: -1,
+  hpVal: -1,
+  hpPct: -1,
+  shVal: -1,
+  shPct: -1,
+  superCharge: -1,
+  weapon: "",
+  ammo: "",
+  isVignetteActive: false
+};
+let lastHUDUpdateTime = 0;
 
 // QR Modal
 const qrImage = document.getElementById("qr-image");
@@ -946,96 +970,134 @@ function escapeHtml(str) {
   })[m]);
 }
 
-// 5. In-Game HUD Updates
+// 5. In-Game HUD Updates (Optimized with dirty checking & throttled to ~28 Hz to eliminate mobile DOM lag)
 function updateHUD(worldState) {
   if (!worldState) return;
 
+  const now = performance.now();
+  if (now - lastHUDUpdateTime < 35) return; // Cap DOM HUD updates to ~28 Hz
+  lastHUDUpdateTime = now;
+
   // Timer: 0 or unbounded means 24/7 Endless Arena!
-  if (!worldState.timeRemaining || worldState.timeRemaining <= 0 || worldState.timeRemaining > 3600) {
-    hudTimer.textContent = "⚔️ ENDLESS";
-  } else {
-    const mins = Math.floor(worldState.timeRemaining / 60);
-    const secs = worldState.timeRemaining % 60;
-    hudTimer.textContent = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  const timerText = (!worldState.timeRemaining || worldState.timeRemaining <= 0 || worldState.timeRemaining > 3600)
+    ? "⚔️ ENDLESS"
+    : `${String(Math.floor(worldState.timeRemaining / 60)).padStart(2, "0")}:${String(worldState.timeRemaining % 60).padStart(2, "0")}`;
+
+  if (lastHUDState.timer !== timerText) {
+    lastHUDState.timer = timerText;
+    hudTimer.textContent = timerText;
   }
 
   // Live Arena Players Count
-  const hudPlayersCount = document.getElementById("hud-players-count");
   if (hudPlayersCount && worldState.players) {
     const humanCount = worldState.players.filter(p => !p.isBot).length;
-    hudPlayersCount.textContent = `👥 ${humanCount} BRAWLERS`;
+    const countText = `👥 ${humanCount} BRAWLERS`;
+    if (lastHUDState.playersCount !== countText) {
+      lastHUDState.playersCount = countText;
+      hudPlayersCount.textContent = countText;
+    }
   }
 
   // Team score tracker
-  const hudTeamTracker = document.getElementById("hud-team-tracker");
-  const teamScoreBlue = document.getElementById("team-score-blue");
-  const teamScoreRed = document.getElementById("team-score-red");
   if (worldState.teamScores && hudTeamTracker && teamScoreBlue && teamScoreRed) {
-    hudTeamTracker.classList.remove("hidden");
-    teamScoreBlue.textContent = worldState.teamScores.blue;
-    teamScoreRed.textContent = worldState.teamScores.red;
-  } else if (hudTeamTracker) {
+    const scoreKey = `${worldState.teamScores.blue}-${worldState.teamScores.red}`;
+    if (lastHUDState.teamScores !== scoreKey) {
+      lastHUDState.teamScores = scoreKey;
+      hudTeamTracker.classList.remove("hidden");
+      teamScoreBlue.textContent = worldState.teamScores.blue;
+      teamScoreRed.textContent = worldState.teamScores.red;
+    }
+  } else if (hudTeamTracker && lastHUDState.teamScores !== "hidden") {
+    lastHUDState.teamScores = "hidden";
     hudTeamTracker.classList.add("hidden");
   }
 
   // Find local player
   const me = worldState.players?.find(p => p.id === state.localPlayerId);
   if (me) {
-    hudPlayerKills.textContent = me.kills;
-
-    // Health
-    const hpPct = Math.max(0, Math.min(100, (me.health / me.maxHealth) * 100));
-    hudHealthFill.style.width = `${hpPct}%`;
-    hudHealthText.textContent = Math.ceil(me.health);
-
-    // Shield
-    const shPct = Math.max(0, Math.min(100, (me.shield / me.maxShield) * 100));
-    hudShieldFill.style.width = `${shPct}%`;
-    hudShieldText.textContent = Math.ceil(me.shield);
-
-    // Super Meter & Button
-    const btnSuper = document.getElementById("btn-super");
-    const superStatus = document.getElementById("super-btn-status");
-    const superMeterFill = document.getElementById("super-meter-fill");
-    const superCharge = Math.min(100, Math.max(0, me.superCharge || 0));
-
-    if (superMeterFill) {
-      const circ = 207.34;
-      superMeterFill.style.strokeDashoffset = `${circ * (1 - superCharge / 100)}`;
+    if (lastHUDState.kills !== me.kills) {
+      lastHUDState.kills = me.kills;
+      hudPlayerKills.textContent = me.kills;
     }
 
-    if (btnSuper && superStatus) {
-      if (superCharge >= 100) {
-        if (!btnSuper.classList.contains("ready")) {
-          btnSuper.classList.add("ready");
-          audio.playSuperReady();
-          if (navigator.vibrate) navigator.vibrate(40);
+    // Health (Dirty checked)
+    const hpVal = Math.ceil(me.health);
+    const hpPct = Math.round(Math.max(0, Math.min(100, (me.health / me.maxHealth) * 100)));
+    if (lastHUDState.hpPct !== hpPct) {
+      lastHUDState.hpPct = hpPct;
+      hudHealthFill.style.width = `${hpPct}%`;
+    }
+    if (lastHUDState.hpVal !== hpVal) {
+      lastHUDState.hpVal = hpVal;
+      hudHealthText.textContent = hpVal;
+    }
+
+    // Shield (Dirty checked)
+    const shVal = Math.ceil(me.shield);
+    const shPct = Math.round(Math.max(0, Math.min(100, (me.shield / me.maxShield) * 100)));
+    if (lastHUDState.shPct !== shPct) {
+      lastHUDState.shPct = shPct;
+      hudShieldFill.style.width = `${shPct}%`;
+    }
+    if (lastHUDState.shVal !== shVal) {
+      lastHUDState.shVal = shVal;
+      hudShieldText.textContent = shVal;
+    }
+
+    // Super Meter & Button (Dirty checked)
+    const superCharge = Math.min(100, Math.max(0, Math.round(me.superCharge || 0)));
+    if (lastHUDState.superCharge !== superCharge) {
+      lastHUDState.superCharge = superCharge;
+      if (superMeterFill) {
+        const circ = 207.34;
+        superMeterFill.style.strokeDashoffset = `${circ * (1 - superCharge / 100)}`;
+      }
+
+      if (btnSuper && superStatus) {
+        if (superCharge >= 100) {
+          if (!btnSuper.classList.contains("ready")) {
+            btnSuper.classList.add("ready");
+            audio.playSuperReady();
+            if (navigator.vibrate) navigator.vibrate(40);
+          }
+          superStatus.textContent = "READY!";
+        } else {
+          btnSuper.classList.remove("ready");
+          superStatus.textContent = `${superCharge}%`;
         }
-        superStatus.textContent = "READY!";
-      } else {
-        btnSuper.classList.remove("ready");
-        superStatus.textContent = `${superCharge}%`;
       }
     }
 
-    // Low Health Vignette
-    if (me.health <= 35 && me.isAlive) {
-      lowHealthVignette.classList.add("active");
-    } else {
-      lowHealthVignette.classList.remove("active");
+    // Low Health Vignette (Dirty checked)
+    const isLowHp = me.health <= 35 && me.isAlive;
+    if (lastHUDState.isVignetteActive !== isLowHp) {
+      lastHUDState.isVignetteActive = isLowHp;
+      if (isLowHp) {
+        lowHealthVignette.classList.add("active");
+      } else {
+        lowHealthVignette.classList.remove("active");
+      }
     }
 
-    // Weapon & Ammo
-    hudWeaponName.textContent = me.currentWeapon.toUpperCase();
-    hudAmmoCount.textContent = (me.ammo === Infinity || me.ammo === -1) ? "∞" : me.ammo;
-    window.__currentLocalWeapon = me.currentWeapon;
+    // Weapon & Ammo (Dirty checked)
+    if (lastHUDState.weapon !== me.currentWeapon) {
+      lastHUDState.weapon = me.currentWeapon;
+      hudWeaponName.textContent = me.currentWeapon.toUpperCase();
+      window.__currentLocalWeapon = me.currentWeapon;
 
-    let icon = "🔫";
-    if (me.currentWeapon === "shotgun") icon = "💥";
-    else if (me.currentWeapon === "plasma") icon = "🔮";
-    else if (me.currentWeapon === "rocket") icon = "🚀";
-    else if (me.currentWeapon === "railgun") icon = "⚡";
-    hudWeaponIcon.textContent = icon;
+      let icon = "🔫";
+      if (me.currentWeapon === "shotgun") icon = "💥";
+      else if (me.currentWeapon === "plasma") icon = "🔮";
+      else if (me.currentWeapon === "rocket") icon = "🚀";
+      else if (me.currentWeapon === "railgun") icon = "⚡";
+      hudWeaponIcon.textContent = icon;
+    }
+
+    const ammoVal = (me.ammo === Infinity || me.ammo === -1) ? "∞" : me.ammo;
+    if (lastHUDState.ammo !== ammoVal) {
+      lastHUDState.ammo = ammoVal;
+      hudAmmoCount.textContent = ammoVal;
+    }
   }
 }
 

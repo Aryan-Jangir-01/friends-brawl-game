@@ -10,7 +10,8 @@ export class GameRenderer {
 
     this.width = window.innerWidth;
     this.height = window.innerHeight;
-    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 850;
+    this.dpr = isMobile ? 1.0 : Math.min(window.devicePixelRatio || 1, 1.5);
 
     // Camera
     this.camX = 1200;
@@ -21,6 +22,8 @@ export class GameRenderer {
     this.screenShake = 0;
     this.activeEmotes = new Map(); // playerId -> { emoji, endTime }
     this.recoil = new Map(); // playerId -> timestamp
+    this.lastMiniMapTime = 0;
+    this.viewBounds = { left: 0, right: 2400, top: 0, bottom: 1800 };
 
     this.resize();
     window.addEventListener("resize", () => this.resize());
@@ -37,17 +40,30 @@ export class GameRenderer {
   resize() {
     this.width = window.innerWidth;
     this.height = window.innerHeight;
-    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 850;
+    this.dpr = isMobile ? 1.0 : Math.min(window.devicePixelRatio || 1, 1.5);
 
-    this.canvas.width = this.width * this.dpr;
-    this.canvas.height = this.height * this.dpr;
+    this.canvas.width = Math.floor(this.width * this.dpr);
+    this.canvas.height = Math.floor(this.height * this.dpr);
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform before scaling
     this.ctx.scale(this.dpr, this.dpr);
 
     if (this.miniMapCanvas && this.miniMapCtx) {
       this.miniMapCanvas.width = 140 * this.dpr;
       this.miniMapCanvas.height = 105 * this.dpr;
+      this.miniMapCtx.setTransform(1, 0, 0, 1, 0, 0);
       this.miniMapCtx.scale(this.dpr, this.dpr);
     }
+  }
+
+  isRectInView(x, y, w, h) {
+    const b = this.viewBounds;
+    return (x + w >= b.left && x <= b.right && y + h >= b.top && y <= b.bottom);
+  }
+
+  isCircleInView(x, y, r) {
+    const b = this.viewBounds;
+    return (x + r >= b.left && x - r <= b.right && y + r >= b.top && y - r <= b.bottom);
   }
 
   addScreenShake(amount = 12) {
@@ -81,6 +97,17 @@ export class GameRenderer {
     ctx.clearRect(0, 0, this.width, this.height);
 
     if (!worldState || !mapData) return;
+
+    // Viewport bounds for camera frustum culling (saves 80% draw calls on mobile)
+    const margin = 80;
+    const halfW = (this.width / 2) + margin;
+    const halfH = (this.height / 2) + margin;
+    this.viewBounds = {
+      left: this.camX - halfW,
+      right: this.camX + halfW,
+      top: this.camY - halfH,
+      bottom: this.camY + halfH
+    };
 
     // Screen shake offset
     let shakeX = 0;
@@ -133,12 +160,16 @@ export class GameRenderer {
     }
 
     // 8. Draw Particles & Floating Texts
-    this.particles.draw(ctx);
+    this.particles.draw(ctx, this.viewBounds);
 
     ctx.restore();
 
-    // 9. Render Mini Map Radar
-    this.renderMiniMap(worldState, localPlayerId, mapData);
+    // 9. Render Mini Map Radar (Throttled to 10 FPS for mobile GPU efficiency)
+    const now = performance.now();
+    if (!this.lastMiniMapTime || now - this.lastMiniMapTime >= 100) {
+      this.lastMiniMapTime = now;
+      this.renderMiniMap(worldState, localPlayerId, mapData);
+    }
   }
 
   drawFloor(ctx, map) {
@@ -176,8 +207,12 @@ export class GameRenderer {
   }
 
   drawHazards(ctx, hazards) {
+    if (!hazards) return;
     const time = Date.now() / 400;
     hazards.forEach(h => {
+      // Frustum culling
+      if (!this.isCircleInView(h.x, h.y, h.radius)) return;
+
       ctx.save();
       // Outer warning ring
       ctx.beginPath();
@@ -210,6 +245,9 @@ export class GameRenderer {
   drawWalls(ctx, walls) {
     if (!walls) return;
     walls.forEach(w => {
+      // Frustum culling
+      if (!this.isRectInView(w.x, w.y, w.w, w.h)) return;
+
       // Drop shadow
       ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
       ctx.fillRect(w.x + 6, w.y + 6, w.w, w.h);
@@ -240,8 +278,11 @@ export class GameRenderer {
   }
 
   drawCrates(ctx, crates) {
+    if (!crates) return;
     crates.forEach(c => {
       if (c.hp <= 0) return;
+      // Frustum culling
+      if (!this.isRectInView(c.x, c.y, c.size, c.size)) return;
 
       // Drop shadow
       ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
@@ -277,8 +318,12 @@ export class GameRenderer {
   }
 
   drawItems(ctx, items) {
+    if (!items) return;
     const time = Date.now() / 300;
     items.forEach(it => {
+      // Frustum culling
+      if (!this.isCircleInView(it.x, it.y, it.radius + 6)) return;
+
       const bob = Math.sin(time + it.x) * 4;
       const cy = it.y + bob;
 
@@ -459,6 +504,11 @@ export class GameRenderer {
     players.forEach(p => {
       const radius = p.radius || 22;
 
+      // Frustum culling (always render local player)
+      if (p.id !== localPlayer?.id && !this.isCircleInView(p.x, p.y, radius + 45)) {
+        return;
+      }
+
       if (!p.isAlive) {
         // Draw ghost respawn circle
         ctx.save();
@@ -627,6 +677,9 @@ export class GameRenderer {
   drawBushes(ctx, bushes, localPlayer) {
     if (!bushes) return;
     bushes.forEach(b => {
+      // Frustum culling
+      if (!this.isCircleInView(b.x, b.y, b.radius)) return;
+
       ctx.save();
       ctx.beginPath();
       ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
@@ -659,6 +712,9 @@ export class GameRenderer {
   drawBullets(ctx, bullets) {
     if (!bullets || bullets.length === 0) return;
     bullets.forEach(b => {
+      // Frustum culling
+      if (!this.isCircleInView(b.x, b.y, 30)) return;
+
       ctx.save();
       const radius = b.radius || 4;
       const angle = b.angle !== undefined ? b.angle : Math.atan2(b.vy || 0, b.vx || 0);

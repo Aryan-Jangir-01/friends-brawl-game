@@ -248,11 +248,17 @@ export class ParticleSystem {
     }
   }
 
-  draw(ctx) {
+  draw(ctx, bounds = null) {
     ctx.save();
+
+    const inView = (x, y, r = 10) => {
+      if (!bounds) return true;
+      return (x + r >= bounds.left && x - r <= bounds.right && y + r >= bounds.top && y - r <= bounds.bottom);
+    };
 
     // Shockwaves
     this.shockwaves.forEach(s => {
+      if (!inView(s.x, s.y, s.radius)) return;
       ctx.beginPath();
       ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
       ctx.strokeStyle = s.color;
@@ -263,6 +269,7 @@ export class ParticleSystem {
 
     // Particles
     this.particles.forEach(p => {
+      if (!inView(p.x, p.y, p.radius || 4)) return;
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
       ctx.fillStyle = p.color;
@@ -272,6 +279,7 @@ export class ParticleSystem {
 
     // Floating text
     this.floatingTexts.forEach(ft => {
+      if (!inView(ft.x, ft.y, 40)) return;
       ctx.save();
       ctx.font = `bold ${ft.fontSize}px 'Segoe UI', sans-serif`;
       ctx.globalAlpha = ft.alpha;
