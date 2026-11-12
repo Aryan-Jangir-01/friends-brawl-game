@@ -202,6 +202,11 @@ export class ParticleSystem {
   }
 
   update(dt) {
+    // Safety cap to prevent particle flood
+    if (this.particles.length > 100) {
+      this.particles.splice(0, this.particles.length - 100);
+    }
+
     // Update particles
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
@@ -269,11 +274,12 @@ export class ParticleSystem {
     this.floatingTexts.forEach(ft => {
       ctx.save();
       ctx.font = `bold ${ft.fontSize}px 'Segoe UI', sans-serif`;
-      ctx.fillStyle = ft.color;
       ctx.globalAlpha = ft.alpha;
       ctx.textAlign = "center";
-      ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
-      ctx.shadowBlur = 4;
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.85)";
+      ctx.lineWidth = 2.5;
+      ctx.strokeText(ft.text, ft.x, ft.y);
+      ctx.fillStyle = ft.color;
       ctx.fillText(ft.text, ft.x, ft.y);
       ctx.restore();
     });

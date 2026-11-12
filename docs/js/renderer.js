@@ -10,7 +10,7 @@ export class GameRenderer {
 
     this.width = window.innerWidth;
     this.height = window.innerHeight;
-    this.dpr = window.devicePixelRatio || 1;
+    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
 
     // Camera
     this.camX = 1200;
@@ -37,7 +37,7 @@ export class GameRenderer {
   resize() {
     this.width = window.innerWidth;
     this.height = window.innerHeight;
-    this.dpr = window.devicePixelRatio || 1;
+    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
 
     this.canvas.width = this.width * this.dpr;
     this.canvas.height = this.height * this.dpr;
@@ -146,29 +146,32 @@ export class GameRenderer {
     ctx.fillStyle = map.theme?.background || "#0c101d";
     ctx.fillRect(0, 0, map.width, map.height);
 
-    // Cyber grid
+    // Cyber grid with viewport culling
     ctx.strokeStyle = map.theme?.gridColor || "rgba(0, 240, 255, 0.08)";
     ctx.lineWidth = 1;
     const gridSize = 80;
 
+    const halfW = (this.width / 2) + gridSize;
+    const halfH = (this.height / 2) + gridSize;
+    const startX = Math.max(0, Math.floor((this.camX - halfW) / gridSize) * gridSize);
+    const endX = Math.min(map.width, Math.ceil((this.camX + halfW) / gridSize) * gridSize);
+    const startY = Math.max(0, Math.floor((this.camY - halfH) / gridSize) * gridSize);
+    const endY = Math.min(map.height, Math.ceil((this.camY + halfH) / gridSize) * gridSize);
+
     ctx.beginPath();
-    for (let x = 0; x <= map.width; x += gridSize) {
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, map.height);
+    for (let x = startX; x <= endX; x += gridSize) {
+      ctx.moveTo(x, startY);
+      ctx.lineTo(x, endY);
     }
-    for (let y = 0; y <= map.height; y += gridSize) {
-      ctx.moveTo(0, y);
-      ctx.lineTo(map.width, y);
+    for (let y = startY; y <= endY; y += gridSize) {
+      ctx.moveTo(startX, y);
+      ctx.lineTo(endX, y);
     }
     ctx.stroke();
 
     // Glowing Arena Border
     ctx.strokeStyle = "#00f0ff";
-    ctx.lineWidth = 6;
-    ctx.strokeRect(0, 0, map.width, map.height);
-
-    ctx.strokeStyle = "rgba(0, 240, 255, 0.3)";
-    ctx.lineWidth = 18;
+    ctx.lineWidth = 4;
     ctx.strokeRect(0, 0, map.width, map.height);
   }
 
@@ -315,80 +318,39 @@ export class GameRenderer {
     });
   }
 
-  drawRoundedRect(ctx, x, y, w, h, r) {
-    if (ctx.roundRect) {
-      ctx.beginPath();
-      ctx.roundRect(x, y, w, h, r);
-      return;
-    }
-    const radius = Math.min(r, Math.abs(w) / 2, Math.abs(h) / 2);
-    ctx.beginPath();
-    ctx.moveTo(x + radius, y);
-    ctx.lineTo(x + w - radius, y);
-    ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
-    ctx.lineTo(x + w, y + h - radius);
-    ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
-    ctx.lineTo(x + radius, y + h);
-    ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
-    ctx.lineTo(x, y + radius);
-    ctx.quadraticCurveTo(x, y, x + radius, y);
-    ctx.closePath();
-  }
-
   drawHumanCharacter(ctx, p, radius, kick) {
     const time = Date.now();
     const seed = (p.id ? p.id.charCodeAt(p.id.length - 1) : 0) * 19;
     const isMoving = Math.hypot(p.vx || 0, p.vy || 0) > 8;
-    const walk = isMoving ? Math.sin(time / 80 + seed) * (radius * 0.35) : 0;
-    const breathe = Math.sin(time / 380 + seed) * (radius * 0.06);
+    const walk = isMoving ? Math.sin(time / 80 + seed) * (radius * 0.32) : 0;
 
-    // 1. Combat Boots / Legs (Alternate walking animation)
-    ctx.save();
+    // 1. Combat Boots (Stepping animation)
     ctx.fillStyle = "#0f172a";
-    ctx.strokeStyle = "#334155";
-    ctx.lineWidth = 1.5;
+    ctx.fillRect(-radius * 0.5 + walk, -radius * 0.72, radius * 0.48, radius * 0.36);
+    ctx.fillRect(-radius * 0.5 - walk, radius * 0.36, radius * 0.48, radius * 0.36);
 
-    // Left combat boot
-    this.drawRoundedRect(ctx, -radius * 0.5 + walk, -radius * 0.72, radius * 0.5, radius * 0.38, 3);
-    ctx.fill();
-    ctx.stroke();
-
-    // Right combat boot
-    this.drawRoundedRect(ctx, -radius * 0.5 - walk, radius * 0.34, radius * 0.5, radius * 0.38, 3);
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-
-    // 2. Torso / Tactical Combat Uniform & Armor Vest
-    ctx.save();
-    // Dark tactical undershirt
+    // 2. Torso & Armor Vest (Tactical uniform + Team color armor plate)
+    // Dark uniform base
     ctx.fillStyle = "#1e293b";
-    this.drawRoundedRect(ctx, -radius * 0.65, -radius * 0.8, radius * 1.15 + breathe, radius * 1.6, radius * 0.45);
+    ctx.beginPath();
+    ctx.arc(-radius * 0.1, 0, radius * 0.85, 0, Math.PI * 2);
     ctx.fill();
 
-    // Armored Combat Vest in player's custom team/hero color
+    // Colored Armor Plate
     ctx.fillStyle = p.color || "#00f0ff";
-    this.drawRoundedRect(ctx, -radius * 0.55, -radius * 0.65, radius * 0.95, radius * 1.3, radius * 0.35);
+    ctx.beginPath();
+    ctx.arc(-radius * 0.1, 0, radius * 0.72, 0, Math.PI * 2);
     ctx.fill();
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1.8;
     ctx.strokeStyle = "#ffffff";
     ctx.stroke();
 
-    // Tactical Webbing Straps and Buckles
+    // Tactical Webbing Straps
     ctx.fillStyle = "#0f172a";
-    ctx.fillRect(-radius * 0.35, -radius * 0.45, radius * 0.55, 3.5);
-    ctx.fillRect(-radius * 0.35, radius * 0.32, radius * 0.55, 3.5);
-    // Center armor plate seam
-    ctx.strokeStyle = "rgba(0, 0, 0, 0.35)";
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(-radius * 0.5, 0);
-    ctx.lineTo(radius * 0.3, 0);
-    ctx.stroke();
-    ctx.restore();
+    ctx.fillRect(-radius * 0.35, -radius * 0.4, radius * 0.5, 3);
+    ctx.fillRect(-radius * 0.35, radius * 0.3, radius * 0.5, 3);
 
-    // 3. Realistic Arms & Weapon (Held with both hands forward)
-    ctx.save();
+    // 3. Hands & Weapon (Held forward with recoil)
     const weaponType = p.currentWeapon || "blaster";
     let weaponGlow = "#00f0ff";
     if (weaponType === "shotgun") weaponGlow = "#ff7700";
@@ -396,114 +358,101 @@ export class GameRenderer {
     else if (weaponType === "rocket") weaponGlow = "#ef4444";
     else if (weaponType === "railgun") weaponGlow = "#eab308";
 
-    // Gun body (Steel receiver with recoil kick)
+    // Gun body (Steel receiver)
     ctx.fillStyle = "#334155";
-    ctx.strokeStyle = "#0f172a";
-    ctx.lineWidth = 1.5;
-    this.drawRoundedRect(ctx, radius * 0.25 - kick, -4.5, radius * 0.95, 9, 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // Steel Gun Barrel
+    ctx.fillRect(radius * 0.25 - kick, -4, radius * 0.85, 8);
+    // Steel Barrel
     ctx.fillStyle = "#0f172a";
-    ctx.fillRect(radius * 1.1 - kick, -2.5, radius * 0.55, 5);
-
-    // Glowing energy magazine / chamber
+    ctx.fillRect(radius * 1.05 - kick, -2, radius * 0.5, 4);
+    // Glowing magazine
     ctx.fillStyle = weaponGlow;
-    ctx.shadowColor = weaponGlow;
-    ctx.shadowBlur = 6;
-    ctx.fillRect(radius * 0.45 - kick, -2, radius * 0.35, 4);
-    ctx.shadowBlur = 0;
+    ctx.fillRect(radius * 0.45 - kick, -2, radius * 0.3, 4);
 
-    // Left Arm & Gloved Hand
+    // Left Arm & Glove
     ctx.fillStyle = p.color || "#00f0ff";
     ctx.beginPath();
-    ctx.arc(radius * 0.15, -radius * 0.55, radius * 0.26, 0, Math.PI * 2);
+    ctx.arc(radius * 0.15, -radius * 0.55, radius * 0.24, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = "#0f172a";
     ctx.beginPath();
-    ctx.arc(radius * 0.45 - kick, -5, radius * 0.18, 0, Math.PI * 2);
+    ctx.arc(radius * 0.45 - kick, -5, radius * 0.16, 0, Math.PI * 2);
     ctx.fill();
 
-    // Right Arm & Gloved Hand
+    // Right Arm & Glove
     ctx.fillStyle = p.color || "#00f0ff";
     ctx.beginPath();
-    ctx.arc(radius * 0.15, radius * 0.55, radius * 0.26, 0, Math.PI * 2);
+    ctx.arc(radius * 0.15, radius * 0.55, radius * 0.24, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = "#0f172a";
     ctx.beginPath();
-    ctx.arc(radius * 0.65 - kick, 4, radius * 0.18, 0, Math.PI * 2);
+    ctx.arc(radius * 0.62 - kick, 4, radius * 0.16, 0, Math.PI * 2);
     ctx.fill();
-    ctx.restore();
 
     // 4. Human Head, Face & Avatar Hair / Helmet
-    ctx.save();
     // Warm natural skin tone
-    const skinTone = "#fed7aa";
-    ctx.fillStyle = skinTone;
+    ctx.fillStyle = "#fed7aa";
     ctx.beginPath();
-    ctx.arc(0, 0, radius * 0.5, 0, Math.PI * 2);
+    ctx.arc(0, 0, radius * 0.48, 0, Math.PI * 2);
     ctx.fill();
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1.2;
     ctx.strokeStyle = "#b45309";
     ctx.stroke();
 
     const avatar = p.avatar || "striker";
     if (avatar === "phantom") {
-      // Stealth Hood / Ninja Cowl
+      // Ninja Cowl / Hood
       ctx.fillStyle = "#0f172a";
       ctx.beginPath();
-      ctx.arc(-2, 0, radius * 0.54, Math.PI * 0.35, Math.PI * 1.65);
+      ctx.arc(-2, 0, radius * 0.52, Math.PI * 0.35, Math.PI * 1.65);
       ctx.fill();
-      // Glowing Ninja Mask Eyes
+      // Glowing Ninja Eyes
       ctx.fillStyle = "#a855f7";
-      ctx.fillRect(radius * 0.2, -3.5, 3.5, 2);
-      ctx.fillRect(radius * 0.2, 1.5, 3.5, 2);
+      ctx.fillRect(radius * 0.2, -3.5, 3, 2);
+      ctx.fillRect(radius * 0.2, 1.5, 3, 2);
     } else if (avatar === "juggernaut") {
       // Heavy Steel Armor Helmet
       ctx.fillStyle = "#475569";
       ctx.beginPath();
-      ctx.arc(-1, 0, radius * 0.53, 0, Math.PI * 2);
+      ctx.arc(-1, 0, radius * 0.52, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = "#94a3b8";
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 1.8;
       ctx.stroke();
       // Glowing Visor Slit
       ctx.fillStyle = "#ef4444";
-      ctx.fillRect(radius * 0.15, -4.5, 4, 9);
+      ctx.fillRect(radius * 0.15, -4, 4, 8);
     } else if (avatar === "sniper") {
       // Sharpshooter Beret
       ctx.fillStyle = "#065f46";
       ctx.beginPath();
-      ctx.arc(-3, -2, radius * 0.52, 0, Math.PI * 2);
+      ctx.arc(-3, -2, radius * 0.5, 0, Math.PI * 2);
       ctx.fill();
-      // Tech Aim Monocle on Eye
+      // Tech Monocle
       ctx.fillStyle = "#10b981";
       ctx.beginPath();
-      ctx.arc(radius * 0.25, 3, 3.5, 0, Math.PI * 2);
+      ctx.arc(radius * 0.25, 3, 3, 0, Math.PI * 2);
       ctx.fill();
     } else {
       // Striker (Default Human Brawler Hero)
       // Spiky Dark Hair
       ctx.fillStyle = "#0f172a";
       ctx.beginPath();
-      ctx.arc(-radius * 0.15, 0, radius * 0.52, Math.PI * 0.45, Math.PI * 1.55);
+      ctx.arc(-radius * 0.15, 0, radius * 0.5, Math.PI * 0.45, Math.PI * 1.55);
       ctx.fill();
 
-      // Hero Headband across forehead in player's color
+      // Hero Headband in Player's Color
       ctx.fillStyle = p.color || "#00f0ff";
-      ctx.fillRect(-radius * 0.08, -radius * 0.46, radius * 0.26, radius * 0.92);
+      ctx.fillRect(-radius * 0.08, -radius * 0.44, radius * 0.24, radius * 0.88);
 
       // Human Eyes looking in firing direction
       ctx.fillStyle = "#0f172a";
-      ctx.fillRect(radius * 0.22, -4, 3, 2.5);
-      ctx.fillRect(radius * 0.22, 1.5, 3, 2.5);
+      ctx.fillRect(radius * 0.2, -3.5, 2.8, 2.2);
+      ctx.fillRect(radius * 0.2, 1.5, 2.8, 2.2);
       // White eye glint
       ctx.fillStyle = "#ffffff";
-      ctx.fillRect(radius * 0.25, -3.5, 1, 1);
-      ctx.fillRect(radius * 0.25, 2, 1, 1);
+      ctx.fillRect(radius * 0.23, -3, 1, 1);
+      ctx.fillRect(radius * 0.23, 2, 1, 1);
     }
-    ctx.restore();
   }
 
   drawPlayers(ctx, players, localPlayer) {
@@ -593,15 +542,13 @@ export class GameRenderer {
         ctx.setLineDash([8, 8]);
         ctx.stroke();
 
-        // Holographic Target Crosshair (replacing simple dot)
+        // Holographic Target Crosshair (replacing simple dot, zero shadowBlur for 60 FPS)
         ctx.setLineDash([]);
         const targetX = radius + 280;
         ctx.beginPath();
         ctx.arc(targetX, 0, 6, 0, Math.PI * 2);
         ctx.strokeStyle = "#00f0ff";
         ctx.lineWidth = 1.6;
-        ctx.shadowColor = "#00f0ff";
-        ctx.shadowBlur = 8;
         ctx.stroke();
 
         ctx.beginPath();
@@ -650,10 +597,11 @@ export class GameRenderer {
 
       // Player Name
       ctx.font = "bold 11px 'Segoe UI', sans-serif";
-      ctx.fillStyle = "#ffffff";
       ctx.textAlign = "center";
-      ctx.shadowColor = "rgba(0,0,0,0.9)";
-      ctx.shadowBlur = 4;
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.85)";
+      ctx.lineWidth = 2.5;
+      ctx.strokeText(p.name, 0, barY - (p.shield > 0 ? 9 : 3));
+      ctx.fillStyle = "#ffffff";
       ctx.fillText(p.name, 0, barY - (p.shield > 0 ? 9 : 3));
 
       // Active Emote Bubble
@@ -708,6 +656,7 @@ export class GameRenderer {
   }
 
   drawBullets(ctx, bullets) {
+    if (!bullets || bullets.length === 0) return;
     bullets.forEach(b => {
       ctx.save();
       const radius = b.radius || 4;
@@ -718,41 +667,30 @@ export class GameRenderer {
 
       const color = b.color || "#00f0ff";
 
-      // 1. High-speed laser tracer streak (behind bullet)
-      const trailLength = Math.max(16, radius * 3.8);
-      const gradient = ctx.createLinearGradient(-trailLength, 0, 0, 0);
-      gradient.addColorStop(0, "rgba(0, 0, 0, 0)");
-      gradient.addColorStop(0.6, color);
-      gradient.addColorStop(1, "#ffffff");
+      // 1. High-speed laser tracer streak (fast rect, no gradient allocation)
+      ctx.fillStyle = color;
+      ctx.globalAlpha = 0.35;
+      ctx.fillRect(-14, -radius * 0.5, 14, radius);
 
-      ctx.beginPath();
-      ctx.moveTo(radius + 2, 0);
-      ctx.lineTo(-trailLength, -radius * 0.6);
-      ctx.lineTo(-trailLength, radius * 0.6);
-      ctx.closePath();
-      ctx.fillStyle = gradient;
-      ctx.fill();
-
-      // 2. Glowing Capsule Projectile Head
+      // 2. Projectile Head (zero shadowBlur for 60 FPS)
+      ctx.globalAlpha = 1.0;
       ctx.beginPath();
       ctx.arc(0, 0, radius, 0, Math.PI * 2);
       ctx.fillStyle = color;
-      ctx.shadowColor = color;
-      ctx.shadowBlur = 10;
       ctx.fill();
 
       // White-hot energy core
       ctx.beginPath();
-      ctx.arc(1, 0, radius * 0.55, 0, Math.PI * 2);
+      ctx.arc(0.5, 0, radius * 0.55, 0, Math.PI * 2);
       ctx.fillStyle = "#ffffff";
       ctx.fill();
 
       // Rocket flame / tail
       if (b.type === "rocket") {
         ctx.beginPath();
-        ctx.arc(-radius * 0.5, 0, radius * 1.5, 0, Math.PI * 2);
+        ctx.arc(-radius * 0.5, 0, radius * 1.4, 0, Math.PI * 2);
         ctx.strokeStyle = "#f97316";
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 1.5;
         ctx.stroke();
       }
 
