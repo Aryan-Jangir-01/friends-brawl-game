@@ -315,15 +315,208 @@ export class GameRenderer {
     });
   }
 
+  drawRoundedRect(ctx, x, y, w, h, r) {
+    if (ctx.roundRect) {
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, r);
+      return;
+    }
+    const radius = Math.min(r, Math.abs(w) / 2, Math.abs(h) / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + w - radius, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+    ctx.lineTo(x + w, y + h - radius);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+    ctx.lineTo(x + radius, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+  }
+
+  drawHumanCharacter(ctx, p, radius, kick) {
+    const time = Date.now();
+    const seed = (p.id ? p.id.charCodeAt(p.id.length - 1) : 0) * 19;
+    const isMoving = Math.hypot(p.vx || 0, p.vy || 0) > 8;
+    const walk = isMoving ? Math.sin(time / 80 + seed) * (radius * 0.35) : 0;
+    const breathe = Math.sin(time / 380 + seed) * (radius * 0.06);
+
+    // 1. Combat Boots / Legs (Alternate walking animation)
+    ctx.save();
+    ctx.fillStyle = "#0f172a";
+    ctx.strokeStyle = "#334155";
+    ctx.lineWidth = 1.5;
+
+    // Left combat boot
+    this.drawRoundedRect(ctx, -radius * 0.5 + walk, -radius * 0.72, radius * 0.5, radius * 0.38, 3);
+    ctx.fill();
+    ctx.stroke();
+
+    // Right combat boot
+    this.drawRoundedRect(ctx, -radius * 0.5 - walk, radius * 0.34, radius * 0.5, radius * 0.38, 3);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    // 2. Torso / Tactical Combat Uniform & Armor Vest
+    ctx.save();
+    // Dark tactical undershirt
+    ctx.fillStyle = "#1e293b";
+    this.drawRoundedRect(ctx, -radius * 0.65, -radius * 0.8, radius * 1.15 + breathe, radius * 1.6, radius * 0.45);
+    ctx.fill();
+
+    // Armored Combat Vest in player's custom team/hero color
+    ctx.fillStyle = p.color || "#00f0ff";
+    this.drawRoundedRect(ctx, -radius * 0.55, -radius * 0.65, radius * 0.95, radius * 1.3, radius * 0.35);
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "#ffffff";
+    ctx.stroke();
+
+    // Tactical Webbing Straps and Buckles
+    ctx.fillStyle = "#0f172a";
+    ctx.fillRect(-radius * 0.35, -radius * 0.45, radius * 0.55, 3.5);
+    ctx.fillRect(-radius * 0.35, radius * 0.32, radius * 0.55, 3.5);
+    // Center armor plate seam
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.35)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.5, 0);
+    ctx.lineTo(radius * 0.3, 0);
+    ctx.stroke();
+    ctx.restore();
+
+    // 3. Realistic Arms & Weapon (Held with both hands forward)
+    ctx.save();
+    const weaponType = p.currentWeapon || "blaster";
+    let weaponGlow = "#00f0ff";
+    if (weaponType === "shotgun") weaponGlow = "#ff7700";
+    else if (weaponType === "plasma") weaponGlow = "#a855f7";
+    else if (weaponType === "rocket") weaponGlow = "#ef4444";
+    else if (weaponType === "railgun") weaponGlow = "#eab308";
+
+    // Gun body (Steel receiver with recoil kick)
+    ctx.fillStyle = "#334155";
+    ctx.strokeStyle = "#0f172a";
+    ctx.lineWidth = 1.5;
+    this.drawRoundedRect(ctx, radius * 0.25 - kick, -4.5, radius * 0.95, 9, 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Steel Gun Barrel
+    ctx.fillStyle = "#0f172a";
+    ctx.fillRect(radius * 1.1 - kick, -2.5, radius * 0.55, 5);
+
+    // Glowing energy magazine / chamber
+    ctx.fillStyle = weaponGlow;
+    ctx.shadowColor = weaponGlow;
+    ctx.shadowBlur = 6;
+    ctx.fillRect(radius * 0.45 - kick, -2, radius * 0.35, 4);
+    ctx.shadowBlur = 0;
+
+    // Left Arm & Gloved Hand
+    ctx.fillStyle = p.color || "#00f0ff";
+    ctx.beginPath();
+    ctx.arc(radius * 0.15, -radius * 0.55, radius * 0.26, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#0f172a";
+    ctx.beginPath();
+    ctx.arc(radius * 0.45 - kick, -5, radius * 0.18, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Right Arm & Gloved Hand
+    ctx.fillStyle = p.color || "#00f0ff";
+    ctx.beginPath();
+    ctx.arc(radius * 0.15, radius * 0.55, radius * 0.26, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#0f172a";
+    ctx.beginPath();
+    ctx.arc(radius * 0.65 - kick, 4, radius * 0.18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // 4. Human Head, Face & Avatar Hair / Helmet
+    ctx.save();
+    // Warm natural skin tone
+    const skinTone = "#fed7aa";
+    ctx.fillStyle = skinTone;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = "#b45309";
+    ctx.stroke();
+
+    const avatar = p.avatar || "striker";
+    if (avatar === "phantom") {
+      // Stealth Hood / Ninja Cowl
+      ctx.fillStyle = "#0f172a";
+      ctx.beginPath();
+      ctx.arc(-2, 0, radius * 0.54, Math.PI * 0.35, Math.PI * 1.65);
+      ctx.fill();
+      // Glowing Ninja Mask Eyes
+      ctx.fillStyle = "#a855f7";
+      ctx.fillRect(radius * 0.2, -3.5, 3.5, 2);
+      ctx.fillRect(radius * 0.2, 1.5, 3.5, 2);
+    } else if (avatar === "juggernaut") {
+      // Heavy Steel Armor Helmet
+      ctx.fillStyle = "#475569";
+      ctx.beginPath();
+      ctx.arc(-1, 0, radius * 0.53, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#94a3b8";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      // Glowing Visor Slit
+      ctx.fillStyle = "#ef4444";
+      ctx.fillRect(radius * 0.15, -4.5, 4, 9);
+    } else if (avatar === "sniper") {
+      // Sharpshooter Beret
+      ctx.fillStyle = "#065f46";
+      ctx.beginPath();
+      ctx.arc(-3, -2, radius * 0.52, 0, Math.PI * 2);
+      ctx.fill();
+      // Tech Aim Monocle on Eye
+      ctx.fillStyle = "#10b981";
+      ctx.beginPath();
+      ctx.arc(radius * 0.25, 3, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // Striker (Default Human Brawler Hero)
+      // Spiky Dark Hair
+      ctx.fillStyle = "#0f172a";
+      ctx.beginPath();
+      ctx.arc(-radius * 0.15, 0, radius * 0.52, Math.PI * 0.45, Math.PI * 1.55);
+      ctx.fill();
+
+      // Hero Headband across forehead in player's color
+      ctx.fillStyle = p.color || "#00f0ff";
+      ctx.fillRect(-radius * 0.08, -radius * 0.46, radius * 0.26, radius * 0.92);
+
+      // Human Eyes looking in firing direction
+      ctx.fillStyle = "#0f172a";
+      ctx.fillRect(radius * 0.22, -4, 3, 2.5);
+      ctx.fillRect(radius * 0.22, 1.5, 3, 2.5);
+      // White eye glint
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(radius * 0.25, -3.5, 1, 1);
+      ctx.fillRect(radius * 0.25, 2, 1, 1);
+    }
+    ctx.restore();
+  }
+
   drawPlayers(ctx, players, localPlayer) {
     players.forEach(p => {
+      const radius = p.radius || 22;
+
       if (!p.isAlive) {
         // Draw ghost respawn circle
         ctx.save();
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
         ctx.stroke();
         ctx.restore();
         return;
@@ -354,13 +547,13 @@ export class GameRenderer {
       // 1. Shadow
       ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
       ctx.beginPath();
-      ctx.ellipse(0, 6, p.radius * 0.9, p.radius * 0.5, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 6, radius * 0.9, radius * 0.5, 0, 0, Math.PI * 2);
       ctx.fill();
 
       // 2. Dash effect
       if (p.isDashing) {
         ctx.beginPath();
-        ctx.arc(0, 0, p.radius * 1.4, 0, Math.PI * 2);
+        ctx.arc(0, 0, radius * 1.4, 0, Math.PI * 2);
         ctx.fillStyle = "rgba(0, 240, 255, 0.25)";
         ctx.fill();
       }
@@ -369,7 +562,7 @@ export class GameRenderer {
       if ((p.superCharge || 0) >= 100) {
         const pulse = Math.sin(Date.now() / 140) * 3;
         ctx.beginPath();
-        ctx.arc(0, 0, p.radius + 9 + pulse, 0, Math.PI * 2);
+        ctx.arc(0, 0, radius + 9 + pulse, 0, Math.PI * 2);
         ctx.strokeStyle = "rgba(255, 234, 0, 0.75)";
         ctx.lineWidth = 2.5;
         ctx.stroke();
@@ -380,7 +573,7 @@ export class GameRenderer {
       // 3. Shield aura
       if (p.shield > 0) {
         ctx.beginPath();
-        ctx.arc(0, 0, p.radius + 6, 0, Math.PI * 2);
+        ctx.arc(0, 0, radius + 6, 0, Math.PI * 2);
         ctx.strokeStyle = "#3b82f6";
         ctx.lineWidth = 2.5;
         ctx.stroke();
@@ -388,35 +581,43 @@ export class GameRenderer {
         ctx.fill();
       }
 
-      // 4. Rotating Gun Barrel & Body
-      // Aim guide laser line for local player (Dotted laser aiming line with end dot)
+      // 4. Aim guide laser line for local player
       if (p.id === localPlayer?.id) {
         ctx.save();
         ctx.rotate(p.angle);
         ctx.beginPath();
-        ctx.moveTo(p.radius + 18, 0);
-        ctx.lineTo(p.radius + 280, 0);
-        ctx.strokeStyle = "rgba(0, 240, 255, 0.5)";
-        ctx.lineWidth = 2;
+        ctx.moveTo(radius + 18, 0);
+        ctx.lineTo(radius + 280, 0);
+        ctx.strokeStyle = "rgba(0, 240, 255, 0.45)";
+        ctx.lineWidth = 1.8;
         ctx.setLineDash([8, 8]);
         ctx.stroke();
 
-        // Target dot at laser end
+        // Holographic Target Crosshair (replacing simple dot)
         ctx.setLineDash([]);
+        const targetX = radius + 280;
         ctx.beginPath();
-        ctx.arc(p.radius + 280, 0, 4, 0, Math.PI * 2);
-        ctx.fillStyle = "#00f0ff";
+        ctx.arc(targetX, 0, 6, 0, Math.PI * 2);
+        ctx.strokeStyle = "#00f0ff";
+        ctx.lineWidth = 1.6;
         ctx.shadowColor = "#00f0ff";
-        ctx.shadowBlur = 10;
-        ctx.fill();
+        ctx.shadowBlur = 8;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(targetX - 9, 0); ctx.lineTo(targetX - 3, 0);
+        ctx.moveTo(targetX + 3, 0); ctx.lineTo(targetX + 9, 0);
+        ctx.moveTo(targetX, -9); ctx.lineTo(targetX, -3);
+        ctx.moveTo(targetX, 3); ctx.lineTo(targetX, 9);
+        ctx.stroke();
 
         ctx.restore();
       }
 
+      // 5. Draw Human Character with rotation & kickback
       ctx.save();
       ctx.rotate(p.angle);
 
-      // Gun Barrel with kickback recoil
       const lastFire = this.recoil.get(p.id) || 0;
       const elapsed = Date.now() - lastFire;
       let kick = 0;
@@ -424,45 +625,14 @@ export class GameRenderer {
         kick = (1 - elapsed / 110) * 5;
       }
 
-      ctx.fillStyle = "#334155";
-      ctx.fillRect(p.radius * 0.4 - kick, -4, 18, 8);
-      ctx.fillStyle = "#0f172a";
-      ctx.fillRect(p.radius * 0.4 + 14 - kick, -3, 6, 6);
-
-      // Hands
-      ctx.fillStyle = p.color;
-      ctx.beginPath();
-      ctx.arc(p.radius * 0.5, -9, 5, 0, Math.PI * 2);
-      ctx.arc(p.radius * 0.5, 9, 5, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Main Armor Body
-      ctx.beginPath();
-      ctx.arc(0, 0, p.radius, 0, Math.PI * 2);
-      ctx.fillStyle = p.color;
-      ctx.fill();
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = "#ffffff";
-      ctx.stroke();
-
-      // Visor / Helmet Face
-      ctx.fillStyle = "#0f172a";
-      ctx.beginPath();
-      ctx.arc(4, 0, p.radius * 0.55, -Math.PI / 2.5, Math.PI / 2.5);
-      ctx.fill();
-
-      // Glowing Visor Eye
-      ctx.fillStyle = "#00f0ff";
-      ctx.beginPath();
-      ctx.arc(7, 0, 3, 0, Math.PI * 2);
-      ctx.fill();
+      this.drawHumanCharacter(ctx, p, radius, kick);
 
       ctx.restore(); // Restore player rotation
 
-      // 5. Health & Shield Bars above player
+      // 6. Health & Shield Bars above player
       const barW = 44;
       const barH = 5;
-      const barY = -p.radius - 16;
+      const barY = -radius - 16;
 
       // Shield bar (if active)
       if (p.shield > 0) {
@@ -540,19 +710,47 @@ export class GameRenderer {
   drawBullets(ctx, bullets) {
     bullets.forEach(b => {
       ctx.save();
+      const radius = b.radius || 4;
+      const angle = b.angle !== undefined ? b.angle : Math.atan2(b.vy || 0, b.vx || 0);
 
-      // Glowing head
+      ctx.translate(b.x, b.y);
+      ctx.rotate(angle);
+
+      const color = b.color || "#00f0ff";
+
+      // 1. High-speed laser tracer streak (behind bullet)
+      const trailLength = Math.max(16, radius * 3.8);
+      const gradient = ctx.createLinearGradient(-trailLength, 0, 0, 0);
+      gradient.addColorStop(0, "rgba(0, 0, 0, 0)");
+      gradient.addColorStop(0.6, color);
+      gradient.addColorStop(1, "#ffffff");
+
       ctx.beginPath();
-      ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
-      ctx.fillStyle = b.color || "#00f0ff";
-      ctx.shadowColor = b.color || "#00f0ff";
-      ctx.shadowBlur = 8;
+      ctx.moveTo(radius + 2, 0);
+      ctx.lineTo(-trailLength, -radius * 0.6);
+      ctx.lineTo(-trailLength, radius * 0.6);
+      ctx.closePath();
+      ctx.fillStyle = gradient;
+      ctx.fill();
+
+      // 2. Glowing Capsule Projectile Head
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 10;
+      ctx.fill();
+
+      // White-hot energy core
+      ctx.beginPath();
+      ctx.arc(1, 0, radius * 0.55, 0, Math.PI * 2);
+      ctx.fillStyle = "#ffffff";
       ctx.fill();
 
       // Rocket flame / tail
       if (b.type === "rocket") {
         ctx.beginPath();
-        ctx.arc(b.x, b.y, b.radius * 1.4, 0, Math.PI * 2);
+        ctx.arc(-radius * 0.5, 0, radius * 1.5, 0, Math.PI * 2);
         ctx.strokeStyle = "#f97316";
         ctx.lineWidth = 2;
         ctx.stroke();

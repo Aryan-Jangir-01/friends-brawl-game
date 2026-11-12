@@ -1131,6 +1131,7 @@ function gameLoop(time) {
         color: p.color,
         avatar: p.avatar,
         team: p.team,
+        radius: 22,
         x: 1200,
         y: 900,
         angle: 0,
