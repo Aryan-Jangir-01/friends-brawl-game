@@ -1,6 +1,6 @@
 // public/js/network.js
-import { LocalGameServer } from "./engine/LocalGameServer.js";
-import { P2PManager } from "./p2p.js";
+import { LocalGameServer } from "./engine/LocalGameServer.js?v=20261113_02";
+import { P2PManager } from "./p2p.js?v=20261113_02";
 
 export class NetworkClient {
   constructor() {

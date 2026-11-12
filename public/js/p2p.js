@@ -1,5 +1,5 @@
 // public/js/p2p.js
-import { GameInstance } from "./engine/GameInstance.js";
+import { GameInstance } from "./engine/GameInstance.js?v=20261113_02";
 
 const PEER_CONFIG = {
   debug: 1,
@@ -133,50 +133,34 @@ export class P2PManager {
 
     let resolved = false;
     let peerErrorHandler = null;
-    let retryTimer = null;
     let hostClaimTimer = null;
 
     const cleanup = () => {
       if (hostClaimTimer) clearTimeout(hostClaimTimer);
-      if (retryTimer) clearTimeout(retryTimer);
       if (peerErrorHandler && this.peer) {
         try { this.peer.off("error", peerErrorHandler); } catch (e) {}
       }
     };
 
-    // Fast check: Give WebRTC STUN/TURN connection 9s before falling back to hosting
+    // Fast check: If host does not respond within 4.5s, claim host role
     hostClaimTimer = setTimeout(() => {
       if (!resolved) {
         resolved = true;
         cleanup();
-        console.log(`[QuickPlay] Host on ${targetPeerId} did not respond. Becoming Arena Host!`);
+        console.log(`[QuickPlay] Host on ${targetPeerId} did not respond within 4.5s. Becoming Arena Host!`);
         this.hostQuickArena(targetPeerId, arenaTag, profile, callback);
       }
-    }, 9000);
-
-    // Mid-way assist: If connection is taking more than 3.5s, retry attemptJoin
-    retryTimer = setTimeout(() => {
-      if (!resolved && (!this.hostConn || !this.hostConn.open)) {
-        console.log(`[QuickPlay] Still waiting for ${targetPeerId}. Retrying join attempt...`);
-        attemptJoin();
-      }
-    }, 3500);
-
-    // Ensure clean non-host client peer
-    if (this.isHost || !this.peer || this.peer.destroyed) {
-      if (this.peer) {
-        try { this.peer.destroy(); } catch (e) {}
-        this.peer = null;
-      }
-      this.isHost = false;
-      this.init();
-    } else if (this.peer.disconnected) {
-      try { this.peer.reconnect(); } catch (e) {}
-    }
+    }, 4500);
 
     const attemptJoin = () => {
       if (resolved) return;
+      if (!this.peer || this.peer.destroyed || !this.peer.open) {
+        console.log("[QuickPlay] Waiting for peer to be ready before connecting...");
+        return;
+      }
+
       try {
+        console.log(`[QuickPlay] Connecting to host: ${targetPeerId} from peer: ${this.peer.id}...`);
         const conn = this.peer.connect(targetPeerId, { reliable: true, serialization: "json" });
         this.hostConn = conn;
 
@@ -200,7 +184,7 @@ export class P2PManager {
               this.room = msg.room;
               this.isHost = false;
               this.networkClient.trigger("connected", this.localPlayerId);
-              if (callback) callback({ success: true, isHost: false, room: msg.room });
+              if (callback) callback({ success: true, isHost: false, room: msg.room, playerId: msg.playerId });
             }
           } else if (msg.type === "game_started") {
             this.networkClient.trigger("game_started", msg.data);
@@ -216,19 +200,38 @@ export class P2PManager {
         });
 
         conn.on("error", (err) => {
-          console.warn("[QuickPlay] Connect error:", err);
+          console.warn("[QuickPlay] Connect error to host:", err);
+          if (!resolved) {
+            resolved = true;
+            cleanup();
+            console.log(`[QuickPlay] Connect error, taking over as Arena Host on ${targetPeerId}`);
+            this.hostQuickArena(targetPeerId, arenaTag, profile, callback);
+          }
         });
 
         conn.on("close", () => {
           console.log("[QuickPlay] Arena connection closed");
-          this.networkClient.trigger("disconnected");
+          if (!resolved) {
+            resolved = true;
+            cleanup();
+            console.log(`[QuickPlay] Closed before accepted, becoming Arena Host`);
+            this.hostQuickArena(targetPeerId, arenaTag, profile, callback);
+          } else {
+            this.networkClient.trigger("disconnected");
+          }
         });
       } catch (err) {
         console.warn("[QuickPlay] Attempt join threw:", err);
+        if (!resolved) {
+          resolved = true;
+          cleanup();
+          this.hostQuickArena(targetPeerId, arenaTag, profile, callback);
+        }
       }
     };
 
     peerErrorHandler = (err) => {
+      console.warn("[QuickPlay] Peer error:", err.type || err);
       if (err.type === "peer-unavailable" && !resolved) {
         resolved = true;
         cleanup();
@@ -237,14 +240,27 @@ export class P2PManager {
       }
     };
 
-    this.peer.on("error", peerErrorHandler);
-
-    if (this.peer.open) {
+    // If client already has a clean, open, non-host peer, use it directly
+    if (this.peer && !this.peer.destroyed && !this.peer.disconnected && this.peer.open && !this.isHost) {
+      this.peer.on("error", peerErrorHandler);
       attemptJoin();
     } else {
-      this.peer.once("open", () => {
+      // Clean slate: destroy stale peer and create a fresh one to guarantee "open" event
+      if (this.peer) {
+        try { this.peer.destroy(); } catch (e) {}
+        this.peer = null;
+      }
+      this.isHost = false;
+      this.init();
+      this.peer.on("error", peerErrorHandler);
+
+      if (this.peer.open) {
         attemptJoin();
-      });
+      } else {
+        this.peer.once("open", () => {
+          attemptJoin();
+        });
+      }
     }
   }
 
@@ -303,7 +319,7 @@ export class P2PManager {
         this.addBot();
       });
 
-      if (callback) callback({ success: true, isHost: true, room: this.room });
+      if (callback) callback({ success: true, isHost: true, room: this.room, playerId: this.localPlayerId });
     });
 
     this.peer.on("connection", (conn) => {
@@ -580,10 +596,13 @@ export class P2PManager {
 
     const targetPeerId = `brawlz-${cleanCode}`;
 
-    if (!this.peer || this.peer.destroyed) {
+    if (!this.peer || this.peer.destroyed || this.peer.disconnected || !this.peer.open) {
+      if (this.peer) {
+        try { this.peer.destroy(); } catch (e) {}
+        this.peer = null;
+      }
+      this.isHost = false;
       this.init();
-    } else if (this.peer.disconnected) {
-      try { this.peer.reconnect(); } catch (e) {}
     }
 
     let hasResponded = false;

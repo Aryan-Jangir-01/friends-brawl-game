@@ -1,5 +1,5 @@
 // public/js/input.js
-import { audio } from "./audio.js";
+import { audio } from "./audio.js?v=20261113_02";
 
 export class InputManager {
   constructor(canvas) {

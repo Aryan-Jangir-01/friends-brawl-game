@@ -1,10 +1,10 @@
 // public/js/main.js
-import { audio } from "./audio.js";
-import { ParticleSystem } from "./particles.js";
-import { InputManager } from "./input.js";
-import { GameRenderer } from "./renderer.js";
-import { NetworkClient } from "./network.js";
-import { MAPS } from "./engine/MapData.js";
+import { audio } from "./audio.js?v=20261113_02";
+import { ParticleSystem } from "./particles.js?v=20261113_02";
+import { InputManager } from "./input.js?v=20261113_02";
+import { GameRenderer } from "./renderer.js?v=20261113_02";
+import { NetworkClient } from "./network.js?v=20261113_02";
+import { MAPS } from "./engine/MapData.js?v=20261113_02";
 
 // Global Game State
 const state = {
@@ -593,6 +593,9 @@ if (btnQuickPlay) {
       if (res.success) {
         state.currentRoom = res.room;
         state.isHost = res.isHost;
+        if (res.playerId) {
+          state.localPlayerId = res.playerId;
+        }
 
         // Ensure mapData is loaded immediately
         const chosenMapId = res.room?.options?.mapId || "cyber_arena";
