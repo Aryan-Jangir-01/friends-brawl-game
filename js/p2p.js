@@ -1,5 +1,5 @@
 // public/js/p2p.js
-import { GameInstance } from "./engine/GameInstance.js?v=20261113_02";
+import { GameInstance } from "./engine/GameInstance.js?v=20261113_03";
 
 const PEER_CONFIG = {
   debug: 1,
@@ -8,6 +8,8 @@ const PEER_CONFIG = {
       { urls: "stun:stun.l.google.com:19302" },
       { urls: "stun:stun1.l.google.com:19302" },
       { urls: "stun:stun2.l.google.com:19302" },
+      { urls: "stun:stun3.l.google.com:19302" },
+      { urls: "stun:stun4.l.google.com:19302" },
       { urls: "stun:stun.cloudflare.com:3478" },
       { urls: "stun:openrelay.metered.ca:80" },
       {
@@ -142,15 +144,15 @@ export class P2PManager {
       }
     };
 
-    // Fast check: If host does not respond within 4.5s, claim host role
+    // Fast check: If host does not respond within 3.2s, claim host role
     hostClaimTimer = setTimeout(() => {
       if (!resolved) {
         resolved = true;
         cleanup();
-        console.log(`[QuickPlay] Host on ${targetPeerId} did not respond within 4.5s. Becoming Arena Host!`);
+        console.log(`[QuickPlay] Host on ${targetPeerId} did not respond within 3.2s. Becoming Arena Host!`);
         this.hostQuickArena(targetPeerId, arenaTag, profile, callback);
       }
-    }, 4500);
+    }, 3200);
 
     const attemptJoin = () => {
       if (resolved) return;
@@ -217,7 +219,15 @@ export class P2PManager {
             console.log(`[QuickPlay] Closed before accepted, becoming Arena Host`);
             this.hostQuickArena(targetPeerId, arenaTag, profile, callback);
           } else {
-            this.networkClient.trigger("disconnected");
+            console.log("[QuickPlay] Host left battle! Migrating arena host...");
+            this.networkClient.trigger("host_migrating");
+            setTimeout(() => {
+              this.quickPlay(profile, (res) => {
+                if (res.success) {
+                  console.log("[QuickPlay] Reconnected to arena via host migration!");
+                }
+              });
+            }, 600);
           }
         });
       } catch (err) {
@@ -264,6 +274,26 @@ export class P2PManager {
     }
   }
 
+  balanceBots() {
+    if (!this.isHost || !this.game) return;
+    const humanCount = Array.from(this.game.players.values()).filter(p => !p.isBot).length;
+    // Keep total combatants at least 4 so arena is always full of action
+    const targetBots = Math.max(0, 4 - humanCount);
+    const currentBots = this.game.bots ? this.game.bots.size : 0;
+
+    if (currentBots < targetBots) {
+      const needed = targetBots - currentBots;
+      for (let i = 0; i < needed; i++) {
+        try { this.game.addBot(); } catch (e) {}
+      }
+    } else if (currentBots > targetBots) {
+      const excess = currentBots - targetBots;
+      for (let i = 0; i < excess; i++) {
+        try { this.game.removeBot(); } catch (e) {}
+      }
+    }
+  }
+
   hostQuickArena(targetPeerId, arenaTag, profile, callback) {
     this.isHost = true;
     this.localPlayerId = `host_${Date.now().toString(36)}`;
@@ -273,8 +303,8 @@ export class P2PManager {
       hostId: this.localPlayerId,
       options: {
         gameMode: "ffa",
-        scoreLimit: 25,
-        matchDuration: 600,
+        scoreLimit: 0, // 0 = UNLIMITED SCORE (ENDLESS BRAWL)
+        matchDuration: 0, // 0 = UNLIMITED TIME (24/7 BATTLE ARENA)
         mapId: "cyber_arena"
       },
       players: [
@@ -313,10 +343,9 @@ export class P2PManager {
       console.log("[QuickPlay Host] Live Arena open and listening on Peer ID:", id);
       this.networkClient.trigger("connected", this.localPlayerId);
 
-      // Start game engine immediately!
+      // Start game engine immediately and balance bots!
       this.startGame(() => {
-        this.addBot();
-        this.addBot();
+        this.balanceBots();
       });
 
       if (callback) callback({ success: true, isHost: true, room: this.room, playerId: this.localPlayerId });
@@ -517,10 +546,6 @@ export class P2PManager {
       if (conn && conn.open) {
         conn.send({ type: "join_accepted", room: this.room, playerId: guestPlayerId, gameRunning: Boolean(this.game) });
         if (this.game) {
-          // If human joins and bots exist, remove one bot so arena prioritizes real friends!
-          if (this.game.bots && this.game.bots.size > 0) {
-            try { this.game.removeBot(); } catch (e) {}
-          }
           this.game.addPlayer(guestPlayerId, {
             name: player.name,
             color: player.color,
@@ -528,6 +553,7 @@ export class P2PManager {
             team: player.team,
             isBot: false
           }, false);
+          this.balanceBots();
           conn.send({
             type: "game_started",
             data: { map: this.game.map, options: this.game.options }
@@ -576,6 +602,7 @@ export class P2PManager {
       this.networkClient.trigger("lobby_updated", this.room);
       if (this.game) {
         this.game.removePlayer(`guest_${peerId}`);
+        this.balanceBots();
       }
     }
   }
@@ -818,6 +845,7 @@ export class P2PManager {
       deaths: Math.round(p.deaths || 0),
       score: Math.round(p.score || 0),
       superCharge: Math.round(p.superCharge || 0),
+      spawnShieldEndTime: p.spawnShieldEndTime || 0,
       isInvisible: Boolean(p.isInvisible),
       inBush: Boolean(p.inBush),
       speedBoost: Boolean(p.speedBoost)

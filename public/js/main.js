@@ -1,10 +1,10 @@
 // public/js/main.js
-import { audio } from "./audio.js?v=20261113_02";
-import { ParticleSystem } from "./particles.js?v=20261113_02";
-import { InputManager } from "./input.js?v=20261113_02";
-import { GameRenderer } from "./renderer.js?v=20261113_02";
-import { NetworkClient } from "./network.js?v=20261113_02";
-import { MAPS } from "./engine/MapData.js?v=20261113_02";
+import { audio } from "./audio.js?v=20261113_03";
+import { ParticleSystem } from "./particles.js?v=20261113_03";
+import { InputManager } from "./input.js?v=20261113_03";
+import { GameRenderer } from "./renderer.js?v=20261113_03";
+import { NetworkClient } from "./network.js?v=20261113_03";
+import { MAPS } from "./engine/MapData.js?v=20261113_03";
 
 // Global Game State
 const state = {
@@ -289,6 +289,10 @@ function initNetwork() {
         lobbyStatus.textContent = "🟡 Reconnecting signaling...";
       }
     }
+  });
+
+  network.on("host_migrating", () => {
+    showToast("Arena host migrated! Resuming fight... ⚡");
   });
 
   network.on("connected", (socketId) => {
@@ -946,16 +950,20 @@ function escapeHtml(str) {
 function updateHUD(worldState) {
   if (!worldState) return;
 
-  // Timer
-  const mins = Math.floor(worldState.timeRemaining / 60);
-  const secs = worldState.timeRemaining % 60;
-  hudTimer.textContent = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  // Timer: 0 or unbounded means 24/7 Endless Arena!
+  if (!worldState.timeRemaining || worldState.timeRemaining <= 0 || worldState.timeRemaining > 3600) {
+    hudTimer.textContent = "⚔️ ENDLESS";
+  } else {
+    const mins = Math.floor(worldState.timeRemaining / 60);
+    const secs = worldState.timeRemaining % 60;
+    hudTimer.textContent = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  }
 
   // Live Arena Players Count
   const hudPlayersCount = document.getElementById("hud-players-count");
   if (hudPlayersCount && worldState.players) {
     const humanCount = worldState.players.filter(p => !p.isBot).length;
-    hudPlayersCount.textContent = `👥 ${humanCount} IN ARENA`;
+    hudPlayersCount.textContent = `👥 ${humanCount} BRAWLERS`;
   }
 
   // Team score tracker

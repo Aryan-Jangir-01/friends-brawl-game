@@ -519,14 +519,15 @@ export class GameRenderer {
         ctx.fill();
       }
 
-      // 3. Shield aura
-      if (p.shield > 0) {
+      // 3. Shield aura & Respawn Protection
+      const isSpawnShield = p.spawnShieldEndTime && Date.now() < p.spawnShieldEndTime;
+      if (p.shield > 0 || isSpawnShield) {
         ctx.beginPath();
         ctx.arc(0, 0, radius + 6, 0, Math.PI * 2);
-        ctx.strokeStyle = "#3b82f6";
+        ctx.strokeStyle = isSpawnShield ? "#eab308" : "#3b82f6";
         ctx.lineWidth = 2.5;
         ctx.stroke();
-        ctx.fillStyle = "rgba(59, 130, 246, 0.12)";
+        ctx.fillStyle = isSpawnShield ? "rgba(234, 179, 8, 0.18)" : "rgba(59, 130, 246, 0.12)";
         ctx.fill();
       }
 

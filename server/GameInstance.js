@@ -8,8 +8,8 @@ export class GameInstance {
     this.io = io;
     this.options = {
       gameMode: options.gameMode || "ffa", // ffa, team, survival
-      scoreLimit: options.scoreLimit || 15,
-      matchDuration: options.matchDuration || 300, // 5 mins in seconds
+      scoreLimit: options.scoreLimit !== undefined ? options.scoreLimit : 0, // 0 = UNLIMITED SCORE
+      matchDuration: options.matchDuration !== undefined ? options.matchDuration : 0, // 0 = UNLIMITED TIME
       mapId: options.mapId || "cyber_arena"
     };
 
@@ -360,12 +360,16 @@ export class GameInstance {
 
     if (this.state !== "playing") return;
 
-    // 1. Update Match Timer
-    this.timeRemaining -= dt;
-    if (this.timeRemaining <= 0) {
+    // 1. Update Match Timer (Only if matchDuration > 0; 0 means ENDLESS / UNLIMITED BATTLE!)
+    if (this.options.matchDuration > 0) {
+      this.timeRemaining -= dt;
+      if (this.timeRemaining <= 0) {
+        this.timeRemaining = 0;
+        this.endMatch("Time's Up!");
+        return;
+      }
+    } else {
       this.timeRemaining = 0;
-      this.endMatch("Time's Up!");
-      return;
     }
 
     // 2. Update Players (Movement, Dash, Bush check, Shooting, Respawn)
@@ -813,6 +817,9 @@ export class GameInstance {
   }
 
   applyDamageToPlayer(target, amount, attackerId, weaponName) {
+    if (target.spawnShieldEndTime && Date.now() < target.spawnShieldEndTime) {
+      return; // Protected under temporary spawn invulnerability shield
+    }
     let remaining = amount;
 
     // Shield takes damage first
@@ -852,7 +859,7 @@ export class GameInstance {
       target.isAlive = false;
       target.deaths += 1;
       target.currentStreak = 0;
-      target.respawnTimer = 3.5; // 3.5s respawn
+      target.respawnTimer = 2.0; // 2.0s fast respawn for non-stop endless action
 
       if (attacker && attacker.id !== target.id) {
         attacker.kills += 1;
@@ -938,6 +945,7 @@ export class GameInstance {
     player.health = player.maxHealth;
     player.shield = player.maxShield;
     player.isAlive = true;
+    player.spawnShieldEndTime = Date.now() + 2000; // 2 seconds temporary invulnerability shield
     player.weapons = { blaster: { ammo: Infinity } };
     const heroClass = HERO_CLASSES[player.avatar] || HERO_CLASSES.striker;
     if (heroClass.starterWeapon && heroClass.starterWeapon !== "blaster") {

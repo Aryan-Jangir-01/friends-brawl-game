@@ -28,8 +28,8 @@ export class RoomManager {
       state: "lobby", // lobby, playing, ended
       options: {
         gameMode: options.gameMode || "ffa", // ffa, team
-        scoreLimit: options.scoreLimit || 15,
-        matchDuration: options.matchDuration || 300,
+        scoreLimit: options.scoreLimit !== undefined ? options.scoreLimit : 0, // 0 = UNLIMITED
+        matchDuration: options.matchDuration !== undefined ? options.matchDuration : 0, // 0 = UNLIMITED
         mapId: "cyber_arena"
       },
       players: new Map(), // socketId -> profile
