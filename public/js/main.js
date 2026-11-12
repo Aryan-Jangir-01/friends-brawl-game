@@ -343,6 +343,7 @@ function initNetwork() {
     if (hudRoomCode) hudRoomCode.textContent = state.currentRoom?.id || "BRAWL";
     audio.startMusic();
     triggerMatchCountdown();
+    navigateToScreen("arena");
   });
 
   network.on("game_state", (worldState) => {
@@ -529,7 +530,41 @@ function initNetwork() {
   });
 }
 
-// 4. Lobby Actions
+// 4. Lobby Actions & Navigation
+function navigateToScreen(screenName) {
+  try {
+    if (window.history && window.history.pushState) {
+      window.history.pushState({ screen: screenName }, "");
+    }
+  } catch (e) {}
+}
+
+window.addEventListener("popstate", (e) => {
+  // 1. If QR modal is open -> close it
+  if (modalQR && !modalQR.classList.contains("hidden")) {
+    modalQR.classList.add("hidden");
+    return;
+  }
+  // 2. If Match Over modal is open -> back to lobby
+  if (modalMatchOver && !modalMatchOver.classList.contains("hidden")) {
+    const btnMatchOverBack = document.getElementById("btn-match-over-back");
+    if (btnMatchOverBack) btnMatchOverBack.click();
+    else btnRematch?.click();
+    return;
+  }
+  // 3. If in arena match -> leave and return to lobby
+  if (state.gameRunning || (hudOverlay && !hudOverlay.classList.contains("hidden"))) {
+    const btnHudBack = document.getElementById("btn-hud-back");
+    if (btnHudBack) btnHudBack.click();
+    return;
+  }
+  // 4. If in active waiting room -> leave and return to main menu
+  if (viewActiveRoom && !viewActiveRoom.classList.contains("hidden")) {
+    btnLeaveRoom?.click();
+    return;
+  }
+});
+
 // Quick Play: Drop-in Public Arena
 const btnQuickPlay = document.getElementById("btn-quick-play");
 if (btnQuickPlay) {
@@ -556,6 +591,7 @@ if (btnQuickPlay) {
         renderer.resize();
         state.gameRunning = true;
         audio.startMusic();
+        navigateToScreen("arena");
         showToast("⚔️ IN BATTLE! FIGHT YOUR FRIENDS!");
       } else {
         showToast(`Could not enter arena: ${res.error}`);
@@ -626,6 +662,7 @@ if (btnPracticeBots) {
     showToast("Starting Solo Match vs AI Bots! ⚔️");
     state.currentRoom = { id: "SOLO", options: { mapId: "cyber_arena" } };
     state.isHost = true;
+    navigateToScreen("arena");
     network.startSoloMatch(state.profile, {
       gameMode: "ffa",
       scoreLimit: 15,
@@ -690,6 +727,16 @@ function joinSpecificRoom(code) {
     } else {
       showToast(`Failed to join: ${res.error}`);
     }
+  });
+}
+
+const btnRoomBack = document.getElementById("btn-room-back");
+if (btnRoomBack) {
+  btnRoomBack.addEventListener("click", () => {
+    audio.unlock();
+    audio.playClick();
+    btnLeaveRoom.click();
+    showToast("Returned to Main Menu 🏠");
   });
 }
 
@@ -758,6 +805,7 @@ btnShowQR.addEventListener("click", async () => {
     if (data.qr) {
       qrImage.src = data.qr;
       modalQR.classList.remove("hidden");
+      navigateToScreen("qr");
       return;
     }
   } catch (err) {}
@@ -765,7 +813,17 @@ btnShowQR.addEventListener("click", async () => {
   // Direct fast QR image generation fallback
   qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(roomUrl)}`;
   modalQR.classList.remove("hidden");
+  navigateToScreen("qr");
 });
+
+const btnQrBack = document.getElementById("btn-qr-back");
+if (btnQrBack) {
+  btnQrBack.addEventListener("click", () => {
+    audio.unlock();
+    audio.playClick();
+    modalQR.classList.add("hidden");
+  });
+}
 
 btnCloseQr.addEventListener("click", () => {
   modalQR.classList.add("hidden");
@@ -776,6 +834,7 @@ function switchToRoomView(room) {
   viewRoomSelection.classList.add("hidden");
   viewActiveRoom.classList.remove("hidden");
   renderLobbyRoom(room);
+  navigateToScreen("room");
 }
 
 function renderLobbyRoom(room) {
@@ -1020,6 +1079,24 @@ function showMatchOverModal(data) {
   });
 
   modalMatchOver.classList.remove("hidden");
+  navigateToScreen("match_over");
+}
+
+const btnMatchOverBack = document.getElementById("btn-match-over-back");
+if (btnMatchOverBack) {
+  btnMatchOverBack.addEventListener("click", () => {
+    audio.unlock();
+    audio.playClick();
+    audio.stopMusic();
+    state.gameRunning = false;
+    network.leaveRoom();
+    state.currentRoom = null;
+    state.isHost = false;
+    modalMatchOver.classList.add("hidden");
+    hudOverlay.classList.add("hidden");
+    lobbyScreen.classList.remove("hidden");
+    showToast("Returned to Lobby 🏠");
+  });
 }
 
 btnRematch.addEventListener("click", () => {

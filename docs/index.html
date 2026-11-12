@@ -27,8 +27,8 @@
   <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
   <link rel="apple-touch-icon" href="./icons/icon.svg">
 
-  <link rel="stylesheet" href="./css/style.css?v=20261111_10">
-  <link rel="stylesheet" href="./css/joystick.css?v=20261111_10">
+  <link rel="stylesheet" href="./css/style.css?v=20261112_01">
+  <link rel="stylesheet" href="./css/joystick.css?v=20261112_01">
 </head>
 <body>
   <!-- Canvas Screen -->
@@ -42,7 +42,7 @@
         <div class="hud-left-group">
           <!-- Back Arrow to Return to Lobby -->
           <button id="btn-hud-back" class="hud-back-btn" title="Back to Lobby">
-            <span class="back-arrow">‹</span>
+            <span class="back-arrow">←</span>
             <span class="back-text">LOBBY</span>
           </button>
           <div class="hud-room-tag">
@@ -216,6 +216,12 @@
     <!-- Match Over Modal -->
     <div id="modal-match-over" class="modal-overlay hidden">
       <div class="modal-card match-over-card">
+        <div style="display: flex; justify-content: flex-start; width: 100%; margin-bottom: 10px;">
+          <button id="btn-match-over-back" class="app-back-btn" title="Back to Lobby">
+            <span class="back-arrow">←</span>
+            <span class="back-text">LOBBY</span>
+          </button>
+        </div>
         <h2 id="match-over-title" class="neon-title">MATCH FINISHED</h2>
         <p id="match-over-subtitle" class="neon-subtitle">Winner: Player 1</p>
 
@@ -422,6 +428,12 @@
 
       <!-- In-Lobby Waiting Room View (Shown when in a room) -->
       <div id="view-active-room" class="active-room-view hidden">
+        <div style="display: flex; justify-content: flex-start; width: 100%; margin-bottom: 12px;">
+          <button id="btn-room-back" class="app-back-btn" title="Back to Main Menu">
+            <span class="back-arrow">←</span>
+            <span class="back-text">MAIN MENU</span>
+          </button>
+        </div>
         <div class="glass-card room-details-card">
           <div class="room-header-flex">
             <div>
@@ -488,8 +500,14 @@
 
   <!-- QR Code Modal Popup -->
   <div id="modal-qr" class="modal-overlay hidden">
-    <div class="modal-card qr-card">
-      <button id="btn-close-qr" class="modal-close">✕</button>
+    <div class="modal-card qr-card" style="position: relative;">
+      <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 12px;">
+        <button id="btn-qr-back" class="app-back-btn" title="Back">
+          <span class="back-arrow">←</span>
+          <span class="back-text">BACK</span>
+        </button>
+        <button id="btn-close-qr" class="modal-close" style="position: static;">✕</button>
+      </div>
       <h3>SCAN TO JOIN GAME</h3>
       <p>Scan with any phone's camera (iPhone or Android):</p>
       <div class="qr-image-wrapper">
@@ -505,8 +523,8 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Load Scripts: Local bundled socket.io and peerjs for 100% reliable serverless online & P2P multiplayer -->
-  <script src="./js/socket.io.min.js?v=20261111_09"></script>
-  <script src="./js/peerjs.min.js?v=20261111_09"></script>
-  <script type="module" src="./js/main.js?v=20261111_09"></script>
+  <script src="./js/socket.io.min.js?v=20261112_01"></script>
+  <script src="./js/peerjs.min.js?v=20261112_01"></script>
+  <script type="module" src="./js/main.js?v=20261112_01"></script>
 </body>
 </html>

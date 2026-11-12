@@ -654,7 +654,8 @@ html, body {
   flex-wrap: nowrap;
 }
 
-/* Top-Left Back to Lobby Button */
+/* Universal Back Button for Every Page / Screen */
+.app-back-btn,
 .hud-back-btn {
   background: rgba(15, 23, 42, 0.9);
   backdrop-filter: blur(8px);
@@ -663,7 +664,7 @@ html, body {
   color: #ffffff;
   border-radius: 8px;
   padding: 5px 12px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
   font-weight: 800;
@@ -677,6 +678,7 @@ html, body {
   min-height: 38px;
 }
 
+.app-back-btn .back-arrow,
 .hud-back-btn .back-arrow {
   font-size: 1.45rem;
   line-height: 1;
@@ -684,6 +686,7 @@ html, body {
   font-weight: 900;
 }
 
+.app-back-btn:active,
 .hud-back-btn:active {
   transform: scale(0.92);
   background: rgba(244, 63, 94, 0.25);
@@ -1524,11 +1527,13 @@ html, body {
     font-size: 0.72rem;
     gap: 0.25rem;
   }
+  .app-back-btn,
   .hud-back-btn {
     padding: 4px 8px;
     font-size: 0.75rem;
     min-height: 32px;
   }
+  .app-back-btn .back-arrow,
   .hud-back-btn .back-arrow {
     font-size: 1.25rem;
   }
