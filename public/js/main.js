@@ -575,7 +575,19 @@ if (btnQuickPlay) {
     btnQuickPlay.textContent = "JOINING ARENA... ⚔️";
     showToast("Connecting to live Battle Arena... 🚀");
 
+    let finished = false;
+    // Watchdog timer: If anything stalls, reset button so player is never permanently stuck
+    const watchdogTimer = setTimeout(() => {
+      if (!finished) {
+        btnQuickPlay.disabled = false;
+        btnQuickPlay.textContent = "⚔️ BATTLE NOW (DROP IN) ⚔️";
+        showToast("⚠️ Connection took longer than usual. Tap again if arena didn't open.");
+      }
+    }, 9500);
+
     network.quickPlay(state.profile, (res) => {
+      finished = true;
+      clearTimeout(watchdogTimer);
       btnQuickPlay.disabled = false;
       btnQuickPlay.textContent = "⚔️ BATTLE NOW (DROP IN) ⚔️";
       if (res.success) {

@@ -139,7 +139,7 @@ export class P2PManager {
     let resolved = false;
     let peerErrorHandler = null;
 
-    // Fast check: if no host responds in 3.2s, become the host
+    // Fast check: Give WebRTC STUN/TURN connection 6.5s before falling back to hosting
     const hostClaimTimer = setTimeout(() => {
       if (!resolved) {
         resolved = true;
@@ -147,7 +147,7 @@ export class P2PManager {
         console.log(`[QuickPlay] No live host found on ${targetPeerId}. Becoming Arena Host!`);
         this.hostQuickArena(targetPeerId, arenaTag, profile, callback);
       }
-    }, 3200);
+    }, 6500);
 
     const cleanup = () => {
       clearTimeout(hostClaimTimer);
@@ -156,13 +156,20 @@ export class P2PManager {
       }
     };
 
-    if (!this.peer || this.peer.destroyed) {
+    // Ensure clean non-host client peer
+    if (this.isHost || !this.peer || this.peer.destroyed) {
+      if (this.peer) {
+        try { this.peer.destroy(); } catch (e) {}
+        this.peer = null;
+      }
+      this.isHost = false;
       this.init();
     } else if (this.peer.disconnected) {
       try { this.peer.reconnect(); } catch (e) {}
     }
 
     const attemptJoin = () => {
+      if (resolved) return;
       try {
         const conn = this.peer.connect(targetPeerId, { reliable: true, serialization: "json" });
         this.hostConn = conn;
@@ -269,7 +276,17 @@ export class P2PManager {
 
     this.peer = new Peer(targetPeerId, PEER_CONFIG);
 
+    let hostOpened = false;
+    const hostTimeout = setTimeout(() => {
+      if (!hostOpened) {
+        console.warn("[QuickPlay Host] Timed out waiting for host peer to open");
+        if (callback) callback({ success: false, error: "Signaling server connection timeout" });
+      }
+    }, 6500);
+
     this.peer.on("open", (id) => {
+      hostOpened = true;
+      clearTimeout(hostTimeout);
       this.peerId = id;
       console.log("[QuickPlay Host] Live Arena open and listening on Peer ID:", id);
       this.networkClient.trigger("connected", this.localPlayerId);
@@ -294,8 +311,15 @@ export class P2PManager {
     this.peer.on("error", (err) => {
       console.warn("[QuickPlay Host] Peer error:", err);
       if (err.type === "unavailable-id") {
-        console.log("[QuickPlay Host] ID claimed by someone else, joining them!");
-        setTimeout(() => this.quickPlay(profile, callback), 400);
+        clearTimeout(hostTimeout);
+        console.log("[QuickPlay Host] ID claimed by someone else, joining them as guest!");
+        try { this.peer.destroy(); } catch (e) {}
+        this.peer = null;
+        this.isHost = false;
+        setTimeout(() => {
+          this.init();
+          this.quickPlay(profile, callback);
+        }, 300);
       }
     });
 
@@ -381,7 +405,7 @@ export class P2PManager {
       this.connections.set(conn.peer, conn);
 
       conn.on("data", (data) => {
-        this.handleGuestMessage(conn.peer, data);
+        this.handleGuestMessage(conn, data);
       });
 
       conn.on("close", () => {
@@ -402,13 +426,49 @@ export class P2PManager {
     }
   }
 
-  handleGuestMessage(peerId, msg) {
+  handleGuestMessage(connOrPeerId, msg) {
     if (!msg || !msg.type) return;
 
+    const conn = (typeof connOrPeerId === "object" && connOrPeerId !== null) ? connOrPeerId : this.connections.get(connOrPeerId);
+    const peerId = (typeof connOrPeerId === "string") ? connOrPeerId : (connOrPeerId?.peer || "");
+
     if (msg.type === "join_request") {
+      // Auto-heal room if it was null
+      if (!this.room) {
+        this.room = {
+          id: "PUBLIC",
+          hostId: this.localPlayerId || `host_${Date.now().toString(36)}`,
+          options: {
+            gameMode: "ffa",
+            scoreLimit: 25,
+            matchDuration: 600,
+            mapId: "cyber_arena"
+          },
+          players: [
+            {
+              id: this.localPlayerId || "host",
+              name: "Host",
+              color: "#00f0ff",
+              avatar: "striker",
+              team: "blue",
+              isHost: true,
+              isReady: true,
+              isBot: false
+            }
+          ]
+        };
+      }
+
+      // If game is not active on host, start it right now so guest can fight
+      if (!this.game) {
+        this.startGame(() => {
+          this.addBot();
+        });
+      }
+
       const guestPlayerId = `guest_${peerId}`;
-      let player = this.room?.players.find(p => p.id === guestPlayerId || p.peerId === peerId);
-      if (!player && this.room) {
+      let player = this.room.players.find(p => p.id === guestPlayerId || p.peerId === peerId);
+      if (!player) {
         player = {
           id: guestPlayerId,
           peerId,
@@ -417,11 +477,11 @@ export class P2PManager {
           avatar: msg.profile?.avatar || "striker",
           team: this.room.options.gameMode === "team" ? (this.room.players.length % 2 === 0 ? "blue" : "red") : "blue",
           isHost: false,
-          isReady: false,
+          isReady: true,
           isBot: false
         };
         this.room.players.push(player);
-      } else if (player) {
+      } else {
         if (msg.profile?.name) player.name = msg.profile.name;
         if (msg.profile?.color) player.color = msg.profile.color;
         if (msg.profile?.avatar) player.avatar = msg.profile.avatar;
@@ -430,7 +490,6 @@ export class P2PManager {
       this.broadcast({ type: "lobby_updated", data: this.room });
       this.networkClient.trigger("lobby_updated", this.room);
 
-      const conn = this.connections.get(peerId);
       if (conn && conn.open) {
         conn.send({ type: "join_accepted", room: this.room, playerId: guestPlayerId });
         if (this.game) {
@@ -455,7 +514,6 @@ export class P2PManager {
         this.game.handlePlayerInput(`guest_${peerId}`, msg.payload);
       }
     } else if (msg.type === "p2p_ping") {
-      const conn = this.connections.get(peerId);
       if (conn && conn.open) {
         conn.send({ type: "p2p_pong", t: msg.t });
       }
@@ -864,6 +922,7 @@ export class P2PManager {
   }
 
   leaveRoom() {
+    const wasHost = this.isHost;
     if (this.game) {
       this.game.stop();
       this.game = null;
@@ -880,5 +939,16 @@ export class P2PManager {
     }
     this.room = null;
     this.isHost = false;
+
+    // Destroy host peer so it does not linger as a zombie host holding brawlz-arena-public
+    if (wasHost && this.peer) {
+      try {
+        this.peer.destroy();
+      } catch (e) {}
+      this.peer = null;
+      setTimeout(() => {
+        this.init();
+      }, 300);
+    }
   }
 }
