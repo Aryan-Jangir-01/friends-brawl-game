@@ -1,5 +1,5 @@
 // public/js/p2p.js
-import { GameInstance } from "./engine/GameInstance.js?v=20261113_05";
+import { GameInstance } from "./engine/GameInstance.js?v=20261113_06";
 
 const PEER_CONFIG = {
   debug: 1,

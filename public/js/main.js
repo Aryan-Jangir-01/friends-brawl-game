@@ -1,10 +1,10 @@
 // public/js/main.js
-import { audio } from "./audio.js?v=20261113_05";
-import { ParticleSystem } from "./particles.js?v=20261113_05";
-import { InputManager } from "./input.js?v=20261113_05";
-import { GameRenderer } from "./renderer.js?v=20261113_05";
-import { NetworkClient } from "./network.js?v=20261113_05";
-import { MAPS } from "./engine/MapData.js?v=20261113_05";
+import { audio } from "./audio.js?v=20261113_06";
+import { ParticleSystem } from "./particles.js?v=20261113_06";
+import { InputManager } from "./input.js?v=20261113_06";
+import { GameRenderer } from "./renderer.js?v=20261113_06";
+import { NetworkClient } from "./network.js?v=20261113_06";
+import { MAPS } from "./engine/MapData.js?v=20261113_06";
 
 // Global Game State
 const state = {
@@ -405,7 +405,7 @@ function initNetwork() {
     else audio.playBlaster();
 
     if (data.shooterId === state.localPlayerId && navigator.vibrate) {
-      navigator.vibrate(12);
+      try { navigator.vibrate(6); } catch (e) {}
     }
 
     const tipDist = 36;
@@ -1253,18 +1253,6 @@ function gameLoop(time) {
 
     const me = world.players?.find(p => p.id === state.localPlayerId);
 
-    // Update Camera
-    if (me && me.x && me.y) {
-      if (!renderer.hasSnappedFirstFrame) {
-        renderer.camX = me.x;
-        renderer.camY = me.y;
-        renderer.targetCamX = me.x;
-        renderer.targetCamY = me.y;
-        renderer.hasSnappedFirstFrame = true;
-      }
-      renderer.updateCamera(me.x, me.y, dt);
-    }
-
     // Input polling and network broadcast (throttled to ~25 Hz / 40ms)
     const now = Date.now();
     if (now - state.lastInputTime >= 40) {
@@ -1281,7 +1269,7 @@ function gameLoop(time) {
     // Update Particles
     particles.update(dt);
 
-    // Render Canvas
+    // Render Canvas (Interpolates all entities smoothly & updates camera without jitter)
     renderer.render(world, state.localPlayerId, state.mapData, dt);
   }
 

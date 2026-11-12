@@ -1,5 +1,5 @@
 // public/js/input.js
-import { audio } from "./audio.js?v=20261113_05";
+import { audio } from "./audio.js?v=20261113_06";
 
 export class InputManager {
   constructor(canvas) {
@@ -184,15 +184,34 @@ export class InputManager {
         let dy = curY - this.leftCenter.y;
         const dist = Math.hypot(dx, dy);
 
+        let clampedX = dx;
+        let clampedY = dy;
         if (dist > this.maxJoystickRadius) {
-          dx = (dx / dist) * this.maxJoystickRadius;
-          dy = (dy / dist) * this.maxJoystickRadius;
+          clampedX = (dx / dist) * this.maxJoystickRadius;
+          clampedY = (dy / dist) * this.maxJoystickRadius;
         }
 
-        this.moveKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+        this.moveKnob.style.transform = `translate(calc(-50% + ${clampedX}px), calc(-50% + ${clampedY}px))`;
 
-        this.moveX = dx / this.maxJoystickRadius;
-        this.moveY = dy / this.maxJoystickRadius;
+        const deadzone = 5;
+        if (dist <= deadzone) {
+          this.moveX = 0;
+          this.moveY = 0;
+        } else {
+          const activeDist = Math.min(dist, this.maxJoystickRadius);
+          const ratio = (activeDist - deadzone) / (this.maxJoystickRadius - deadzone);
+          this.moveX = (dx / dist) * ratio;
+          this.moveY = (dy / dist) * ratio;
+        }
+
+        // Face moving direction smoothly if not actively aiming with right stick
+        if (!this.isShooting && dist > deadzone + 2) {
+          const moveAngle = Math.atan2(dy, dx);
+          let diff = moveAngle - this.aimAngle;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          this.aimAngle += diff * 0.4;
+        }
         break;
       }
     }
@@ -247,7 +266,11 @@ export class InputManager {
         const dist = Math.hypot(dx, dy);
 
         if (dist > 8) {
-          this.aimAngle = Math.atan2(dy, dx);
+          const targetAngle = Math.atan2(dy, dx);
+          let diff = targetAngle - this.aimAngle;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          this.aimAngle += diff * 0.8;
           this.isShooting = true;
         }
 

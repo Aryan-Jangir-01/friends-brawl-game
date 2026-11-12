@@ -24,6 +24,7 @@ export class GameRenderer {
     this.recoil = new Map(); // playerId -> timestamp
     this.lastMiniMapTime = 0;
     this.viewBounds = { left: 0, right: 2400, top: 0, bottom: 1800 };
+    this.interpolatedPlayers = new Map(); // playerId -> { x, y, angle, walkPhase, isMoving, lastTargetX, lastTargetY }
 
     this.resize();
     window.addEventListener("resize", () => this.resize());
@@ -34,7 +35,7 @@ export class GameRenderer {
     this.camY = y;
     this.targetCamX = x;
     this.targetCamY = y;
-    this.hasSnappedFirstFrame = false;
+    this.hasSnappedFirstFrame = true;
   }
 
   resize() {
@@ -78,17 +79,87 @@ export class GameRenderer {
     this.recoil.set(playerId, Date.now());
   }
 
+  updateInterpolation(players, dt) {
+    if (!players) return;
+    const currentIds = new Set();
+
+    players.forEach(p => {
+      currentIds.add(p.id);
+      let ip = this.interpolatedPlayers.get(p.id);
+      if (!ip) {
+        ip = {
+          x: p.x,
+          y: p.y,
+          angle: p.angle,
+          walkPhase: 0,
+          isMoving: false,
+          lastTargetX: p.x,
+          lastTargetY: p.y
+        };
+        this.interpolatedPlayers.set(p.id, ip);
+      }
+
+      // Check distance to target
+      const dx = p.x - ip.x;
+      const dy = p.y - ip.y;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist > 150) {
+        // Teleport / respawn: snap immediately
+        ip.x = p.x;
+        ip.y = p.y;
+        ip.angle = p.angle;
+      } else {
+        // Continuous smooth exponential interpolation (22/s) - eliminates packet jump vibration
+        const posLerp = Math.min(1, 22 * dt);
+        ip.x += dx * posLerp;
+        ip.y += dy * posLerp;
+
+        // Angle interpolation using shortest angular arc
+        let dAngle = p.angle - ip.angle;
+        while (dAngle < -Math.PI) dAngle += Math.PI * 2;
+        while (dAngle > Math.PI) dAngle -= Math.PI * 2;
+        ip.angle += dAngle * Math.min(1, 20 * dt);
+      }
+
+      // Smooth walk animation
+      const targetMoved = Math.hypot(p.x - ip.lastTargetX, p.y - ip.lastTargetY);
+      ip.lastTargetX = p.x;
+      ip.lastTargetY = p.y;
+
+      if (targetMoved > 0.25 || dist > 1.2) {
+        ip.isMoving = true;
+        ip.walkPhase = (ip.walkPhase + dt * 11) % (Math.PI * 2);
+      } else {
+        ip.isMoving = false;
+        ip.walkPhase = 0;
+      }
+    });
+
+    // Clean up disconnected players
+    for (const id of this.interpolatedPlayers.keys()) {
+      if (!currentIds.has(id)) {
+        this.interpolatedPlayers.delete(id);
+      }
+    }
+  }
+
   updateCamera(targetX, targetY, dt) {
-    // Smooth lerp
     this.targetCamX = targetX;
     this.targetCamY = targetY;
-    const lerpSpeed = 10;
+    const lerpSpeed = 18;
     this.camX += (this.targetCamX - this.camX) * Math.min(1, lerpSpeed * dt);
     this.camY += (this.targetCamY - this.camY) * Math.min(1, lerpSpeed * dt);
+
+    if (Math.hypot(this.targetCamX - this.camX, this.targetCamY - this.camY) < 0.2) {
+      this.camX = this.targetCamX;
+      this.camY = this.targetCamY;
+    }
 
     // Screen shake decay
     if (this.screenShake > 0) {
       this.screenShake = Math.max(0, this.screenShake - 30 * dt);
+      if (this.screenShake < 0.2) this.screenShake = 0;
     }
   }
 
@@ -97,6 +168,18 @@ export class GameRenderer {
     ctx.clearRect(0, 0, this.width, this.height);
 
     if (!worldState || !mapData) return;
+
+    // 0. Update Smooth Entity Interpolation
+    this.updateInterpolation(worldState.players, dt);
+
+    // Synchronize Camera smoothly with Local Player's render position
+    const localIP = this.interpolatedPlayers.get(localPlayerId);
+    if (localIP) {
+      if (!this.hasSnappedFirstFrame) {
+        this.resetCamera(localIP.x, localIP.y);
+      }
+      this.updateCamera(localIP.x, localIP.y, dt);
+    }
 
     // Viewport bounds for camera frustum culling (saves 80% draw calls on mobile)
     const margin = 80;
@@ -363,13 +446,8 @@ export class GameRenderer {
     });
   }
 
-  drawHumanCharacter(ctx, p, radius, kick) {
-    const time = Date.now();
-    const seed = (p.id ? p.id.charCodeAt(p.id.length - 1) : 0) * 19;
-    const isMoving = Math.hypot(p.vx || 0, p.vy || 0) > 8;
-    const walk = isMoving ? Math.sin(time / 80 + seed) * (radius * 0.32) : 0;
-
-    // 1. Combat Boots (Stepping animation)
+  drawHumanCharacter(ctx, p, radius, kick, walk = 0) {
+    // 1. Combat Boots (Stepping animation with smooth continuous phase)
     ctx.fillStyle = "#0f172a";
     ctx.fillRect(-radius * 0.5 + walk, -radius * 0.72, radius * 0.48, radius * 0.36);
     ctx.fillRect(-radius * 0.5 - walk, radius * 0.36, radius * 0.48, radius * 0.36);
@@ -503,9 +581,13 @@ export class GameRenderer {
   drawPlayers(ctx, players, localPlayer) {
     players.forEach(p => {
       const radius = p.radius || 22;
+      const ip = this.interpolatedPlayers.get(p.id) || p;
+      const px = ip.x !== undefined ? ip.x : p.x;
+      const py = ip.y !== undefined ? ip.y : p.y;
+      const pAngle = ip.angle !== undefined ? ip.angle : p.angle;
 
-      // Frustum culling (always render local player)
-      if (p.id !== localPlayer?.id && !this.isCircleInView(p.x, p.y, radius + 45)) {
+      // Frustum culling using smoothed render coordinates
+      if (p.id !== localPlayer?.id && !this.isCircleInView(px, py, radius + 45)) {
         return;
       }
 
@@ -515,7 +597,7 @@ export class GameRenderer {
         ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
-        ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+        ctx.arc(px, py, radius, 0, Math.PI * 2);
         ctx.stroke();
         ctx.restore();
         return;
@@ -534,7 +616,7 @@ export class GameRenderer {
       }
 
       ctx.save();
-      ctx.translate(p.x, p.y);
+      ctx.translate(px, py);
 
       // Translucency for stealth / invisibility
       if (p.isInvisible) {
@@ -584,7 +666,7 @@ export class GameRenderer {
       // 4. Aim guide laser line for local player
       if (p.id === localPlayer?.id) {
         ctx.save();
-        ctx.rotate(p.angle);
+        ctx.rotate(pAngle);
         ctx.beginPath();
         ctx.moveTo(radius + 18, 0);
         ctx.lineTo(radius + 280, 0);
@@ -614,7 +696,7 @@ export class GameRenderer {
 
       // 5. Draw Human Character with rotation & kickback
       ctx.save();
-      ctx.rotate(p.angle);
+      ctx.rotate(pAngle);
 
       const lastFire = this.recoil.get(p.id) || 0;
       const elapsed = Date.now() - lastFire;
@@ -623,7 +705,8 @@ export class GameRenderer {
         kick = (1 - elapsed / 110) * 5;
       }
 
-      this.drawHumanCharacter(ctx, p, radius, kick);
+      const walk = ip.isMoving ? Math.sin(ip.walkPhase || 0) * (radius * 0.22) : 0;
+      this.drawHumanCharacter(ctx, p, radius, kick, walk);
 
       ctx.restore(); // Restore player rotation
 
@@ -676,6 +759,7 @@ export class GameRenderer {
 
   drawBushes(ctx, bushes, localPlayer) {
     if (!bushes) return;
+    const localIP = localPlayer ? (this.interpolatedPlayers.get(localPlayer.id) || localPlayer) : null;
     bushes.forEach(b => {
       // Frustum culling
       if (!this.isCircleInView(b.x, b.y, b.radius)) return;
@@ -685,7 +769,7 @@ export class GameRenderer {
       ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
 
       // Check if local player is inside this bush
-      const playerInside = localPlayer && Math.hypot(localPlayer.x - b.x, localPlayer.y - b.y) < b.radius;
+      const playerInside = localIP && Math.hypot(localIP.x - b.x, localIP.y - b.y) < b.radius;
 
       ctx.fillStyle = playerInside ? "rgba(22, 101, 52, 0.55)" : "rgba(22, 101, 52, 0.9)";
       ctx.fill();
@@ -792,9 +876,10 @@ export class GameRenderer {
         // Hide opponents in stealth or bushes
         if (!isMe && !isTeammate && (p.inBush || p.isInvisible)) return;
 
+        const ip = this.interpolatedPlayers.get(p.id) || p;
         mCtx.beginPath();
-        const px = p.x * sx;
-        const py = p.y * sy;
+        const px = (ip.x !== undefined ? ip.x : p.x) * sx;
+        const py = (ip.y !== undefined ? ip.y : p.y) * sy;
         mCtx.arc(px, py, isMe ? 4 : 2.5, 0, Math.PI * 2);
 
         if (isMe) {
