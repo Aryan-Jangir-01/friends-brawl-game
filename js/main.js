@@ -576,14 +576,14 @@ if (btnQuickPlay) {
     showToast("Connecting to live Battle Arena... 🚀");
 
     let finished = false;
-    // Watchdog timer: If anything stalls, reset button so player is never permanently stuck
+    // Watchdog timer: If anything stalls on mobile networks, reset button so player is never permanently stuck
     const watchdogTimer = setTimeout(() => {
       if (!finished) {
         btnQuickPlay.disabled = false;
         btnQuickPlay.textContent = "⚔️ BATTLE NOW (DROP IN) ⚔️";
         showToast("⚠️ Connection took longer than usual. Tap again if arena didn't open.");
       }
-    }, 9500);
+    }, 16000);
 
     network.quickPlay(state.profile, (res) => {
       finished = true;
@@ -593,6 +593,10 @@ if (btnQuickPlay) {
       if (res.success) {
         state.currentRoom = res.room;
         state.isHost = res.isHost;
+
+        // Ensure mapData is loaded immediately
+        const chosenMapId = res.room?.options?.mapId || "cyber_arena";
+        state.mapData = MAPS[chosenMapId] || MAPS.cyber_arena;
 
         // Transition straight into the game arena!
         lobbyScreen.classList.add("hidden");
@@ -734,8 +738,22 @@ function joinSpecificRoom(code) {
     if (res.success) {
       state.currentRoom = res.room;
       state.isHost = res.player?.isHost || false;
-      switchToRoomView(res.room);
-      showToast(`Joined Room ${cleanCode}!`);
+      if (res.gameRunning) {
+        lobbyScreen.classList.add("hidden");
+        hudOverlay.classList.remove("hidden");
+        modalMatchOver.classList.add("hidden");
+        const chosenMapId = res.room?.options?.mapId || "cyber_arena";
+        state.mapData = MAPS[chosenMapId] || MAPS.cyber_arena;
+        renderer.resetCamera();
+        renderer.resize();
+        state.gameRunning = true;
+        audio.startMusic();
+        navigateToScreen("arena");
+        showToast(`⚔️ Entered Battle in Room ${cleanCode}!`);
+      } else {
+        switchToRoomView(res.room);
+        showToast(`Joined Room ${cleanCode}!`);
+      }
     } else {
       showToast(`Failed to join: ${res.error}`);
     }

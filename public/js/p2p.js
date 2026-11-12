@@ -8,20 +8,21 @@ const PEER_CONFIG = {
       { urls: "stun:stun.l.google.com:19302" },
       { urls: "stun:stun1.l.google.com:19302" },
       { urls: "stun:stun2.l.google.com:19302" },
+      { urls: "stun:stun3.l.google.com:19302" },
+      { urls: "stun:stun4.l.google.com:19302" },
       { urls: "stun:stun.cloudflare.com:3478" },
       { urls: "stun:openrelay.metered.ca:80" },
       {
-        urls: "turn:openrelay.metered.ca:80",
-        username: "openrelayproject",
-        credential: "openrelayproject"
-      },
-      {
-        urls: "turn:openrelay.metered.ca:443",
-        username: "openrelayproject",
-        credential: "openrelayproject"
-      },
-      {
-        urls: "turn:openrelay.metered.ca:443?transport=tcp",
+        urls: [
+          "turn:openrelay.metered.ca:80",
+          "turn:openrelay.metered.ca:443",
+          "turn:openrelay.metered.ca:443?transport=tcp",
+          "turns:openrelay.metered.ca:443?transport=tcp",
+          "turn:relay.metered.ca:80",
+          "turn:relay.metered.ca:443",
+          "turn:relay.metered.ca:443?transport=tcp",
+          "turns:relay.metered.ca:443?transport=tcp"
+        ],
         username: "openrelayproject",
         credential: "openrelayproject"
       }
@@ -58,13 +59,6 @@ export class P2PManager {
           } catch (e) {
             console.warn("[P2P] reconnect error:", e);
           }
-        } else {
-          // Keepalive heartbeat over PeerJS WebSocket to prevent idle timeout
-          try {
-            if (this.peer.socket && this.peer.socket._ws && this.peer.socket._ws.readyState === WebSocket.OPEN) {
-              this.peer.socket.send({ type: "HEARTBEAT" });
-            }
-          } catch (e) {}
         }
       }
     }, 4500);
@@ -139,7 +133,7 @@ export class P2PManager {
     let resolved = false;
     let peerErrorHandler = null;
 
-    // Fast check: Give WebRTC STUN/TURN connection 6.5s before falling back to hosting
+    // Give WebRTC STUN/TURN connection 14s for multiple phones on mobile networks to complete ICE negotiation
     const hostClaimTimer = setTimeout(() => {
       if (!resolved) {
         resolved = true;
@@ -147,7 +141,7 @@ export class P2PManager {
         console.log(`[QuickPlay] No live host found on ${targetPeerId}. Becoming Arena Host!`);
         this.hostQuickArena(targetPeerId, arenaTag, profile, callback);
       }
-    }, 6500);
+    }, 14000);
 
     const cleanup = () => {
       clearTimeout(hostClaimTimer);
@@ -491,8 +485,12 @@ export class P2PManager {
       this.networkClient.trigger("lobby_updated", this.room);
 
       if (conn && conn.open) {
-        conn.send({ type: "join_accepted", room: this.room, playerId: guestPlayerId });
+        conn.send({ type: "join_accepted", room: this.room, playerId: guestPlayerId, gameRunning: Boolean(this.game) });
         if (this.game) {
+          // If human joins and bots exist, remove one bot so arena prioritizes real friends!
+          if (this.game.bots && this.game.bots.size > 0) {
+            try { this.game.removeBot(); } catch (e) {}
+          }
           this.game.addPlayer(guestPlayerId, {
             name: player.name,
             color: player.color,
@@ -639,7 +637,7 @@ export class P2PManager {
             this.localPlayerId = msg.playerId;
             this.room = msg.room;
             this.networkClient.trigger("connected", this.localPlayerId);
-            if (callback) callback({ success: true, room: msg.room, player: { isHost: false } });
+            if (callback) callback({ success: true, room: msg.room, player: { isHost: false }, gameRunning: Boolean(msg.gameRunning) });
           } else if (msg.type === "lobby_updated") {
             this.room = msg.data;
             this.networkClient.trigger("lobby_updated", msg.data);
@@ -754,6 +752,10 @@ export class P2PManager {
     this.broadcast({
       type: "game_started",
       data: { map: this.game.map, options: this.game.options }
+    });
+    this.networkClient.trigger("game_started", {
+      map: this.game.map,
+      options: this.game.options
     });
 
     if (callback) callback({ success: true });
@@ -876,7 +878,8 @@ export class P2PManager {
     if (this.isHost && this.game) {
       this.game.handlePlayerInput(this.localPlayerId, payload);
     } else if (!this.isHost && this.hostConn && this.hostConn.open) {
-      if (this.hostConn.dataChannel && this.hostConn.dataChannel.bufferedAmount > 16384) {
+      const dc = this.hostConn._dc || this.hostConn.dataChannel;
+      if (dc && dc.bufferedAmount > 16384) {
         return;
       }
       try {
@@ -909,7 +912,8 @@ export class P2PManager {
     const isDroppable = msg && msg.type === "game_state";
     for (const [peerId, conn] of this.connections.entries()) {
       if (conn && conn.open) {
-        if (isDroppable && conn.dataChannel && conn.dataChannel.bufferedAmount > 32768) {
+        const dc = conn._dc || conn.dataChannel;
+        if (isDroppable && dc && dc.bufferedAmount > 32768) {
           continue;
         }
         try {
