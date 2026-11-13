@@ -216,7 +216,7 @@ export class GameRenderer {
     }
 
     // 2. Draw Obstacle Walls
-    this.drawWalls(ctx, mapData.walls, mapData.theme);
+    this.drawWalls(ctx, mapData.walls, mapData.theme, mapData);
 
     // 3. Draw Destructible Crates
     if (worldState.crates) {
@@ -247,6 +247,9 @@ export class GameRenderer {
 
     ctx.restore();
 
+    // 8.5. Cinematic Tactical Vignette
+    this.drawVignette(ctx);
+
     // 9. Render Mini Map Radar (Throttled to 10 FPS for mobile GPU efficiency)
     const now = performance.now();
     if (!this.lastMiniMapTime || now - this.lastMiniMapTime >= 100) {
@@ -255,39 +258,526 @@ export class GameRenderer {
     }
   }
 
+  getMapId(map) {
+    if (!map) return "military_airbase";
+    if (map.id) return map.id;
+    const n = (map.name || "").toLowerCase();
+    if (n.includes("airbase")) return "military_airbase";
+    if (n.includes("cargo") || n.includes("dock")) return "cargo_docks";
+    if (n.includes("desert") || n.includes("dust")) return "desert_town";
+    if (n.includes("factory")) return "abandoned_factory";
+    if (n.includes("jungle")) return "dense_jungle";
+    if (n.includes("arctic")) return "arctic_base";
+    if (n.includes("ruin") || n.includes("city")) return "city_ruins";
+    if (n.includes("railway") || n.includes("train") || n.includes("depot")) return "railway_depot";
+    if (n.includes("bunker") || n.includes("island")) return "island_bunker";
+    return "military_airbase";
+  }
+
   drawFloor(ctx, map) {
     const theme = map.theme || {};
-    // Background fill
+    const mapId = this.getMapId(map);
+
+    // 1. Base Ground Fill
     ctx.fillStyle = theme.background || "#1a1d21";
     ctx.fillRect(0, 0, map.width, map.height);
 
-    // Subtle tactical grid / runway paving with viewport culling
-    ctx.strokeStyle = theme.gridColor || "rgba(255, 255, 255, 0.05)";
+    // Viewport Culling Bounds
+    const pad = 120;
+    const startX = Math.max(0, this.viewBounds.left - pad);
+    const endX = Math.min(map.width, this.viewBounds.right + pad);
+    const startY = Math.max(0, this.viewBounds.top - pad);
+    const endY = Math.min(map.height, this.viewBounds.bottom + pad);
+
+    // 2. Map-Specific Realistic Environmental Terrain
+    if (mapId === "city_ruins") {
+      this.drawCityRuinsTerrain(ctx, map, startX, endX, startY, endY);
+    } else if (mapId === "military_airbase") {
+      this.drawAirbaseTerrain(ctx, map, startX, endX, startY, endY);
+    } else if (mapId === "cargo_docks") {
+      this.drawCargoDocksTerrain(ctx, map, startX, endX, startY, endY);
+    } else if (mapId === "desert_town") {
+      this.drawDesertTerrain(ctx, map, startX, endX, startY, endY);
+    } else if (mapId === "abandoned_factory") {
+      this.drawFactoryTerrain(ctx, map, startX, endX, startY, endY);
+    } else if (mapId === "dense_jungle") {
+      this.drawJungleTerrain(ctx, map, startX, endX, startY, endY);
+    } else if (mapId === "arctic_base") {
+      this.drawArcticTerrain(ctx, map, startX, endX, startY, endY);
+    } else if (mapId === "railway_depot") {
+      this.drawRailwayTerrain(ctx, map, startX, endX, startY, endY);
+    } else if (mapId === "island_bunker") {
+      this.drawBunkerTerrain(ctx, map, startX, endX, startY, endY);
+    } else {
+      this.drawAirbaseTerrain(ctx, map, startX, endX, startY, endY);
+    }
+
+    // 3. Heavy-Duty Realistic Outer Boundary Wall / Blast Border
+    ctx.strokeStyle = theme.borderColor || "#475569";
+    ctx.lineWidth = 10;
+    ctx.strokeRect(5, 5, map.width - 10, map.height - 10);
+
+    // Inner shadow on perimeter
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.6)";
+    ctx.lineWidth = 4;
+    ctx.strokeRect(9, 9, map.width - 18, map.height - 18);
+  }
+
+  drawCityRuinsTerrain(ctx, map, startX, endX, startY, endY) {
+    // Weathered asphalt asphalt grid
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
     ctx.lineWidth = 1;
-    const gridSize = 80;
+    for (let x = Math.floor(startX / 100) * 100; x <= endX; x += 100) {
+      ctx.beginPath(); ctx.moveTo(x, startY); ctx.lineTo(x, endY); ctx.stroke();
+    }
+    for (let y = Math.floor(startY / 100) * 100; y <= endY; y += 100) {
+      ctx.beginPath(); ctx.moveTo(startX, y); ctx.lineTo(endX, y); ctx.stroke();
+    }
 
-    const halfW = (this.width / 2) + gridSize;
-    const halfH = (this.height / 2) + gridSize;
-    const startX = Math.max(0, Math.floor((this.camX - halfW) / gridSize) * gridSize);
-    const endX = Math.min(map.width, Math.ceil((this.camX + halfW) / gridSize) * gridSize);
-    const startY = Math.max(0, Math.floor((this.camY - halfH) / gridSize) * gridSize);
-    const endY = Math.min(map.height, Math.ceil((this.camY + halfH) / gridSize) * gridSize);
+    // Horizontal Main Boulevard (y: 880 to 1120, height: 240)
+    const bTop = 880, bBottom = 1120;
+    if (endY >= bTop && startY <= bBottom) {
+      ctx.fillStyle = "#16171b";
+      ctx.fillRect(0, bTop, map.width, 240);
 
+      // Curbs & Sidewalks (North & South)
+      ctx.fillStyle = "#272a30";
+      ctx.fillRect(0, bTop - 18, map.width, 18);
+      ctx.fillRect(0, bBottom, map.width, 18);
+
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, bTop); ctx.lineTo(map.width, bTop);
+      ctx.moveTo(0, bBottom); ctx.lineTo(map.width, bBottom);
+      ctx.stroke();
+
+      // White edge lines
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+      ctx.lineWidth = 3;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(0, bTop + 8); ctx.lineTo(map.width, bTop + 8);
+      ctx.moveTo(0, bBottom - 8); ctx.lineTo(map.width, bBottom - 8);
+      ctx.stroke();
+
+      // Double Yellow Divider Line at y = 1000
+      ctx.strokeStyle = "#eab308";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(0, 997); ctx.lineTo(map.width, 997);
+      ctx.moveTo(0, 1003); ctx.lineTo(map.width, 1003);
+      ctx.stroke();
+    }
+
+    // Vertical Main Street (x: 1180 to 1420, width: 240)
+    const sLeft = 1180, sRight = 1420;
+    if (endX >= sLeft && startX <= sRight) {
+      ctx.fillStyle = "#16171b";
+      ctx.fillRect(sLeft, 0, 240, map.height);
+
+      // Curbs (West & East)
+      ctx.fillStyle = "#272a30";
+      ctx.fillRect(sLeft - 18, 0, 18, map.height);
+      ctx.fillRect(sRight, 0, 18, map.height);
+
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(sLeft, 0); ctx.lineTo(sLeft, map.height);
+      ctx.moveTo(sRight, 0); ctx.lineTo(sRight, map.height);
+      ctx.stroke();
+
+      // Dashed White Divider Line at x = 1300
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.55)";
+      ctx.lineWidth = 3;
+      ctx.setLineDash([24, 18]);
+      ctx.beginPath();
+      ctx.moveTo(1300, 0); ctx.lineTo(1300, map.height);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Pedestrian Zebra Crosswalks around center intersection (1300, 1000)
+    if (this.isRectInView(1180, 840, 240, 360)) {
+      ctx.fillStyle = "rgba(240, 240, 245, 0.7)";
+      for (let x = 1200; x <= 1400; x += 22) {
+        ctx.fillRect(x, 846, 12, 30);
+        ctx.fillRect(x, 1124, 12, 30);
+      }
+      for (let y = 900; y <= 1100; y += 22) {
+        ctx.fillRect(1146, y, 30, 12);
+        ctx.fillRect(1424, y, 30, 12);
+      }
+    }
+
+    // Cast Iron Manhole Covers
+    const manholes = [
+      { x: 1050, y: 1000 },
+      { x: 1550, y: 1000 },
+      { x: 1300, y: 720 },
+      { x: 1300, y: 1280 }
+    ];
+    manholes.forEach(m => {
+      if (!this.isCircleInView(m.x, m.y, 24)) return;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(m.x, m.y, 22, 0, Math.PI * 2);
+      ctx.fillStyle = "#262629";
+      ctx.fill();
+      ctx.strokeStyle = "#404045";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Cross-hatch grip
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(m.x - 14, m.y); ctx.lineTo(m.x + 14, m.y);
+      ctx.moveTo(m.x, m.y - 14); ctx.lineTo(m.x, m.y + 14);
+      ctx.stroke();
+      ctx.restore();
+    });
+  }
+
+  drawAirbaseTerrain(ctx, map, startX, endX, startY, endY) {
+    // Concrete slabs with expansion tar seams (140px grid)
+    const slabSize = 140;
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
+    ctx.lineWidth = 2;
+    for (let x = Math.floor(startX / slabSize) * slabSize; x <= endX; x += slabSize) {
+      ctx.beginPath(); ctx.moveTo(x, startY); ctx.lineTo(x, endY); ctx.stroke();
+    }
+    for (let y = Math.floor(startY / slabSize) * slabSize; y <= endY; y += slabSize) {
+      ctx.beginPath(); ctx.moveTo(startX, y); ctx.lineTo(endX, y); ctx.stroke();
+    }
+
+    // Runway Strip (y: 820 to 1080, x: 250 to 2350)
+    const rwTop = 820, rwBottom = 1080;
+    if (endY >= rwTop && startY <= rwBottom) {
+      ctx.fillStyle = "#15171a";
+      ctx.fillRect(250, rwTop, 2100, 260);
+
+      // Runway white border lines
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.7)";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(250, rwTop); ctx.lineTo(2350, rwTop);
+      ctx.moveTo(250, rwBottom); ctx.lineTo(2350, rwBottom);
+      ctx.stroke();
+
+      // Dashed centerline
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.85)";
+      ctx.lineWidth = 6;
+      ctx.setLineDash([50, 35]);
+      ctx.beginPath();
+      ctx.moveTo(480, 950); ctx.lineTo(2120, 950);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Runway Threshold Piano Keys (West & East)
+      ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+      for (let y = rwTop + 15; y < rwBottom - 15; y += 28) {
+        ctx.fillRect(270, y, 120, 16);
+        ctx.fillRect(2210, y, 120, 16);
+      }
+
+      // Tire Touchdown Skid Marks (rubber burn streaks)
+      ctx.fillStyle = "rgba(5, 5, 8, 0.35)";
+      ctx.fillRect(450, 920, 280, 18);
+      ctx.fillRect(450, 962, 280, 18);
+      ctx.fillRect(1870, 920, 280, 18);
+      ctx.fillRect(1870, 962, 280, 18);
+    }
+
+    // Yellow taxiway curved navigation lines
+    ctx.strokeStyle = "#eab308";
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    for (let x = startX; x <= endX; x += gridSize) {
-      ctx.moveTo(x, startY);
-      ctx.lineTo(x, endY);
-    }
-    for (let y = startY; y <= endY; y += gridSize) {
-      ctx.moveTo(startX, y);
-      ctx.lineTo(endX, y);
-    }
+    ctx.moveTo(500, 450); ctx.quadraticCurveTo(800, 700, 1300, 820);
+    ctx.moveTo(2100, 450); ctx.quadraticCurveTo(1800, 700, 1300, 820);
+    ctx.moveTo(500, 1450); ctx.quadraticCurveTo(800, 1200, 1300, 1080);
+    ctx.moveTo(2100, 1450); ctx.quadraticCurveTo(1800, 1200, 1300, 1080);
     ctx.stroke();
 
-    // Reinforced Perimeter Border
-    ctx.strokeStyle = theme.borderColor || "#475569";
+    // Helipad "H" at (1300, 450) and (1300, 1450)
+    [ { x: 1300, y: 450 }, { x: 1300, y: 1450 } ].forEach(hp => {
+      if (!this.isCircleInView(hp.x, hp.y, 65)) return;
+      ctx.save();
+      ctx.strokeStyle = "#eab308";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(hp.x, hp.y, 55, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 44px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("H", hp.x, hp.y);
+      ctx.restore();
+    });
+  }
+
+  drawCargoDocksTerrain(ctx, map, startX, endX, startY, endY) {
+    // Port concrete joints
+    ctx.strokeStyle = "rgba(148, 163, 184, 0.08)";
+    ctx.lineWidth = 1.5;
+    for (let x = Math.floor(startX / 120) * 120; x <= endX; x += 120) {
+      ctx.beginPath(); ctx.moveTo(x, startY); ctx.lineTo(x, endY); ctx.stroke();
+    }
+    for (let y = Math.floor(startY / 120) * 120; y <= endY; y += 120) {
+      ctx.beginPath(); ctx.moveTo(startX, y); ctx.lineTo(endX, y); ctx.stroke();
+    }
+
+    // Container staging bays: Painted yellow corner brackets [ ]
+    const bays = [
+      { x: 300, y: 300, w: 500, h: 300, label: "BAY 01" },
+      { x: 1700, y: 300, w: 500, h: 300, label: "BAY 02" },
+      { x: 300, y: 1400, w: 500, h: 300, label: "BAY 03" },
+      { x: 1700, y: 1400, w: 500, h: 300, label: "BAY 04" }
+    ];
+    bays.forEach(b => {
+      if (!this.isRectInView(b.x, b.y, b.w, b.h)) return;
+      ctx.strokeStyle = "rgba(234, 179, 8, 0.4)";
+      ctx.lineWidth = 2.5;
+      const arm = 35;
+      ctx.beginPath();
+      ctx.moveTo(b.x, b.y + arm); ctx.lineTo(b.x, b.y); ctx.lineTo(b.x + arm, b.y);
+      ctx.moveTo(b.x + b.w - arm, b.y); ctx.lineTo(b.x + b.w, b.y); ctx.lineTo(b.x + b.w, b.y + arm);
+      ctx.moveTo(b.x, b.y + b.h - arm); ctx.lineTo(b.x, b.y + b.h); ctx.lineTo(b.x + arm, b.y + b.h);
+      ctx.moveTo(b.x + b.w - arm, b.y + b.h); ctx.lineTo(b.x + b.w, b.y + b.h); ctx.lineTo(b.x + b.w, b.y + b.h - arm);
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(234, 179, 8, 0.45)";
+      ctx.font = "bold 13px monospace";
+      ctx.fillText(b.label, b.x + 10, b.y + 20);
+    });
+
+    // Coastal Ocean Water & Shoreline (Right edge x > 2350 & Bottom edge y > 1850)
+    if (endX >= 2350) {
+      ctx.fillStyle = "#0284c7";
+      ctx.fillRect(2350, 0, map.width - 2350, map.height);
+
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.45)";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(2350, 0); ctx.lineTo(2350, map.height);
+      ctx.stroke();
+
+      ctx.fillStyle = "#3e2718";
+      ctx.fillRect(2330, 0, 20, map.height);
+      ctx.fillStyle = "#1e293b";
+      for (let y = 80; y < map.height; y += 140) {
+        ctx.beginPath(); ctx.arc(2340, y, 8, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  }
+
+  drawDesertTerrain(ctx, map, startX, endX, startY, endY) {
+    // Flowing curved sand ripples
+    ctx.strokeStyle = "rgba(217, 180, 130, 0.09)";
+    ctx.lineWidth = 2;
+    for (let y = Math.floor(startY / 90) * 90; y <= endY; y += 90) {
+      ctx.beginPath();
+      ctx.moveTo(startX, y);
+      for (let x = startX; x <= endX; x += 160) {
+        ctx.quadraticCurveTo(x + 80, y + Math.sin(x * 0.02) * 15, x + 160, y);
+      }
+      ctx.stroke();
+    }
+
+    // Central Sandstone Flagstone Plaza (x: 1000-1600, y: 750-1250)
+    if (this.isRectInView(1000, 750, 600, 500)) {
+      ctx.fillStyle = "rgba(70, 52, 35, 0.45)";
+      ctx.fillRect(1000, 750, 600, 500);
+
+      ctx.strokeStyle = "rgba(217, 180, 130, 0.18)";
+      ctx.lineWidth = 2;
+      for (let x = 1000; x <= 1600; x += 60) {
+        ctx.beginPath(); ctx.moveTo(x, 750); ctx.lineTo(x, 1250); ctx.stroke();
+      }
+      for (let y = 750; y <= 1250; y += 50) {
+        ctx.beginPath(); ctx.moveTo(1000, y); ctx.lineTo(1600, y); ctx.stroke();
+      }
+    }
+  }
+
+  drawFactoryTerrain(ctx, map, startX, endX, startY, endY) {
+    // Industrial steel floor plates (120px grid)
+    ctx.strokeStyle = "rgba(239, 68, 68, 0.08)";
+    ctx.lineWidth = 2;
+    for (let x = Math.floor(startX / 120) * 120; x <= endX; x += 120) {
+      ctx.beginPath(); ctx.moveTo(x, startY); ctx.lineTo(x, endY); ctx.stroke();
+    }
+    for (let y = Math.floor(startY / 120) * 120; y <= endY; y += 120) {
+      ctx.beginPath(); ctx.moveTo(startX, y); ctx.lineTo(endX, y); ctx.stroke();
+    }
+
+    // Yellow & Black diagonal caution hazard warning stripes around center (1250, 950)
+    if (this.isCircleInView(1250, 950, 120)) {
+      ctx.save();
+      ctx.translate(1250, 950);
+      ctx.strokeStyle = "rgba(234, 179, 8, 0.35)";
+      ctx.lineWidth = 14;
+      ctx.beginPath();
+      ctx.arc(0, 0, 90, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
+      ctx.lineWidth = 14;
+      ctx.setLineDash([20, 20]);
+      ctx.beginPath();
+      ctx.arc(0, 0, 90, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Grease & industrial oil spills
+    const oilSlicks = [
+      { x: 750, y: 700, r: 55 },
+      { x: 1850, y: 1200, r: 65 },
+      { x: 1600, y: 650, r: 45 }
+    ];
+    oilSlicks.forEach(os => {
+      if (!this.isCircleInView(os.x, os.y, os.r)) return;
+      ctx.fillStyle = "rgba(10, 12, 14, 0.55)";
+      ctx.beginPath();
+      ctx.arc(os.x, os.y, os.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(168, 85, 247, 0.25)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    });
+  }
+
+  drawJungleTerrain(ctx, map, startX, endX, startY, endY) {
+    // Rich forest earth with organic moss patches
+    const mossPatches = [
+      { x: 600, y: 600, r: 180 },
+      { x: 1900, y: 500, r: 210 },
+      { x: 700, y: 1500, r: 190 },
+      { x: 1800, y: 1600, r: 220 },
+      { x: 1250, y: 1050, r: 160 }
+    ];
+    mossPatches.forEach(mp => {
+      if (!this.isCircleInView(mp.x, mp.y, mp.r)) return;
+      ctx.fillStyle = "rgba(34, 197, 94, 0.08)";
+      ctx.beginPath();
+      ctx.arc(mp.x, mp.y, mp.r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Winding mud & dirt trail traversing the jungle
+    ctx.strokeStyle = "rgba(80, 55, 30, 0.25)";
+    ctx.lineWidth = 55;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(300, 1050);
+    ctx.quadraticCurveTo(800, 750, 1250, 1050);
+    ctx.quadraticCurveTo(1700, 1350, 2200, 1050);
+    ctx.stroke();
+  }
+
+  drawArcticTerrain(ctx, map, startX, endX, startY, endY) {
+    // Snow drift contours
+    ctx.strokeStyle = "rgba(186, 230, 253, 0.08)";
+    ctx.lineWidth = 2;
+    for (let y = Math.floor(startY / 100) * 100; y <= endY; y += 100) {
+      ctx.beginPath();
+      ctx.moveTo(startX, y);
+      ctx.lineTo(endX, y);
+      ctx.stroke();
+    }
+
+    // Ice fissures glowing with cyan
+    const fissures = [
+      [ { x: 400, y: 800 }, { x: 550, y: 950 }, { x: 700, y: 900 } ],
+      [ { x: 1750, y: 1100 }, { x: 1900, y: 1250 }, { x: 2100, y: 1200 } ]
+    ];
+    fissures.forEach(f => {
+      ctx.strokeStyle = "rgba(56, 189, 248, 0.35)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(f[0].x, f[0].y);
+      for (let i = 1; i < f.length; i++) ctx.lineTo(f[i].x, f[i].y);
+      ctx.stroke();
+    });
+
+    // Caterpillar tracked vehicle tracks
+    ctx.strokeStyle = "rgba(15, 23, 42, 0.35)";
     ctx.lineWidth = 6;
-    ctx.strokeRect(0, 0, map.width, map.height);
+    ctx.setLineDash([12, 10]);
+    ctx.beginPath();
+    ctx.moveTo(300, 930); ctx.lineTo(2200, 930);
+    ctx.moveTo(300, 970); ctx.lineTo(2200, 970);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  drawRailwayTerrain(ctx, map, startX, endX, startY, endY) {
+    // 3 Major railroad tracks running horizontally: y = 450, y = 865, y = 1285
+    const tracksY = [ 450, 865, 1285 ];
+    tracksY.forEach(ty => {
+      if (endY < ty - 50 || startY > ty + 50) return;
+
+      // Dark crushed rock gravel ballast bed
+      ctx.fillStyle = "#221f1d";
+      ctx.fillRect(0, ty - 38, map.width, 76);
+
+      // Wooden Railroad Ties (Sleepers)
+      ctx.fillStyle = "#3d2516";
+      ctx.strokeStyle = "#27170d";
+      ctx.lineWidth = 1;
+      for (let x = Math.max(0, Math.floor(startX / 24) * 24); x <= endX; x += 24) {
+        ctx.fillRect(x - 6, ty - 32, 12, 64);
+        ctx.strokeRect(x - 6, ty - 32, 12, 64);
+      }
+
+      // Parallel Steel Rails
+      const r1 = ty - 20;
+      const r2 = ty + 20;
+
+      // Rail shadows
+      ctx.fillStyle = "rgba(0,0,0,0.55)";
+      ctx.fillRect(0, r1 + 3, map.width, 4);
+      ctx.fillRect(0, r2 + 3, map.width, 4);
+
+      // Steel rail bodies
+      ctx.strokeStyle = "#94a3b8";
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(0, r1); ctx.lineTo(map.width, r1);
+      ctx.moveTo(0, r2); ctx.lineTo(map.width, r2);
+      ctx.stroke();
+
+      // Shiny silver specular top highlight
+      ctx.strokeStyle = "#f8fafc";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(0, r1 - 1); ctx.lineTo(map.width, r1 - 1);
+      ctx.moveTo(0, r2 - 1); ctx.lineTo(map.width, r2 - 1);
+      ctx.stroke();
+    });
+  }
+
+  drawBunkerTerrain(ctx, map, startX, endX, startY, endY) {
+    // Military bunker steel diamond plate floor
+    ctx.strokeStyle = "rgba(56, 189, 248, 0.08)";
+    ctx.lineWidth = 1.5;
+    for (let x = Math.floor(startX / 100) * 100; x <= endX; x += 100) {
+      ctx.beginPath(); ctx.moveTo(x, startY); ctx.lineTo(x, endY); ctx.stroke();
+    }
+    for (let y = Math.floor(startY / 100) * 100; y <= endY; y += 100) {
+      ctx.beginPath(); ctx.moveTo(startX, y); ctx.lineTo(endX, y); ctx.stroke();
+    }
+
+    // Outer island coastal surf (perimeter border)
+    ctx.fillStyle = "rgba(2, 132, 199, 0.2)";
+    ctx.fillRect(0, 0, map.width, 60);
+    ctx.fillRect(0, map.height - 60, map.width, 60);
+    ctx.fillRect(0, 0, 60, map.height);
+    ctx.fillRect(map.width - 60, 0, 60, map.height);
   }
 
   drawHazards(ctx, hazards) {
@@ -326,7 +816,7 @@ export class GameRenderer {
     });
   }
 
-  drawWalls(ctx, walls, theme = {}) {
+  drawWalls(ctx, walls, theme = {}, mapData = null) {
     if (!walls) return;
     const wallColor = theme.wallColor || "#2e3746";
     const wallBorder = theme.wallBorder || "#4b5563";
@@ -336,86 +826,332 @@ export class GameRenderer {
       // Frustum culling
       if (!this.isRectInView(w.x, w.y, w.w, w.h)) return;
 
-      // Realistic deep drop shadow
-      ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+      // 1. Realistic Deep 3D Drop Shadow (bottom-right offset)
+      ctx.fillStyle = "rgba(0, 0, 0, 0.48)";
       ctx.fillRect(w.x + 8, w.y + 8, w.w, w.h);
 
-      // Wall core body
-      ctx.fillStyle = wallColor;
-      ctx.fillRect(w.x, w.y, w.w, w.h);
-
-      // 3D Top bevel light and bottom shadow
-      ctx.fillStyle = "rgba(255, 255, 255, 0.12)";
-      ctx.fillRect(w.x, w.y, w.w, Math.min(5, w.h / 2));
-      ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
-      ctx.fillRect(w.x, w.y + w.h - Math.min(5, w.h / 2), w.w, Math.min(5, w.h / 2));
-
-      // Wall border outline
-      ctx.strokeStyle = wallBorder;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(w.x, w.y, w.w, w.h);
-
-      // Surface texture details based on wallStyle
+      // 2. High-Fidelity Style Specific Rendering
       if (wallStyle === "container") {
-        ctx.strokeStyle = "rgba(0, 0, 0, 0.35)";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        if (w.w >= w.h) {
-          for (let x = w.x + 16; x < w.x + w.w - 10; x += 18) {
-            ctx.moveTo(x, w.y + 3);
-            ctx.lineTo(x, w.y + w.h - 3);
-          }
-        } else {
-          for (let y = w.y + 16; y < w.y + w.h - 10; y += 18) {
-            ctx.moveTo(w.x + 3, y);
-            ctx.lineTo(w.x + w.w - 3, y);
-          }
-        }
-        ctx.stroke();
+        this.renderShippingContainer(ctx, w);
       } else if (wallStyle === "sandbag") {
-        ctx.strokeStyle = "rgba(0, 0, 0, 0.25)";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        if (w.w >= w.h) {
-          for (let x = w.x + 22; x < w.x + w.w; x += 22) {
-            ctx.moveTo(x, w.y + 3);
-            ctx.lineTo(x, w.y + w.h - 3);
-          }
-        } else {
-          for (let y = w.y + 22; y < w.y + w.h; y += 22) {
-            ctx.moveTo(w.x + 3, y);
-            ctx.lineTo(w.x + w.w - 3, y);
-          }
-        }
-        ctx.stroke();
+        this.renderSandbagWall(ctx, w, wallColor, wallBorder);
       } else if (wallStyle === "brick") {
-        ctx.strokeStyle = "rgba(0, 0, 0, 0.22)";
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        for (let y = w.y + 14; y < w.y + w.h; y += 14) {
-          ctx.moveTo(w.x, y);
-          ctx.lineTo(w.x + w.w, y);
-        }
-        ctx.stroke();
-      } else if (wallStyle === "train" || wallStyle === "wood") {
-        ctx.strokeStyle = "rgba(0, 0, 0, 0.35)";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        const step = w.w >= w.h ? 32 : 28;
-        if (w.w >= w.h) {
-          for (let x = w.x + step; x < w.x + w.w; x += step) {
-            ctx.moveTo(x, w.y);
-            ctx.lineTo(x, w.y + w.h);
-          }
-        } else {
-          for (let y = w.y + step; y < w.y + w.h; y += step) {
-            ctx.moveTo(w.x, y);
-            ctx.lineTo(w.x + w.w, y);
-          }
-        }
-        ctx.stroke();
+        this.renderBrickWall(ctx, w, wallColor, wallBorder);
+      } else if (wallStyle === "train") {
+        this.renderTrainBoxcar(ctx, w);
+      } else if (wallStyle === "wood") {
+        this.renderWoodLogWall(ctx, w, wallColor, wallBorder);
+      } else if (wallStyle === "desert") {
+        this.renderDesertAdobeWall(ctx, w, wallColor, wallBorder);
+      } else {
+        this.renderBunkerConcreteWall(ctx, w, wallColor, wallBorder);
       }
     });
+  }
+
+  renderShippingContainer(ctx, w) {
+    // Authentic port shipping line container color palettes based on coordinate hash
+    const palette = [
+      { main: "#1e40af", light: "#3b82f6", dark: "#172554", text: "MAERSK" },
+      { main: "#b91c1c", light: "#ef4444", dark: "#450a0a", text: "COSCO" },
+      { main: "#15803d", light: "#22c55e", dark: "#052e16", text: "EVERGREEN" },
+      { main: "#c2410c", light: "#f97316", dark: "#431407", text: "HAPAG" },
+      { main: "#334155", light: "#64748b", dark: "#0f172a", text: "CMA-CGM" }
+    ];
+    const hash = Math.abs(Math.floor(w.x * 7 + w.y * 13)) % palette.length;
+    const col = palette[hash];
+
+    // Main container body
+    ctx.fillStyle = col.main;
+    ctx.fillRect(w.x, w.y, w.w, w.h);
+
+    // Corrugated steel ridges
+    ctx.lineWidth = 2;
+    if (w.w >= w.h) {
+      for (let x = w.x + 18; x < w.x + w.w - 14; x += 18) {
+        ctx.strokeStyle = col.light;
+        ctx.beginPath(); ctx.moveTo(x - 1, w.y + 4); ctx.lineTo(x - 1, w.y + w.h - 4); ctx.stroke();
+        ctx.strokeStyle = col.dark;
+        ctx.beginPath(); ctx.moveTo(x + 1, w.y + 4); ctx.lineTo(x + 1, w.y + w.h - 4); ctx.stroke();
+      }
+    } else {
+      for (let y = w.y + 18; y < w.y + w.h - 14; y += 18) {
+        ctx.strokeStyle = col.light;
+        ctx.beginPath(); ctx.moveTo(w.x + 4, y - 1); ctx.lineTo(w.x + w.w - 4, y - 1); ctx.stroke();
+        ctx.strokeStyle = col.dark;
+        ctx.beginPath(); ctx.moveTo(w.x + 4, y + 1); ctx.lineTo(w.x + w.w - 4, y + 1); ctx.stroke();
+      }
+    }
+
+    // Outer steel frame border
+    ctx.strokeStyle = col.dark;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(w.x, w.y, w.w, w.h);
+
+    // Top specular light line
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(w.x + 2, w.y + 2); ctx.lineTo(w.x + w.w - 2, w.y + 2);
+    ctx.stroke();
+
+    // 4 Corner Castings (ISO Twist-Lock blocks)
+    const cw = Math.min(14, w.w / 4);
+    const ch = Math.min(14, w.h / 4);
+    const corners = [
+      { x: w.x, y: w.y },
+      { x: w.x + w.w - cw, y: w.y },
+      { x: w.x, y: w.y + w.h - ch },
+      { x: w.x + w.w - cw, y: w.y + w.h - ch }
+    ];
+    corners.forEach(cr => {
+      ctx.fillStyle = "#1e293b";
+      ctx.fillRect(cr.x, cr.y, cw, ch);
+      ctx.strokeStyle = "#475569";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(cr.x, cr.y, cw, ch);
+      // Oval twist hole
+      ctx.fillStyle = "#000000";
+      ctx.beginPath();
+      ctx.arc(cr.x + cw / 2, cr.y + ch / 2, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Stencil label in middle
+    if (w.w >= 80 && w.h >= 24) {
+      ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+      ctx.font = "bold 10px monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`${col.text} 40FT`, w.x + w.w / 2, w.y + w.h / 2);
+    }
+  }
+
+  renderSandbagWall(ctx, w, wallColor, wallBorder) {
+    ctx.fillStyle = "#4a3b2c";
+    ctx.fillRect(w.x, w.y, w.w, w.h);
+
+    const isHorizontal = w.w >= w.h;
+    const sackLength = 26;
+    const sackWidth = isHorizontal ? Math.min(16, w.h) : Math.min(16, w.w);
+
+    ctx.save();
+    if (isHorizontal) {
+      for (let y = w.y; y < w.y + w.h; y += sackWidth) {
+        const rowOffset = ((y - w.y) / sackWidth) % 2 === 0 ? 0 : sackLength / 2;
+        for (let x = w.x - rowOffset; x < w.x + w.w; x += sackLength) {
+          const sx = Math.max(w.x, x);
+          const sw = Math.min(sackLength - 2, w.x + w.w - sx);
+          const sh = Math.min(sackWidth - 2, w.y + w.h - y);
+          if (sw <= 0 || sh <= 0) continue;
+
+          ctx.fillStyle = "#786543";
+          ctx.beginPath();
+          ctx.roundRect ? ctx.roundRect(sx, y + 1, sw, sh, 3) : ctx.rect(sx, y + 1, sw, sh);
+          ctx.fill();
+
+          ctx.fillStyle = "rgba(255, 255, 255, 0.18)";
+          ctx.fillRect(sx + 2, y + 2, sw - 4, Math.max(2, sh / 3));
+
+          ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      }
+    } else {
+      for (let x = w.x; x < w.x + w.w; x += sackWidth) {
+        const colOffset = ((x - w.x) / sackWidth) % 2 === 0 ? 0 : sackLength / 2;
+        for (let y = w.y - colOffset; y < w.y + w.h; y += sackLength) {
+          const sy = Math.max(w.y, y);
+          const sw = Math.min(sackWidth - 2, w.x + w.w - x);
+          const sh = Math.min(sackLength - 2, w.y + w.h - sy);
+          if (sw <= 0 || sh <= 0) continue;
+
+          ctx.fillStyle = "#786543";
+          ctx.beginPath();
+          ctx.roundRect ? ctx.roundRect(x + 1, sy, sw, sh, 3) : ctx.rect(x + 1, sy, sw, sh);
+          ctx.fill();
+
+          ctx.fillStyle = "rgba(255, 255, 255, 0.18)";
+          ctx.fillRect(x + 2, sy + 2, Math.max(2, sw / 3), sh - 4);
+
+          ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      }
+    }
+    ctx.restore();
+
+    ctx.strokeStyle = "#382c1e";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(w.x, w.y, w.w, w.h);
+  }
+
+  renderBrickWall(ctx, w, wallColor, wallBorder) {
+    ctx.fillStyle = "#262626";
+    ctx.fillRect(w.x, w.y, w.w, w.h);
+
+    const bW = 20;
+    const bH = 10;
+    const brickTones = ["#7f1d1d", "#852618", "#6b211a", "#991b1b", "#5c1d18"];
+
+    ctx.save();
+    let row = 0;
+    for (let y = w.y + 2; y < w.y + w.h - 2; y += bH + 2) {
+      const offset = (row % 2 === 0) ? 0 : bW / 2;
+      for (let x = w.x + 2 - offset; x < w.x + w.w - 2; x += bW + 2) {
+        const bx = Math.max(w.x + 2, x);
+        const bw = Math.min(bW, w.x + w.w - 2 - bx);
+        const bh = Math.min(bH, w.y + w.h - 2 - y);
+        if (bw <= 0 || bh <= 0) continue;
+
+        const tone = brickTones[Math.abs(Math.floor(x * 3 + y * 7)) % brickTones.length];
+        ctx.fillStyle = tone;
+        ctx.fillRect(bx, y, bw, bh);
+
+        ctx.fillStyle = "rgba(255, 255, 255, 0.12)";
+        ctx.fillRect(bx, y, bw, 2);
+      }
+      row++;
+    }
+    ctx.restore();
+
+    ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
+    ctx.fillRect(w.x, w.y, w.w, Math.min(4, w.h / 3));
+
+    ctx.strokeStyle = "#171717";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(w.x, w.y, w.w, w.h);
+  }
+
+  renderTrainBoxcar(ctx, w) {
+    ctx.fillStyle = "#3e2417";
+    ctx.fillRect(w.x, w.y, w.w, w.h);
+
+    ctx.lineWidth = 2;
+    if (w.w >= w.h) {
+      for (let x = w.x + 16; x < w.x + w.w - 12; x += 16) {
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+        ctx.beginPath(); ctx.moveTo(x - 1, w.y + 3); ctx.lineTo(x - 1, w.y + w.h - 3); ctx.stroke();
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.45)";
+        ctx.beginPath(); ctx.moveTo(x + 1, w.y + 3); ctx.lineTo(x + 1, w.y + w.h - 3); ctx.stroke();
+      }
+
+      const doorW = Math.min(80, w.w * 0.4);
+      const doorX = w.x + (w.w - doorW) / 2;
+      ctx.fillStyle = "#2a180f";
+      ctx.fillRect(doorX, w.y + 4, doorW, w.h - 8);
+      ctx.strokeStyle = "#eab308";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(doorX, w.y + 4, doorW, w.h - 8);
+
+      ctx.strokeStyle = "#94a3b8";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(doorX + doorW / 2, w.y + 6); ctx.lineTo(doorX + doorW / 2, w.y + w.h - 6);
+      ctx.stroke();
+    } else {
+      for (let y = w.y + 16; y < w.y + w.h - 12; y += 16) {
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+        ctx.beginPath(); ctx.moveTo(w.x + 3, y - 1); ctx.lineTo(w.x + w.w - 3, y - 1); ctx.stroke();
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.45)";
+        ctx.beginPath(); ctx.moveTo(w.x + 3, y + 1); ctx.lineTo(w.x + w.w - 3, y + 1); ctx.stroke();
+      }
+    }
+
+    ctx.strokeStyle = "#1a0f0a";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(w.x, w.y, w.w, w.h);
+
+    ctx.fillStyle = "#111827";
+    if (w.w >= w.h) {
+      ctx.fillRect(w.x - 4, w.y + w.h / 2 - 6, 4, 12);
+      ctx.fillRect(w.x + w.w, w.y + w.h / 2 - 6, 4, 12);
+    } else {
+      ctx.fillRect(w.x + w.w / 2 - 6, w.y - 4, 12, 4);
+      ctx.fillRect(w.x + w.w / 2 - 6, w.y + w.h, 12, 4);
+    }
+  }
+
+  renderWoodLogWall(ctx, w, wallColor, wallBorder) {
+    ctx.fillStyle = "#2d1f14";
+    ctx.fillRect(w.x, w.y, w.w, w.h);
+
+    const logSize = 16;
+    const isH = w.w >= w.h;
+    ctx.lineWidth = 2;
+    if (isH) {
+      for (let y = w.y + logSize; y < w.y + w.h; y += logSize) {
+        ctx.strokeStyle = "#1a120b";
+        ctx.beginPath(); ctx.moveTo(w.x, y); ctx.lineTo(w.x + w.w, y); ctx.stroke();
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+        ctx.beginPath(); ctx.moveTo(w.x, y + 1); ctx.lineTo(w.x + w.w, y + 1); ctx.stroke();
+      }
+    } else {
+      for (let x = w.x + logSize; x < w.x + w.w; x += logSize) {
+        ctx.strokeStyle = "#1a120b";
+        ctx.beginPath(); ctx.moveTo(x, w.y); ctx.lineTo(x, w.y + w.h); ctx.stroke();
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+        ctx.beginPath(); ctx.moveTo(x + 1, w.y); ctx.lineTo(x + 1, w.y + w.h); ctx.stroke();
+      }
+    }
+    ctx.strokeStyle = "#140c06";
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(w.x, w.y, w.w, w.h);
+  }
+
+  renderDesertAdobeWall(ctx, w, wallColor, wallBorder) {
+    ctx.fillStyle = wallColor || "#523c28";
+    ctx.fillRect(w.x, w.y, w.w, w.h);
+
+    ctx.fillStyle = "rgba(255, 255, 255, 0.18)";
+    ctx.fillRect(w.x, w.y, w.w, Math.min(5, w.h / 3));
+
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.25)";
+    ctx.lineWidth = 1.5;
+    const step = 28;
+    if (w.w >= w.h) {
+      for (let x = w.x + step; x < w.x + w.w; x += step) {
+        ctx.beginPath(); ctx.moveTo(x, w.y); ctx.lineTo(x, w.y + w.h); ctx.stroke();
+      }
+    } else {
+      for (let y = w.y + step; y < w.y + w.h; y += step) {
+        ctx.beginPath(); ctx.moveTo(w.x, y); ctx.lineTo(w.x + w.w, y); ctx.stroke();
+      }
+    }
+
+    ctx.strokeStyle = wallBorder || "#8c6b45";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(w.x, w.y, w.w, w.h);
+  }
+
+  renderBunkerConcreteWall(ctx, w, wallColor, wallBorder) {
+    ctx.fillStyle = wallColor || "#252b36";
+    ctx.fillRect(w.x, w.y, w.w, w.h);
+
+    ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
+    ctx.fillRect(w.x, w.y, w.w, Math.min(5, w.h / 3));
+    ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+    ctx.fillRect(w.x, w.y + w.h - Math.min(5, w.h / 3), w.w, Math.min(5, w.h / 3));
+
+    const pad = 10;
+    const tieHoles = [
+      { x: w.x + pad, y: w.y + pad },
+      { x: w.x + w.w - pad, y: w.y + pad },
+      { x: w.x + pad, y: w.y + w.h - pad },
+      { x: w.x + w.w - pad, y: w.y + w.h - pad }
+    ];
+    ctx.fillStyle = "#0f172a";
+    tieHoles.forEach(th => {
+      ctx.beginPath();
+      ctx.arc(th.x, th.y, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    ctx.strokeStyle = wallBorder || "#475569";
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(w.x, w.y, w.w, w.h);
   }
 
   drawCrates(ctx, crates, theme = {}) {
@@ -425,37 +1161,96 @@ export class GameRenderer {
 
     crates.forEach(c => {
       if (c.hp <= 0) return;
-      // Frustum culling
       if (!this.isRectInView(c.x, c.y, c.size, c.size)) return;
 
-      // Drop shadow
-      ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
-      ctx.fillRect(c.x + 5, c.y + 5, c.size, c.size);
+      // 3D Drop shadow
+      ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+      ctx.fillRect(c.x + 6, c.y + 6, c.size, c.size);
 
-      // Crate body
+      // Crate wooden plank background
       ctx.fillStyle = crateBg;
       ctx.fillRect(c.x, c.y, c.size, c.size);
 
-      // Crate inner cross & bevel
+      // Horizontal Wood Planks
+      const plankCount = 4;
+      const plankH = c.size / plankCount;
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.35)";
+      ctx.lineWidth = 1.5;
+      for (let i = 1; i < plankCount; i++) {
+        const py = c.y + i * plankH;
+        ctx.beginPath();
+        ctx.moveTo(c.x + 3, py);
+        ctx.lineTo(c.x + c.size - 3, py);
+        ctx.stroke();
+      }
+
+      // 3D Diagonal Cross Bracing
+      ctx.strokeStyle = crateBorder;
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.moveTo(c.x + 4, c.y + 4);
+      ctx.lineTo(c.x + c.size - 4, c.y + c.size - 4);
+      ctx.moveTo(c.x + c.size - 4, c.y + 4);
+      ctx.lineTo(c.x + 4, c.y + c.size - 4);
+      ctx.stroke();
+
+      // Outer Reinforced Wooden Rim
       ctx.strokeStyle = crateBorder;
       ctx.lineWidth = 3;
       ctx.strokeRect(c.x, c.y, c.size, c.size);
-      ctx.beginPath();
-      ctx.moveTo(c.x, c.y);
-      ctx.lineTo(c.x + c.size, c.y + c.size);
-      ctx.moveTo(c.x + c.size, c.y);
-      ctx.lineTo(c.x, c.y + c.size);
-      ctx.stroke();
 
-      // Crate health bar
+      // 4 Heavy Iron Corner Reinforcement Brackets with Rivets
+      const bw = Math.min(10, c.size * 0.22);
+      ctx.fillStyle = "#1e293b";
+      ctx.fillRect(c.x, c.y, bw, bw);
+      ctx.fillRect(c.x + c.size - bw, c.y, bw, bw);
+      ctx.fillRect(c.x, c.y + c.size - bw, bw, bw);
+      ctx.fillRect(c.x + c.size - bw, c.y + c.size - bw, bw, bw);
+
+      // Rivets (silver metallic dots)
+      ctx.fillStyle = "#94a3b8";
+      const rivets = [
+        { x: c.x + bw / 2, y: c.y + bw / 2 },
+        { x: c.x + c.size - bw / 2, y: c.y + bw / 2 },
+        { x: c.x + bw / 2, y: c.y + c.size - bw / 2 },
+        { x: c.x + c.size - bw / 2, y: c.y + c.size - bw / 2 }
+      ];
+      rivets.forEach(rv => {
+        ctx.beginPath();
+        ctx.arc(rv.x, rv.y, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Military Stencil Supply Insignia (Center)
+      ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+      ctx.font = `bold ${Math.max(9, Math.floor(c.size * 0.22))}px sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("AMMO", c.x + c.size / 2, c.y + c.size / 2);
+
+      // Dynamic Damage Cracks (when HP < maxHP)
       if (c.hp < c.maxHp) {
+        const dmgRatio = 1 - (c.hp / c.maxHp);
+        ctx.strokeStyle = "rgba(15, 10, 5, 0.85)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(c.x + c.size * 0.3, c.y + 4);
+        ctx.lineTo(c.x + c.size * 0.45, c.y + c.size * 0.5);
+        ctx.lineTo(c.x + c.size * 0.35, c.y + c.size - 4);
+        if (dmgRatio > 0.5) {
+          ctx.moveTo(c.x + c.size * 0.45, c.y + c.size * 0.5);
+          ctx.lineTo(c.x + c.size * 0.75, c.y + c.size * 0.65);
+        }
+        ctx.stroke();
+
+        // Health bar
         const barW = c.size;
         const barH = 5;
         const barX = c.x;
         const barY = c.y - 8;
-        ctx.fillStyle = "rgba(0,0,0,0.6)";
+        ctx.fillStyle = "rgba(0,0,0,0.65)";
         ctx.fillRect(barX, barY, barW, barH);
-        ctx.fillStyle = "#10b981";
+        ctx.fillStyle = c.hp > c.maxHp * 0.4 ? "#10b981" : "#ef4444";
         ctx.fillRect(barX, barY, barW * (c.hp / c.maxHp), barH);
       }
     });
@@ -819,39 +1614,99 @@ export class GameRenderer {
   }
 
   drawBushes(ctx, bushes, localPlayer, theme = {}) {
-    if (!bushes) return;
+    if (!bushes || bushes.length === 0) return;
     const localIP = localPlayer ? (this.interpolatedPlayers.get(localPlayer.id) || localPlayer) : null;
-    const bushColor = theme.bushColor || "rgba(22, 101, 52, 0.9)";
-    const bushBorder = theme.bushBorder || "#15803d";
-    const bushLeaf = theme.bushLeaf || "rgba(34, 197, 94, 0.75)";
+    const defaultDark = theme.bushColor || "#1b4332";
+    const defaultMid = theme.bushBorder || "#2d6a4f";
+    const defaultLight = theme.bushLeaf || "#52b788";
 
-    bushes.forEach(b => {
-      // Frustum culling
-      if (!this.isCircleInView(b.x, b.y, b.radius)) return;
+    bushes.forEach((b, idx) => {
+      // Frustum culling with padding for organic foliage spread
+      if (!this.isCircleInView(b.x, b.y, b.radius * 1.3)) return;
+
+      const playerInside = localIP && Math.hypot(localIP.x - b.x, localIP.y - b.y) < b.radius;
+      const alpha = playerInside ? 0.38 : 1.0;
 
       ctx.save();
+      ctx.globalAlpha = alpha;
+
+      // 1. Soft ground contact shadow under foliage
       ctx.beginPath();
-      ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
-
-      // Check if local player is inside this bush
-      const playerInside = localIP && Math.hypot(localIP.x - b.x, localIP.y - b.y) < b.radius;
-
-      ctx.fillStyle = playerInside ? "rgba(22, 101, 52, 0.45)" : (b.color || bushColor);
+      ctx.ellipse(b.x + 4, b.y + 8, b.radius * 1.05, b.radius * 0.85, 0, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(0, 0, 0, 0.28)";
       ctx.fill();
 
-      ctx.strokeStyle = bushBorder;
-      ctx.lineWidth = 4;
-      ctx.stroke();
+      // Deterministic pseudo-random seed based on position
+      const seed = Math.sin(b.x * 12.9898 + b.y * 78.233) * 43758.5453;
+      const getRand = (offset) => {
+        const val = Math.sin(seed + offset) * 10000;
+        return val - Math.floor(val);
+      };
 
-      // Decorative leafy textures
-      for (let i = 0; i < 5; i++) {
-        const ang = (i / 5) * Math.PI * 2;
-        const ox = b.x + Math.cos(ang) * (b.radius * 0.6);
-        const oy = b.y + Math.sin(ang) * (b.radius * 0.6);
+      // 2. Base deep-shadow undergrowth
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.radius * 0.92, 0, Math.PI * 2);
+      ctx.fillStyle = defaultDark;
+      ctx.fill();
+
+      // 3. Multi-lobed organic canopy perimeter (12 irregular foliage lobes)
+      const lobeCount = 12;
+      for (let i = 0; i < lobeCount; i++) {
+        const angle = (i / lobeCount) * Math.PI * 2 + getRand(i) * 0.25;
+        const dist = b.radius * (0.62 + getRand(i * 3) * 0.28);
+        const lobeRadius = b.radius * (0.38 + getRand(i * 7) * 0.16);
+        const lx = b.x + Math.cos(angle) * dist;
+        const ly = b.y + Math.sin(angle) * dist;
+
         ctx.beginPath();
-        ctx.arc(ox, oy, b.radius * 0.35, 0, Math.PI * 2);
-        ctx.fillStyle = playerInside ? "rgba(255, 255, 255, 0.15)" : bushLeaf;
+        ctx.arc(lx, ly, lobeRadius, 0, Math.PI * 2);
+        ctx.fillStyle = defaultMid;
         ctx.fill();
+      }
+
+      // 4. Interior dense foliage layer
+      for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * Math.PI * 2 + 0.4;
+        const dist = b.radius * 0.38;
+        const lx = b.x + Math.cos(angle) * dist;
+        const ly = b.y + Math.sin(angle) * dist;
+
+        ctx.beginPath();
+        ctx.arc(lx, ly, b.radius * 0.45, 0, Math.PI * 2);
+        ctx.fillStyle = defaultMid;
+        ctx.fill();
+      }
+
+      // 5. Sunlit leaf tip highlights (top-left directional lighting)
+      const sunAngle = -Math.PI * 0.75;
+      for (let i = 0; i < 8; i++) {
+        const angle = sunAngle + ((i - 3.5) / 4) * 0.9 + getRand(i * 11) * 0.2;
+        const dist = b.radius * (0.55 + getRand(i * 5) * 0.3);
+        const lx = b.x + Math.cos(angle) * dist;
+        const ly = b.y + Math.sin(angle) * dist;
+        const r = b.radius * (0.24 + getRand(i * 9) * 0.12);
+
+        ctx.beginPath();
+        ctx.arc(lx, ly, r, 0, Math.PI * 2);
+        ctx.fillStyle = defaultLight;
+        ctx.fill();
+      }
+
+      // 6. Center canopy crest
+      ctx.beginPath();
+      ctx.arc(b.x - 3, b.y - 4, b.radius * 0.35, 0, Math.PI * 2);
+      ctx.fillStyle = defaultLight;
+      ctx.fill();
+
+      // 7. Tactical stealth glow indicator when local player is concealed inside
+      if (playerInside) {
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.radius * 1.05, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(74, 222, 128, 0.7)";
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([6, 6]);
+        ctx.stroke();
+        ctx.setLineDash([]);
       }
 
       ctx.restore();
@@ -964,6 +1819,28 @@ export class GameRenderer {
         }
       });
     }
+  }
+
+  drawVignette(ctx) {
+    if (!this.canvas) return;
+    const w = this.canvas.width;
+    const h = this.canvas.height;
+    if (w <= 0 || h <= 0) return;
+
+    const cx = w * 0.5;
+    const cy = h * 0.5;
+    const innerR = Math.min(cx, cy) * 0.72;
+    const outerR = Math.max(cx, cy) * 1.28;
+
+    const grad = ctx.createRadialGradient(cx, cy, innerR, cx, cy, outerR);
+    grad.addColorStop(0, "rgba(0, 0, 0, 0)");
+    grad.addColorStop(0.65, "rgba(2, 6, 23, 0.18)");
+    grad.addColorStop(1, "rgba(2, 6, 23, 0.48)");
+
+    ctx.save();
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
   }
 }
 

@@ -3,6 +3,7 @@
 export const MAPS = {
   // 1. 🎖️ Military Airbase (Runway, Sandbags, Concrete Bunkers)
   military_airbase: {
+    id: "military_airbase",
     name: "Military Airbase",
     width: 2600,
     height: 1900,
@@ -88,6 +89,7 @@ export const MAPS = {
 
   // 2. 🚢 Cargo Docks (Shipping Containers, Wet Asphalt, Tactical Corridors)
   cargo_docks: {
+    id: "cargo_docks",
     name: "Cargo Docks",
     width: 2500,
     height: 2000,
@@ -162,6 +164,7 @@ export const MAPS = {
 
   // 3. 🏜️ Desert Town (Dust II Style Sandstone Alleys & Courtyards)
   desert_town: {
+    id: "desert_town",
     name: "Desert Town (Dust II)",
     width: 2600,
     height: 2000,
@@ -235,6 +238,7 @@ export const MAPS = {
 
   // 4. 🏭 Abandoned Factory (Red Bricks, Heavy Machinery & Acid Vats)
   abandoned_factory: {
+    id: "abandoned_factory",
     name: "Abandoned Factory",
     width: 2500,
     height: 1900,
@@ -294,6 +298,7 @@ export const MAPS = {
 
   // 5. 🌲 Dense Jungle (Rainforest Mud, Ancient Trees, Stealth Bushes)
   dense_jungle: {
+    id: "dense_jungle",
     name: "Dense Jungle",
     width: 2500,
     height: 2100,
@@ -357,6 +362,7 @@ export const MAPS = {
 
   // 6. ❄️ Arctic Snow Base (Glacier Ice, Cold Blast Doors, Snow Camo)
   arctic_base: {
+    id: "arctic_base",
     name: "Arctic Snow Base",
     width: 2500,
     height: 1900,
@@ -422,6 +428,7 @@ export const MAPS = {
 
   // 7. 🏙️ City Ruins (Street Warzone, Rubble & Broken Concrete)
   city_ruins: {
+    id: "city_ruins",
     name: "City Ruins",
     width: 2600,
     height: 2000,
@@ -487,6 +494,7 @@ export const MAPS = {
 
   // 8. 🚂 Railway Depot (Train Cars, Tracks, Gravel & Choke Points)
   railway_depot: {
+    id: "railway_depot",
     name: "Railway Depot",
     width: 2700,
     height: 1800,
@@ -546,6 +554,7 @@ export const MAPS = {
 
   // 9. 🏝️ Island Bunker (Coastline Sand, Sea Pillboxes & Palm Bushes)
   island_bunker: {
+    id: "island_bunker",
     name: "Island Bunker",
     width: 2500,
     height: 2000,
