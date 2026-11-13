@@ -28,8 +28,8 @@
   <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
 
-  <link rel="stylesheet" href="./css/style.css?v=20261114_2k">
-  <link rel="stylesheet" href="./css/joystick.css?v=20261114_2k">
+  <link rel="stylesheet" href="./css/style.css?v=20261114_spacing_v1">
+  <link rel="stylesheet" href="./css/joystick.css?v=20261114_spacing_v1">
 </head>
 <body>
   <!-- Canvas Screen -->
@@ -381,10 +381,12 @@
       <!-- Navigation Tabs / Sections: Main Menu vs Active Room -->
       <div id="view-room-selection" class="room-selection-view">
         <!-- Instant Drop-In Public Arena Card (Top Priority) -->
-        <div class="glass-card action-card" style="border-color: #00f0ff; background: linear-gradient(135deg, rgba(0, 240, 255, 0.16), rgba(168, 85, 247, 0.2)); box-shadow: 0 0 30px rgba(0, 240, 255, 0.35); margin-bottom: 1.25rem; border-width: 2px;">
-          <div class="card-badge" style="background: linear-gradient(135deg, #00f0ff, #a855f7); color: #090d16; font-weight: 900; letter-spacing: 0.5px;">🔥 24/7 ENDLESS ARENA (UNLIMITED BATTLE)</div>
-          <h2 style="font-size: 1.65rem; color: #fff; margin: 8px 0; text-shadow: 0 0 12px rgba(0, 240, 255, 0.6);">⚔️ LIVE BATTLE ARENA (PLAY ANYWHERE) ⚔️</h2>
-          <p style="color: #e2e8f0; font-size: 1rem; margin-bottom: 14px; line-height: 1.4;">
+        <div class="glass-card action-card" style="border-color: #00f0ff; background: linear-gradient(135deg, rgba(0, 240, 255, 0.16), rgba(168, 85, 247, 0.2)); box-shadow: 0 0 30px rgba(0, 240, 255, 0.35); margin-bottom: 1.5rem; border-width: 2px;">
+          <div class="action-card-header" style="flex-wrap: wrap; gap: 10px;">
+            <h2 style="font-size: 1.5rem; color: #fff; margin: 0; text-shadow: 0 0 12px rgba(0, 240, 255, 0.6); flex: 1; min-width: 240px;">⚔️ LIVE BATTLE ARENA (PLAY ANYWHERE) ⚔️</h2>
+            <div class="card-badge" style="background: linear-gradient(135deg, #00f0ff, #a855f7); color: #090d16; font-weight: 900; letter-spacing: 0.5px;">🔥 24/7 ENDLESS ARENA</div>
+          </div>
+          <p style="color: #e2e8f0; font-size: 1rem; margin-top: 0.5rem; margin-bottom: 14px; line-height: 1.45;">
             <b>Koi bhi phone, kisi bhi jagah se!</b> Bas <span style="color:#00f0ff; font-weight:700;">'BATTLE NOW'</span> dabao aur unlimited time tak dosto aur random players ke saath non-stop ladte raho! Kitne bhi log ek saath jud sakte hain!
           </p>
           <div style="display: flex; gap: 10px; flex-wrap: wrap;">
@@ -400,24 +402,30 @@
         <div class="cards-grid">
           <!-- Solo Practice Card -->
           <div class="glass-card action-card practice-card" style="border-color: rgba(16, 185, 129, 0.4);">
-            <div class="card-badge" style="background: rgba(16, 185, 129, 0.2); border-color: #10b981; color: #10b981;">SOLO PLAY</div>
-            <h3>🤖 PLAY VS BOTS (OFFLINE)</h3>
+            <div class="action-card-header">
+              <h3>🤖 PLAY VS BOTS (OFFLINE)</h3>
+              <div class="card-badge" style="background: rgba(16, 185, 129, 0.2); border-color: #10b981; color: #10b981;">SOLO PLAY</div>
+            </div>
             <p>Practice moves and weapons offline against AI bots with zero Wi-Fi or server needed!</p>
             <button id="btn-practice-bots" class="btn btn-secondary full-width" style="border-color: #10b981; color: #10b981; font-weight: 700; background: rgba(16, 185, 129, 0.1);">PLAY VS BOTS NOW ⚔️</button>
           </div>
 
           <!-- Create Private Room Card -->
           <div class="glass-card action-card">
-            <div class="card-badge">PRIVATE</div>
-            <h3>CREATE PRIVATE ROOM</h3>
+            <div class="action-card-header">
+              <h3>CREATE PRIVATE ROOM</h3>
+              <div class="card-badge">PRIVATE</div>
+            </div>
             <p>Start a custom room with a unique code for your private group match.</p>
             <button id="btn-create-room" class="btn btn-secondary full-width">CREATE ROOM 🚀</button>
           </div>
 
           <!-- Join Private Room Card -->
-          <div class="glass-card action-card">
-            <div class="card-badge">JOIN</div>
-            <h3>JOIN WITH CODE</h3>
+          <div class="glass-card action-card join-card">
+            <div class="action-card-header">
+              <h3>JOIN WITH CODE</h3>
+              <div class="card-badge">JOIN</div>
+            </div>
             <p>Enter private room code from your friend's screen:</p>
             <div class="join-input-group">
               <input type="text" id="input-room-code" maxlength="8" placeholder="e.g. WYW8" uppercase autocomplete="off" autocorrect="off" autocapitalize="characters">
@@ -721,8 +729,8 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Load Scripts: Local bundled socket.io and peerjs for 100% reliable serverless online & P2P multiplayer -->
-  <script src="./js/socket.io.min.js?v=20261114_2k"></script>
-  <script src="./js/peerjs.min.js?v=20261114_2k"></script>
-  <script type="module" src="./js/main.js?v=20261114_2k"></script>
+  <script src="./js/socket.io.min.js?v=20261114_spacing_v1"></script>
+  <script src="./js/peerjs.min.js?v=20261114_spacing_v1"></script>
+  <script type="module" src="./js/main.js?v=20261114_spacing_v1"></script>
 </body>
 </html>
