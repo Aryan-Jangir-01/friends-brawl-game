@@ -1,10 +1,10 @@
 // public/js/main.js
-import { audio } from "./audio.js?v=20261113_08";
-import { ParticleSystem } from "./particles.js?v=20261113_08";
-import { InputManager } from "./input.js?v=20261113_08";
-import { GameRenderer } from "./renderer.js?v=20261113_08";
-import { NetworkClient } from "./network.js?v=20261113_08";
-import { MAPS } from "./engine/MapData.js?v=20261113_08";
+import { audio } from "./audio.js?v=20261113_09";
+import { ParticleSystem } from "./particles.js?v=20261113_09";
+import { InputManager } from "./input.js?v=20261113_09";
+import { GameRenderer } from "./renderer.js?v=20261113_09";
+import { NetworkClient } from "./network.js?v=20261113_09";
+import { MAPS } from "./engine/MapData.js?v=20261113_09";
 
 // Global Game State
 const state = {
