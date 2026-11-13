@@ -28,8 +28,8 @@
   <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
 
-  <link rel="stylesheet" href="./css/style.css?v=20261114_a17_v5">
-  <link rel="stylesheet" href="./css/joystick.css?v=20261114_a17_v5">
+  <link rel="stylesheet" href="./css/style.css?v=20261114_2k">
+  <link rel="stylesheet" href="./css/joystick.css?v=20261114_2k">
 </head>
 <body>
   <!-- Canvas Screen -->
@@ -50,6 +50,7 @@
             <span class="icon">📍</span> <span id="hud-room-code">ARENA</span>
             <span id="hud-ping-badge" class="ping-badge">24ms</span>
             <span id="hud-players-count" style="font-size: 0.75rem; color: #00f0ff; font-weight: 800; margin: 0 4px;">👥 1 IN ARENA</span>
+            <button id="btn-hud-quality" class="btn-hud-quality" title="Toggle Graphics Quality (2K Ultra / 1080p)">💎 2K</button>
             <button id="btn-hud-invite" class="btn-small-icon" style="background: rgba(168, 85, 247, 0.4); border: 1px solid #a855f7; color: #fff; font-size: 0.75rem; padding: 4px 8px; border-radius: 6px; cursor: pointer; font-weight: 700;" title="Invite Friends to Battle">📲 INVITE</button>
             <button id="btn-hud-sound" class="btn-small-icon" title="Toggle Sound">🔊</button>
             <button id="btn-hud-fullscreen" class="btn-small-icon" title="Toggle Fullscreen">⛶</button>
@@ -281,7 +282,8 @@
     <div class="lobby-content">
       <!-- Title Header -->
       <div class="game-branding">
-        <div class="top-util-row">
+        <div class="top-util-row" style="gap: 8px;">
+          <button id="btn-lobby-quality" class="btn-quality-toggle" title="Screen Resolution & Graphics Quality">💎 2K ULTRA</button>
           <button id="btn-install-app" class="btn-small" style="background: linear-gradient(135deg, #a855f7, #00f0ff); color: #090d16; font-weight: 800;" title="Install on Phone">📲 Install App</button>
           <button id="btn-lobby-fullscreen" class="btn-small" title="Fullscreen">⛶ Fullscreen</button>
         </div>
@@ -719,8 +721,8 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Load Scripts: Local bundled socket.io and peerjs for 100% reliable serverless online & P2P multiplayer -->
-  <script src="./js/socket.io.min.js?v=20261114_a17_v5"></script>
-  <script src="./js/peerjs.min.js?v=20261114_a17_v5"></script>
-  <script type="module" src="./js/main.js?v=20261114_a17_v5"></script>
+  <script src="./js/socket.io.min.js?v=20261114_2k"></script>
+  <script src="./js/peerjs.min.js?v=20261114_2k"></script>
+  <script type="module" src="./js/main.js?v=20261114_2k"></script>
 </body>
 </html>

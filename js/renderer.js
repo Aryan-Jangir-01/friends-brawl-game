@@ -10,8 +10,8 @@ export class GameRenderer {
 
     this.width = window.innerWidth;
     this.height = window.innerHeight;
-    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 850;
-    this.dpr = isMobile ? 1.0 : Math.min(window.devicePixelRatio || 1, 1.5);
+    this.quality = localStorage.getItem("brawl_render_quality") || "2k";
+    this.dpr = this.getDPR();
 
     // Camera
     this.camX = 1200;
@@ -30,6 +30,30 @@ export class GameRenderer {
     window.addEventListener("resize", () => this.resize());
   }
 
+  getDPR() {
+    const nativeDPR = window.devicePixelRatio || 1;
+    const mode = this.quality || "2k";
+    if (mode === "2k") {
+      // 2K Ultra HD: Native 2K on Retina/AMOLED phones (DPR 2.0 - 3.0),
+      // and 2.0x supersampled 2K anti-aliasing on standard 1080p desktop monitors
+      return Math.min(Math.max(nativeDPR, 2.0), 3.0);
+    } else if (mode === "fhd") {
+      // 1080p Balanced
+      return Math.min(Math.max(nativeDPR, 1.25), 1.75);
+    } else {
+      // Battery / Standard Saver
+      return 1.0;
+    }
+  }
+
+  setQuality(mode) {
+    this.quality = mode;
+    try {
+      localStorage.setItem("brawl_render_quality", mode);
+    } catch (e) {}
+    this.resize();
+  }
+
   resetCamera(x = 1200, y = 900) {
     this.camX = x;
     this.camY = y;
@@ -41,19 +65,27 @@ export class GameRenderer {
   resize() {
     this.width = window.innerWidth;
     this.height = window.innerHeight;
-    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 850;
-    this.dpr = isMobile ? 1.0 : Math.min(window.devicePixelRatio || 1, 1.5);
+    this.dpr = this.getDPR();
 
-    this.canvas.width = Math.floor(this.width * this.dpr);
-    this.canvas.height = Math.floor(this.height * this.dpr);
+    this.canvas.width = Math.round(this.width * this.dpr);
+    this.canvas.height = Math.round(this.height * this.dpr);
+    this.canvas.style.width = `${this.width}px`;
+    this.canvas.style.height = `${this.height}px`;
+
     this.ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform before scaling
     this.ctx.scale(this.dpr, this.dpr);
+    this.ctx.imageSmoothingEnabled = true;
+    this.ctx.imageSmoothingQuality = "high";
 
     if (this.miniMapCanvas && this.miniMapCtx) {
-      this.miniMapCanvas.width = 140 * this.dpr;
-      this.miniMapCanvas.height = 105 * this.dpr;
+      this.miniMapCanvas.width = Math.round(140 * this.dpr);
+      this.miniMapCanvas.height = Math.round(105 * this.dpr);
+      this.miniMapCanvas.style.width = "140px";
+      this.miniMapCanvas.style.height = "105px";
       this.miniMapCtx.setTransform(1, 0, 0, 1, 0, 0);
       this.miniMapCtx.scale(this.dpr, this.dpr);
+      this.miniMapCtx.imageSmoothingEnabled = true;
+      this.miniMapCtx.imageSmoothingQuality = "high";
     }
   }
 
@@ -1823,8 +1855,8 @@ export class GameRenderer {
 
   drawVignette(ctx) {
     if (!this.canvas) return;
-    const w = this.canvas.width;
-    const h = this.canvas.height;
+    const w = this.width;
+    const h = this.height;
     if (w <= 0 || h <= 0) return;
 
     const cx = w * 0.5;

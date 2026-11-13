@@ -1,10 +1,10 @@
 // public/js/main.js
-import { audio } from "./audio.js?v=20261114_a17_v5";
-import { ParticleSystem } from "./particles.js?v=20261114_a17_v5";
-import { InputManager } from "./input.js?v=20261114_a17_v5";
-import { GameRenderer } from "./renderer.js?v=20261114_a17_v5";
-import { NetworkClient } from "./network.js?v=20261114_a17_v5";
-import { MAPS } from "./engine/MapData.js?v=20261114_a17_v5";
+import { audio } from "./audio.js?v=20261114_2k";
+import { ParticleSystem } from "./particles.js?v=20261114_2k";
+import { InputManager } from "./input.js?v=20261114_2k";
+import { GameRenderer } from "./renderer.js?v=20261114_2k";
+import { NetworkClient } from "./network.js?v=20261114_2k";
+import { MAPS } from "./engine/MapData.js?v=20261114_2k";
 
 // Global Game State
 const state = {
@@ -135,6 +135,40 @@ function toggleFullscreen() {
 
 document.getElementById("btn-lobby-fullscreen")?.addEventListener("click", toggleFullscreen);
 document.getElementById("btn-hud-fullscreen")?.addEventListener("click", toggleFullscreen);
+
+// Display Quality & 2K Ultra HD Mode Controller
+function updateQualityButtons(quality) {
+  const qLobby = document.getElementById("btn-lobby-quality");
+  const qHud = document.getElementById("btn-hud-quality");
+  const labels = {
+    "2k": { lobby: "💎 2K ULTRA", hud: "💎 2K", title: "2K Ultra HD (Crisp 1440p+)" },
+    "fhd": { lobby: "⚡ 1080p FHD", hud: "⚡ 1080p", title: "Full HD 1080p (Balanced)" },
+    "battery": { lobby: "🔋 BATTERY", hud: "🔋 SAVE", title: "Battery Saver (Standard 1x)" }
+  };
+  const cur = labels[quality] || labels["2k"];
+  if (qLobby) qLobby.innerHTML = cur.lobby;
+  if (qHud) qHud.innerHTML = cur.hud;
+}
+
+function cycleQuality() {
+  const modes = ["2k", "fhd", "battery"];
+  const curQuality = renderer.quality || "2k";
+  const nextIdx = (modes.indexOf(curQuality) + 1) % modes.length;
+  const nextQuality = modes[nextIdx];
+  renderer.setQuality(nextQuality);
+  updateQualityButtons(nextQuality);
+  if (audio.playSelectChime) audio.playSelectChime();
+  const names = {
+    "2k": "💎 2K Ultra HD Mode Enabled! (Super Crisp 1440p+)",
+    "fhd": "⚡ Full HD 1080p Mode Enabled! (Balanced)",
+    "battery": "🔋 Battery Saver Mode Enabled! (Standard 1x)"
+  };
+  showToast(names[nextQuality] || "Display Quality Updated");
+}
+
+document.getElementById("btn-lobby-quality")?.addEventListener("click", cycleQuality);
+document.getElementById("btn-hud-quality")?.addEventListener("click", cycleQuality);
+updateQualityButtons(renderer.quality || "2k");
 
 // Toast notification helper
 function showToast(message) {
