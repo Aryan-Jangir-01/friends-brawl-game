@@ -276,6 +276,350 @@ function initControlsModal() {
 
 initControlsModal();
 
+// ========================================================
+// CUSTOM HUD CONTROLS LAYOUT & DRAG/RESIZE EDITOR
+// ========================================================
+const DEFAULT_HUD_LAYOUT = {
+  btnGroup: { x: 0, y: 0, scale: 1.0, opacity: 1.0, name: "🎮 Action Buttons (Super / Swap / Emote / Dash)" },
+  bottomBar: { x: 0, y: 0, scale: 1.0, opacity: 1.0, name: "❤️ Health & Weapon Bar" },
+  timerGroup: { x: 0, y: 0, scale: 1.0, opacity: 1.0, name: "⏱️ Match Timer" },
+  killsGroup: { x: 0, y: 0, scale: 1.0, opacity: 1.0, name: "🏆 Kills Counter" },
+  miniMap: { x: 0, y: 0, scale: 1.0, opacity: 1.0, name: "🗺️ Radar Mini-Map" }
+};
+
+const HUD_VAR_MAP = {
+  btnGroup: { x: '--btn-x', y: '--btn-y', scale: '--btn-scale', opacity: '--btn-opacity' },
+  bottomBar: { x: '--bar-x', y: '--bar-y', scale: '--bar-scale', opacity: '--bar-opacity' },
+  timerGroup: { x: '--timer-x', y: '--timer-y', scale: '--timer-scale', opacity: '--timer-opacity' },
+  killsGroup: { x: '--kills-x', y: '--kills-y', scale: '--kills-scale', opacity: '--kills-opacity' },
+  miniMap: { x: '--map-x', y: '--map-y', scale: '--map-scale', opacity: '--map-opacity' }
+};
+
+let customHudLayout = loadCustomHudLayout();
+
+function loadCustomHudLayout() {
+  try {
+    const raw = localStorage.getItem("brawl_custom_hud_layout");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      const layout = {};
+      for (const key of Object.keys(DEFAULT_HUD_LAYOUT)) {
+        layout[key] = {
+          x: typeof parsed[key]?.x === "number" ? parsed[key].x : DEFAULT_HUD_LAYOUT[key].x,
+          y: typeof parsed[key]?.y === "number" ? parsed[key].y : DEFAULT_HUD_LAYOUT[key].y,
+          scale: typeof parsed[key]?.scale === "number" ? parsed[key].scale : DEFAULT_HUD_LAYOUT[key].scale,
+          opacity: typeof parsed[key]?.opacity === "number" ? parsed[key].opacity : DEFAULT_HUD_LAYOUT[key].opacity,
+          name: DEFAULT_HUD_LAYOUT[key].name
+        };
+      }
+      return layout;
+    }
+  } catch (err) {
+    console.warn("Could not load custom HUD layout:", err);
+  }
+  return JSON.parse(JSON.stringify(DEFAULT_HUD_LAYOUT));
+}
+
+function applyHudLayout(layout) {
+  const overlay = document.getElementById("hud-overlay");
+  if (!overlay) return;
+  for (const [id, vars] of Object.entries(HUD_VAR_MAP)) {
+    const item = layout[id] || DEFAULT_HUD_LAYOUT[id];
+    overlay.style.setProperty(vars.x, `${Math.round(item.x || 0)}px`);
+    overlay.style.setProperty(vars.y, `${Math.round(item.y || 0)}px`);
+    overlay.style.setProperty(vars.scale, String(Number(item.scale || 1.0).toFixed(2)));
+    overlay.style.setProperty(vars.opacity, String(Number(item.opacity !== undefined ? item.opacity : 1.0).toFixed(2)));
+  }
+}
+
+// Initial application of HUD layout
+applyHudLayout(customHudLayout);
+
+function initHudEditor() {
+  const banner = document.getElementById("hud-editor-banner");
+  const overlay = document.getElementById("hud-overlay");
+  const btnOpenLobby = document.getElementById("btn-open-controls-editor");
+  const btnOpenModal = document.getElementById("btn-modal-open-editor");
+  const btnSave = document.getElementById("btn-editor-save");
+  const btnReset = document.getElementById("btn-editor-reset");
+  const btnClose = document.getElementById("btn-editor-close");
+  const targetLabel = document.getElementById("palette-target-name");
+  const btnCycle = document.getElementById("btn-palette-cycle");
+  const btnScaleDown = document.getElementById("btn-scale-down");
+  const btnScaleUp = document.getElementById("btn-scale-up");
+  const labelScale = document.getElementById("label-target-scale");
+  const btnOpacityDown = document.getElementById("btn-opacity-down");
+  const btnOpacityUp = document.getElementById("btn-opacity-up");
+  const labelOpacity = document.getElementById("label-target-opacity");
+  const btnMoveLeft = document.getElementById("btn-move-left");
+  const btnMoveRight = document.getElementById("btn-move-right");
+  const btnMoveUp = document.getElementById("btn-move-up");
+  const btnMoveDown = document.getElementById("btn-move-down");
+  const btnItemReset = document.getElementById("btn-target-reset");
+
+  const editableElements = Array.from(document.querySelectorAll(".hud-editable-item"));
+  const validIds = Object.keys(DEFAULT_HUD_LAYOUT);
+
+  let isEditorActive = false;
+  let selectedId = "btnGroup";
+  let wasLobbyActive = false;
+  let activePointerId = null;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let itemStartX = 0;
+  let itemStartY = 0;
+  let tempLayout = JSON.parse(JSON.stringify(customHudLayout));
+
+  function updatePaletteUI() {
+    const cur = tempLayout[selectedId] || DEFAULT_HUD_LAYOUT[selectedId];
+    if (targetLabel) targetLabel.textContent = cur.name || selectedId;
+    if (labelScale) labelScale.textContent = `${Math.round((cur.scale || 1.0) * 100)}%`;
+    if (labelOpacity) labelOpacity.textContent = `${Math.round((cur.opacity !== undefined ? cur.opacity : 1.0) * 100)}%`;
+
+    editableElements.forEach(el => {
+      if (el.dataset.hudId === selectedId) {
+        el.classList.add("selected");
+      } else {
+        el.classList.remove("selected");
+      }
+    });
+  }
+
+  function selectTarget(id) {
+    if (!validIds.includes(id)) return;
+    selectedId = id;
+    updatePaletteUI();
+    if (audio.playHapticTick) audio.playHapticTick();
+  }
+
+  function openEditor() {
+    if (isEditorActive) return;
+    isEditorActive = true;
+    tempLayout = JSON.parse(JSON.stringify(customHudLayout));
+
+    // Hide controls modal if open
+    document.getElementById("modal-controls")?.classList.add("hidden");
+
+    // Remember if we were in lobby
+    wasLobbyActive = lobbyScreen && !lobbyScreen.classList.contains("hidden");
+    if (wasLobbyActive) {
+      lobbyScreen.classList.add("hidden");
+    }
+
+    if (overlay) {
+      overlay.classList.remove("hidden");
+      overlay.classList.add("hud-editor-active");
+    }
+    if (banner) {
+      banner.classList.remove("hidden");
+    }
+
+    selectTarget(selectedId);
+    applyHudLayout(tempLayout);
+
+    if (audio.playSelectChime) audio.playSelectChime();
+    showToast("📐 Touch/drag controls to move, use buttons to resize!");
+  }
+
+  function closeEditor(saved = false) {
+    if (!isEditorActive) return;
+    isEditorActive = false;
+
+    if (banner) banner.classList.add("hidden");
+    if (overlay) overlay.classList.remove("hud-editor-active");
+
+    editableElements.forEach(el => el.classList.remove("selected"));
+
+    if (saved) {
+      customHudLayout = JSON.parse(JSON.stringify(tempLayout));
+      localStorage.setItem("brawl_custom_hud_layout", JSON.stringify(customHudLayout));
+      applyHudLayout(customHudLayout);
+      showToast("💾 Controls Layout Saved!");
+    } else {
+      // Revert unsaved preview changes
+      applyHudLayout(customHudLayout);
+    }
+
+    if (wasLobbyActive) {
+      if (lobbyScreen) lobbyScreen.classList.remove("hidden");
+      if (overlay) overlay.classList.add("hidden");
+    }
+
+    if (audio.playSelectChime) audio.playSelectChime();
+  }
+
+  // Pointer drag handling on all editable items
+  editableElements.forEach(el => {
+    const id = el.dataset.hudId;
+    if (!id) return;
+
+    el.addEventListener("pointerdown", (e) => {
+      if (!isEditorActive) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      selectTarget(id);
+      activePointerId = e.pointerId;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      itemStartX = tempLayout[id]?.x || 0;
+      itemStartY = tempLayout[id]?.y || 0;
+
+      try {
+        el.setPointerCapture(e.pointerId);
+      } catch (_) {}
+    });
+
+    el.addEventListener("pointermove", (e) => {
+      if (!isEditorActive || activePointerId !== e.pointerId) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const dx = e.clientX - dragStartX;
+      const dy = e.clientY - dragStartY;
+
+      tempLayout[id].x = Math.round(itemStartX + dx);
+      tempLayout[id].y = Math.round(itemStartY + dy);
+
+      applyHudLayout(tempLayout);
+    });
+
+    const endDrag = (e) => {
+      if (!isEditorActive || activePointerId !== e.pointerId) return;
+      activePointerId = null;
+      try {
+        el.releasePointerCapture(e.pointerId);
+      } catch (_) {}
+    };
+
+    el.addEventListener("pointerup", endDrag);
+    el.addEventListener("pointercancel", endDrag);
+  });
+
+  // Cycle Target Button
+  btnCycle?.addEventListener("click", () => {
+    const idx = validIds.indexOf(selectedId);
+    const nextIdx = (idx + 1) % validIds.length;
+    selectTarget(validIds[nextIdx]);
+  });
+
+  // Scale (Size: Chhota / Bada)
+  btnScaleDown?.addEventListener("click", () => {
+    const cur = tempLayout[selectedId];
+    if (!cur) return;
+    cur.scale = Math.max(0.5, Math.round(((cur.scale || 1.0) - 0.05) * 100) / 100);
+    applyHudLayout(tempLayout);
+    updatePaletteUI();
+    if (audio.playHapticTick) audio.playHapticTick();
+  });
+
+  btnScaleUp?.addEventListener("click", () => {
+    const cur = tempLayout[selectedId];
+    if (!cur) return;
+    cur.scale = Math.min(1.6, Math.round(((cur.scale || 1.0) + 0.05) * 100) / 100);
+    applyHudLayout(tempLayout);
+    updatePaletteUI();
+    if (audio.playHapticTick) audio.playHapticTick();
+  });
+
+  // Opacity (Translucency)
+  btnOpacityDown?.addEventListener("click", () => {
+    const cur = tempLayout[selectedId];
+    if (!cur) return;
+    const op = cur.opacity !== undefined ? cur.opacity : 1.0;
+    cur.opacity = Math.max(0.3, Math.round((op - 0.1) * 100) / 100);
+    applyHudLayout(tempLayout);
+    updatePaletteUI();
+    if (audio.playHapticTick) audio.playHapticTick();
+  });
+
+  btnOpacityUp?.addEventListener("click", () => {
+    const cur = tempLayout[selectedId];
+    if (!cur) return;
+    const op = cur.opacity !== undefined ? cur.opacity : 1.0;
+    cur.opacity = Math.min(1.0, Math.round((op + 0.1) * 100) / 100);
+    applyHudLayout(tempLayout);
+    updatePaletteUI();
+    if (audio.playHapticTick) audio.playHapticTick();
+  });
+
+  // D-Pad Nudge Buttons (6px step: Upar / Neeche / Aage / Peeche)
+  const NUDGE_STEP = 6;
+  btnMoveLeft?.addEventListener("click", () => {
+    const cur = tempLayout[selectedId];
+    if (!cur) return;
+    cur.x = (cur.x || 0) - NUDGE_STEP;
+    applyHudLayout(tempLayout);
+    if (audio.playHapticTick) audio.playHapticTick();
+  });
+
+  btnMoveRight?.addEventListener("click", () => {
+    const cur = tempLayout[selectedId];
+    if (!cur) return;
+    cur.x = (cur.x || 0) + NUDGE_STEP;
+    applyHudLayout(tempLayout);
+    if (audio.playHapticTick) audio.playHapticTick();
+  });
+
+  btnMoveUp?.addEventListener("click", () => {
+    const cur = tempLayout[selectedId];
+    if (!cur) return;
+    cur.y = (cur.y || 0) - NUDGE_STEP;
+    applyHudLayout(tempLayout);
+    if (audio.playHapticTick) audio.playHapticTick();
+  });
+
+  btnMoveDown?.addEventListener("click", () => {
+    const cur = tempLayout[selectedId];
+    if (!cur) return;
+    cur.y = (cur.y || 0) + NUDGE_STEP;
+    applyHudLayout(tempLayout);
+    if (audio.playHapticTick) audio.playHapticTick();
+  });
+
+  // Reset single item
+  btnItemReset?.addEventListener("click", () => {
+    const def = DEFAULT_HUD_LAYOUT[selectedId];
+    if (!def) return;
+    tempLayout[selectedId] = {
+      x: def.x,
+      y: def.y,
+      scale: def.scale,
+      opacity: def.opacity,
+      name: def.name
+    };
+    applyHudLayout(tempLayout);
+    updatePaletteUI();
+    if (audio.playHapticTick) audio.playHapticTick();
+    showToast(`↺ ${def.name} Reset to Center`);
+  });
+
+  // Reset all to defaults
+  btnReset?.addEventListener("click", () => {
+    tempLayout = JSON.parse(JSON.stringify(DEFAULT_HUD_LAYOUT));
+    applyHudLayout(tempLayout);
+    updatePaletteUI();
+    if (audio.playSelectChime) audio.playSelectChime();
+    showToast("🔄 All Controls Reset to Defaults");
+  });
+
+  // Save layout
+  btnSave?.addEventListener("click", () => {
+    closeEditor(true);
+  });
+
+  // Close / Exit editor
+  btnClose?.addEventListener("click", () => {
+    closeEditor(false);
+  });
+
+  // Open triggers
+  btnOpenLobby?.addEventListener("click", openEditor);
+  btnOpenModal?.addEventListener("click", openEditor);
+}
+
+initHudEditor();
+
 // Toast notification helper
 function showToast(message) {
   const container = document.getElementById("toast-container");

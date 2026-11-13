@@ -28,8 +28,8 @@
   <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
 
-  <link rel="stylesheet" href="./css/style.css?v=20261114_controls_v1">
-  <link rel="stylesheet" href="./css/joystick.css?v=20261114_controls_v1">
+  <link rel="stylesheet" href="./css/style.css?v=20261114_hud_editor_v2">
+  <link rel="stylesheet" href="./css/joystick.css?v=20261114_hud_editor_v2">
 </head>
 <body>
   <!-- Canvas Screen -->
@@ -38,6 +38,61 @@
 
     <!-- In-Game HUD Overlay -->
     <div id="hud-overlay" class="hidden">
+      <!-- Interactive HUD Layout Editor Overlay (Active in Editor Mode) -->
+      <div id="hud-editor-banner" class="hud-editor-banner hidden">
+        <div class="editor-header-bar">
+          <div class="editor-title-box">
+            <span class="editor-icon">📐</span>
+            <div>
+              <div class="editor-main-title">HUD CONTROLS LAYOUT EDITOR</div>
+              <div class="editor-sub-title">Touch/click any control to drag (upar, neeche, aage, peeche) & resize (chhota, bada)</div>
+            </div>
+          </div>
+          <div class="editor-top-actions">
+            <button id="btn-editor-reset" class="btn-editor-action reset-btn" title="Reset all to original defaults">🔄 DEFAULT</button>
+            <button id="btn-editor-save" class="btn-editor-action save-btn" title="Save custom layout">💾 SAVE LAYOUT</button>
+            <button id="btn-editor-close" class="btn-editor-action close-btn" title="Exit editor">✕ EXIT</button>
+          </div>
+        </div>
+
+        <!-- Floating Editor Palette -->
+        <div id="editor-palette" class="editor-palette">
+          <div class="palette-top">
+            <span id="palette-target-name" class="palette-name">👉 Tap any button or bar on screen to select</span>
+            <button id="btn-palette-cycle" class="palette-cycle-btn">Next Control ❯</button>
+          </div>
+          <div id="palette-controls-row" class="palette-controls-row">
+            <!-- Scale Controls (Chota / Bada) -->
+            <div class="palette-tool">
+              <span class="palette-label">SIZE:</span>
+              <button id="btn-scale-down" class="palette-step-btn" title="Make Smaller (Chhota)">➖</button>
+              <span id="label-target-scale" class="palette-value">100%</span>
+              <button id="btn-scale-up" class="palette-step-btn" title="Make Bigger (Bada)">➕</button>
+            </div>
+
+            <!-- Opacity Controls -->
+            <div class="palette-tool">
+              <span class="palette-label">OPACITY:</span>
+              <button id="btn-opacity-down" class="palette-step-btn" title="More Transparent">👁️➖</button>
+              <span id="label-target-opacity" class="palette-value">100%</span>
+              <button id="btn-opacity-up" class="palette-step-btn" title="More Solid">👁️➕</button>
+            </div>
+
+            <!-- Position Nudge D-Pad (Upr, Niche, Age, Piche) -->
+            <div class="palette-tool dpad-tool">
+              <span class="palette-label">MOVE:</span>
+              <button id="btn-move-left" class="palette-step-btn" title="Move Left (Peeche)">◀</button>
+              <button id="btn-move-up" class="palette-step-btn" title="Move Up (Upar)">▲</button>
+              <button id="btn-move-down" class="palette-step-btn" title="Move Down (Neeche)">▼</button>
+              <button id="btn-move-right" class="palette-step-btn" title="Move Right (Aage)">▶</button>
+            </div>
+
+            <!-- Reset Single Element -->
+            <button id="btn-target-reset" class="palette-single-reset" title="Reset this item to center">↺ Reset Item</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Top Status Bar -->
       <div class="hud-top-bar">
         <div class="hud-left-group">
@@ -57,7 +112,7 @@
             <button id="btn-hud-controls" class="btn-small-icon" title="Customize Controls">⚙️</button>
           </div>
         </div>
-        <div class="hud-center-group">
+        <div class="hud-center-group hud-editable-item" data-hud-id="timerGroup" title="Match Timer">
           <div class="hud-match-timer" id="hud-timer">05:00</div>
           <div id="hud-team-tracker" class="hud-team-tracker hidden">
             <span class="team-score blue-score">🔵 <b id="team-score-blue">0</b></span>
@@ -65,7 +120,7 @@
             <span class="team-score red-score"><b id="team-score-red">0</b> 🔴</span>
           </div>
         </div>
-        <div class="hud-score-tracker">
+        <div class="hud-score-tracker hud-editable-item" data-hud-id="killsGroup" title="Kills Counter">
           <span class="score-label">KILLS:</span>
           <span id="hud-player-kills" class="score-num">0</span>
         </div>
@@ -81,7 +136,7 @@
       <div id="kill-feed" class="kill-feed"></div>
 
       <!-- Mini Map Radar -->
-      <div class="mini-map-wrapper">
+      <div class="mini-map-wrapper hud-editable-item" data-hud-id="miniMap" title="Radar Mini-Map">
         <canvas id="mini-map-canvas" width="130" height="100"></canvas>
       </div>
 
@@ -105,7 +160,7 @@
       </div>
 
       <!-- Bottom Player Stats Bar -->
-      <div class="hud-bottom-bar">
+      <div class="hud-bottom-bar hud-editable-item" data-hud-id="bottomBar" title="Health & Weapon Stats">
         <!-- Health & Shield Bars -->
         <div class="bars-container">
           <!-- Shield Bar -->
@@ -158,7 +213,7 @@
         </div>
 
         <!-- Action Buttons on Right Side -->
-        <div class="action-buttons-group">
+        <div class="action-buttons-group hud-editable-item" data-hud-id="btnGroup" title="Action Buttons (Super/Dash/Swap/Emote)">
           <!-- Super Ultimate Button -->
           <button id="btn-super" class="action-btn super-btn" aria-label="Super Ability">
             <svg class="super-meter-svg" viewBox="0 0 76 76">
@@ -430,8 +485,11 @@
           <div class="glass-card action-card" style="border-color: rgba(168, 85, 247, 0.45);">
             <div class="card-badge" style="background: rgba(168, 85, 247, 0.2); border-color: #a855f7; color: #d8b4fe;">CONTROLS</div>
             <h3>⚙️ GAME CONTROLS</h3>
-            <p>Edit joystick size, action button layout, haptic vibration & keybinds.</p>
-            <button id="btn-open-controls-modal" class="btn btn-secondary full-width" style="border-color: #a855f7; color: #d8b4fe; font-weight: 700; background: rgba(168, 85, 247, 0.12);">CUSTOMIZE CONTROLS 🎮</button>
+            <p>Drag, move (upar/neeche/aage/peeche) & resize (chhota/bada) buttons, health bar & mini-map.</p>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button id="btn-open-controls-editor" class="btn btn-primary" style="flex: 1; min-width: 130px; font-weight: 800; font-size: 0.88rem; background: linear-gradient(135deg, #a855f7, #00f0ff);">📐 EDIT LAYOUT</button>
+              <button id="btn-open-controls-modal" class="btn btn-secondary" style="flex: 1; min-width: 110px; font-size: 0.85rem; border-color: #a855f7; color: #d8b4fe;">⚙️ SETTINGS</button>
+            </div>
           </div>
         </div>
 
@@ -741,9 +799,11 @@
         <span style="font-size: 1.5rem;">🎮</span>
         <h3 style="margin: 0; font-size: 1.25rem;">GAME CONTROLS SETUP</h3>
       </div>
-      <p style="font-size: 0.82rem; color: #94a3b8; margin-bottom: 14px;">
+      <p style="font-size: 0.82rem; color: #94a3b8; margin-bottom: 12px;">
         Apne hisab se touch joystick size, action buttons aur vibration customise karein:
       </p>
+
+      <button id="btn-modal-open-editor" class="btn btn-primary full-width" style="margin-bottom: 14px; background: linear-gradient(135deg, #a855f7, #00f0ff); font-size: 0.95rem; font-weight: 800;">📐 OPEN DRAG & RESIZE HUD EDITOR</button>
 
       <!-- Section: Movement & Aim Joystick Size -->
       <div class="control-setting-row">
@@ -823,8 +883,8 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Load Scripts: Local bundled socket.io and peerjs for 100% reliable serverless online & P2P multiplayer -->
-  <script src="./js/socket.io.min.js?v=20261114_controls_v1"></script>
-  <script src="./js/peerjs.min.js?v=20261114_controls_v1"></script>
-  <script type="module" src="./js/main.js?v=20261114_controls_v1"></script>
+  <script src="./js/socket.io.min.js?v=20261114_hud_editor_v2"></script>
+  <script src="./js/peerjs.min.js?v=20261114_hud_editor_v2"></script>
+  <script type="module" src="./js/main.js?v=20261114_hud_editor_v2"></script>
 </body>
 </html>

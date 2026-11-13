@@ -105,7 +105,8 @@
   gap: 14px;
   pointer-events: auto;
   z-index: 25;
-  transform: scale(var(--action-btn-size-mult, 1));
+  transform: translate(var(--btn-x, 0px), var(--btn-y, 0px)) scale(calc(var(--action-btn-size-mult, 1) * var(--btn-scale, 1)));
+  opacity: var(--btn-opacity, 1);
   transform-origin: bottom right;
 }
 
