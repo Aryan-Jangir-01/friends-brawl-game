@@ -1,10 +1,10 @@
 // public/js/main.js
-import { audio } from "./audio.js?v=20261113_12";
-import { ParticleSystem } from "./particles.js?v=20261113_12";
-import { InputManager } from "./input.js?v=20261113_12";
-import { GameRenderer } from "./renderer.js?v=20261113_12";
-import { NetworkClient } from "./network.js?v=20261113_12";
-import { MAPS } from "./engine/MapData.js?v=20261113_12";
+import { audio } from "./audio.js?v=20261114_a17_v5";
+import { ParticleSystem } from "./particles.js?v=20261114_a17_v5";
+import { InputManager } from "./input.js?v=20261114_a17_v5";
+import { GameRenderer } from "./renderer.js?v=20261114_a17_v5";
+import { NetworkClient } from "./network.js?v=20261114_a17_v5";
+import { MAPS } from "./engine/MapData.js?v=20261114_a17_v5";
 
 // Global Game State
 const state = {
@@ -366,7 +366,6 @@ function initNetwork() {
     const chosenMapId = startData?.options?.mapId || state.currentRoom?.options?.mapId || "military_airbase";
     state.mapData = (startData && startData.map) ? startData.map : (MAPS[chosenMapId] || MAPS.military_airbase);
     state.gameRunning = true;
-    particles.setWeatherMap("military_airbase");
     particles.setWeatherMap(state.mapData?.id || chosenMapId || "military_airbase");
 
     // Reset camera state so it snaps directly to player on start
