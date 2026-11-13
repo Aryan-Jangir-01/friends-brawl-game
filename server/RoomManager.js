@@ -28,9 +28,9 @@ export class RoomManager {
       state: "lobby", // lobby, playing, ended
       options: {
         gameMode: options.gameMode || "ffa", // ffa, team
-        scoreLimit: options.scoreLimit !== undefined ? options.scoreLimit : 0, // 0 = UNLIMITED
-        matchDuration: options.matchDuration !== undefined ? options.matchDuration : 0, // 0 = UNLIMITED
-        mapId: "cyber_arena"
+        scoreLimit: options.scoreLimit !== undefined ? options.scoreLimit : 15,
+        matchDuration: options.matchDuration !== undefined ? options.matchDuration : 300,
+        mapId: options.mapId || "military_airbase"
       },
       players: new Map(), // socketId -> profile
       gameInstance: null

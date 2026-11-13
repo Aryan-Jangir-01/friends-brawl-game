@@ -1,6 +1,6 @@
 // server/GameInstance.js
-import { MAPS, WEAPON_CONFIGS, HERO_CLASSES } from "./MapData.js";
-import { BotPlayer } from "./BotPlayer.js";
+import { MAPS, WEAPON_CONFIGS, HERO_CLASSES } from "./MapData.js?v=20261113_12";
+import { BotPlayer } from "./BotPlayer.js?v=20261113_12";
 
 export class GameInstance {
   constructor(roomId, options = {}, io) {
@@ -365,7 +365,24 @@ export class GameInstance {
       this.timeRemaining -= dt;
       if (this.timeRemaining <= 0) {
         this.timeRemaining = 0;
-        this.endMatch("Time's Up!");
+        let reason = "Time's Up!";
+        if (this.options.gameMode === "team") {
+          const scores = this.getTeamScores();
+          if (scores.blue > scores.red) reason = `Time's Up! Blue Team Wins (${scores.blue} - ${scores.red})`;
+          else if (scores.red > scores.blue) reason = `Time's Up! Red Team Wins (${scores.red} - ${scores.blue})`;
+          else reason = "Time's Up! Match Drawn!";
+        } else {
+          let topPlayer = null;
+          for (const p of this.players.values()) {
+            if (!topPlayer || p.score > topPlayer.score || (p.score === topPlayer.score && p.kills > topPlayer.kills)) {
+              topPlayer = p;
+            }
+          }
+          if (topPlayer) {
+            reason = `Time's Up! ${topPlayer.name} Wins!`;
+          }
+        }
+        this.endMatch(reason);
         return;
       }
     } else {

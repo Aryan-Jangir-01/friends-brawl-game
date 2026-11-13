@@ -21,8 +21,8 @@ export class LocalGameServer {
 
     const gameOptions = {
       gameMode: options.gameMode || "ffa",
-      scoreLimit: options.scoreLimit || 15,
-      matchDuration: options.matchDuration || 300,
+      scoreLimit: options.scoreLimit !== undefined ? options.scoreLimit : 15,
+      matchDuration: options.matchDuration !== undefined ? options.matchDuration : 300,
       mapId: options.mapId || "military_airbase"
     };
 

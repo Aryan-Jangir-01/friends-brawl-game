@@ -56,6 +56,7 @@ const btnShowQR = document.getElementById("btn-show-qr");
 const btnLeaveRoom = document.getElementById("btn-leave-room");
 const selectGameMode = document.getElementById("select-game-mode");
 const selectScoreLimit = document.getElementById("select-score-limit");
+const selectMatchDuration = document.getElementById("select-match-duration");
 const playerCount = document.getElementById("player-count");
 const lobbyPlayerList = document.getElementById("lobby-player-list");
 const btnToggleReady = document.getElementById("btn-toggle-ready");
@@ -745,7 +746,9 @@ if (btnPracticeBots) {
     audio.unlock();
     audio.playClick();
     showToast("Starting Solo Match vs AI Bots! ⚔️");
-    state.currentRoom = { id: "SOLO", options: { mapId: "military_airbase", scoreLimit: 15, matchDuration: 300 } };
+    const dur = selectMatchDuration ? Number(selectMatchDuration.value) : 300;
+    const kills = selectScoreLimit ? Number(selectScoreLimit.value) : 15;
+    state.currentRoom = { id: "SOLO", options: { mapId: "military_airbase", scoreLimit: kills, matchDuration: dur } };
     state.isHost = true;
     state.mapData = MAPS.military_airbase;
     lobbyScreen.classList.add("hidden");
@@ -758,8 +761,8 @@ if (btnPracticeBots) {
     navigateToScreen("arena");
     network.startSoloMatch(state.profile, {
       gameMode: "ffa",
-      scoreLimit: 15,
-      matchDuration: 300,
+      scoreLimit: kills,
+      matchDuration: dur,
       mapId: "military_airbase"
     });
   });
@@ -769,7 +772,10 @@ btnCreateRoom.addEventListener("click", () => {
   audio.unlock();
   btnCreateRoom.disabled = true;
   btnCreateRoom.textContent = "CREATING... 🚀";
-  network.createRoom(state.profile, { gameMode: "ffa", scoreLimit: 15 }, (res) => {
+  const initialDuration = selectMatchDuration ? Number(selectMatchDuration.value) : 300;
+  const initialScoreLimit = selectScoreLimit ? Number(selectScoreLimit.value) : 15;
+  const initialGameMode = selectGameMode ? selectGameMode.value : "ffa";
+  network.createRoom(state.profile, { gameMode: initialGameMode, scoreLimit: initialScoreLimit, matchDuration: initialDuration }, (res) => {
     btnCreateRoom.disabled = false;
     btnCreateRoom.textContent = "CREATE ROOM 🚀";
     if (res.success) {
@@ -875,13 +881,14 @@ btnStartGame.addEventListener("click", () => {
   audio.unlock();
   audio.playClick();
 
-  // Ensure current map selector and room options are strictly synchronized
+  // Ensure current map selector, match duration, and room options are strictly synchronized
   const selectMap = document.getElementById("select-map");
-  if (selectMap && selectMap.value && state.currentRoom) {
+  if (state.currentRoom) {
     state.currentRoom.options = state.currentRoom.options || {};
-    state.currentRoom.options.mapId = selectMap.value;
+    if (selectMap && selectMap.value) state.currentRoom.options.mapId = selectMap.value;
     if (selectGameMode) state.currentRoom.options.gameMode = selectGameMode.value;
-    if (selectScoreLimit) state.currentRoom.options.scoreLimit = Number(selectScoreLimit.value) || 15;
+    if (selectScoreLimit) state.currentRoom.options.scoreLimit = Number(selectScoreLimit.value);
+    if (selectMatchDuration) state.currentRoom.options.matchDuration = Number(selectMatchDuration.value);
     network.updateRoomOptions(state.currentRoom.options);
   }
 
@@ -912,6 +919,14 @@ selectScoreLimit.addEventListener("change", (e) => {
     network.updateRoomOptions({ scoreLimit: parseInt(e.target.value) });
   }
 });
+
+if (selectMatchDuration) {
+  selectMatchDuration.addEventListener("change", (e) => {
+    if (state.isHost) {
+      network.updateRoomOptions({ matchDuration: parseInt(e.target.value) });
+    }
+  });
+}
 
 // Share / QR Code
 btnShareRoom.addEventListener("click", () => {
@@ -994,8 +1009,10 @@ function renderLobbyRoom(room) {
   // Host privileges
   selectGameMode.disabled = !isMeHost;
   selectScoreLimit.disabled = !isMeHost;
+  if (selectMatchDuration) selectMatchDuration.disabled = !isMeHost;
   selectGameMode.value = room.options?.gameMode || "ffa";
-  selectScoreLimit.value = String(room.options?.scoreLimit || 15);
+  selectScoreLimit.value = String(room.options?.scoreLimit !== undefined ? room.options.scoreLimit : 15);
+  if (selectMatchDuration) selectMatchDuration.value = String(room.options?.matchDuration !== undefined ? room.options.matchDuration : 300);
 
   const selectMap = document.getElementById("select-map");
   if (selectMap) {
@@ -1054,13 +1071,21 @@ function updateHUD(worldState) {
   lastHUDUpdateTime = now;
 
   // Timer: 0 or unbounded means 24/7 Endless Arena!
-  const timerText = (!worldState.timeRemaining || worldState.timeRemaining <= 0 || worldState.timeRemaining > 3600)
+  const isEndless = !worldState.timeRemaining || worldState.timeRemaining <= 0 || worldState.timeRemaining > 3600;
+  const timerText = isEndless
     ? "⚔️ ENDLESS"
     : `${String(Math.floor(worldState.timeRemaining / 60)).padStart(2, "0")}:${String(worldState.timeRemaining % 60).padStart(2, "0")}`;
 
   if (lastHUDState.timer !== timerText) {
     lastHUDState.timer = timerText;
     hudTimer.textContent = timerText;
+    if (!isEndless && worldState.timeRemaining <= 30) {
+      hudTimer.style.color = "#ef4444";
+      hudTimer.style.textShadow = "0 0 10px rgba(239, 68, 68, 0.6)";
+    } else {
+      hudTimer.style.color = "";
+      hudTimer.style.textShadow = "";
+    }
   }
 
   // Live Arena Players Count
