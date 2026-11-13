@@ -707,49 +707,59 @@ html, body {
   padding: 0 !important;
 }
 
-/* Android 17 Liquid Glass Custom Select */
+/* Android 17 Liquid Glass Custom Select & Dropdown */
+.setting-item select {
+  display: none !important;
+}
+
+.a17-dropdown-wrapper,
 .custom-select-wrapper {
   position: relative;
   width: 100%;
   user-select: none;
 }
 
+/* Trigger Button */
+.a17-dropdown-trigger,
 .custom-select-trigger {
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
-  background: rgba(15, 23, 42, 0.82);
-  backdrop-filter: blur(20px) saturate(200%);
-  -webkit-backdrop-filter: blur(20px) saturate(200%);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  gap: 0.6rem;
+  background: rgba(14, 22, 42, 0.82);
+  backdrop-filter: blur(24px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
   border-radius: 16px;
-  padding: 0.72rem 1rem;
+  padding: 0.75rem 1rem;
   color: #f8fafc;
   font-family: inherit;
-  font-size: 0.86rem;
+  font-size: 0.88rem;
   font-weight: 700;
   text-align: left;
   cursor: pointer;
-  box-shadow: inset 0 1px 1.5px rgba(255, 255, 255, 0.18), 0 4px 16px rgba(0, 0, 0, 0.35);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: inset 0 1px 1.5px rgba(255, 255, 255, 0.22), 0 4px 16px rgba(0, 0, 0, 0.35);
+  transition: all 0.24s cubic-bezier(0.16, 1, 0.3, 1);
   outline: none;
 }
 
+.a17-dropdown-trigger:hover:not(.disabled),
 .custom-select-trigger:hover:not(.disabled) {
   background: rgba(22, 34, 62, 0.94);
-  border-color: rgba(0, 240, 255, 0.5);
-  box-shadow: 0 0 18px rgba(0, 240, 255, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.25);
+  border-color: rgba(0, 240, 255, 0.55);
+  box-shadow: 0 0 18px rgba(0, 240, 255, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.28);
   transform: translateY(-1px);
 }
 
+.a17-dropdown-wrapper.open .a17-dropdown-trigger,
 .custom-select-wrapper.open .custom-select-trigger {
   border-color: var(--cyan-neon);
-  box-shadow: 0 0 22px rgba(0, 240, 255, 0.45), inset 0 1px 2px rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 24px rgba(0, 240, 255, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.35);
   background: rgba(20, 32, 60, 0.96);
 }
 
+.a17-dropdown-trigger.disabled,
 .custom-select-trigger.disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -757,6 +767,7 @@ html, body {
   box-shadow: none;
 }
 
+.a17-trigger-value,
 .custom-select-value {
   white-space: nowrap;
   overflow: hidden;
@@ -764,6 +775,7 @@ html, body {
   flex: 1;
 }
 
+.a17-trigger-arrow,
 .custom-select-arrow {
   display: flex;
   align-items: center;
@@ -773,39 +785,42 @@ html, body {
   flex-shrink: 0;
 }
 
+.a17-dropdown-wrapper.open .a17-trigger-arrow,
 .custom-select-wrapper.open .custom-select-arrow {
   transform: rotate(180deg);
 }
 
-/* Floating Android 17 Frosted Glass Dropdown Card */
+/* Floating Android 17 Frosted Glass Menu */
+.a17-dropdown-menu,
 .custom-select-dropdown {
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
   right: 0;
   z-index: 9999;
-  background: linear-gradient(155deg, rgba(16, 24, 48, 0.96) 0%, rgba(9, 14, 28, 0.98) 100%);
-  backdrop-filter: blur(35px) saturate(220%);
-  -webkit-backdrop-filter: blur(35px) saturate(220%);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 20px;
-  padding: 0.5rem;
-  box-shadow: 0 24px 50px -6px rgba(0, 0, 0, 0.85),
-              0 0 30px rgba(0, 240, 255, 0.2),
-              inset 0 1px 1.5px rgba(255, 255, 255, 0.35);
+  background: linear-gradient(160deg, rgba(16, 26, 52, 0.95) 0%, rgba(9, 14, 30, 0.98) 100%);
+  backdrop-filter: blur(40px) saturate(220%);
+  -webkit-backdrop-filter: blur(40px) saturate(220%);
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+  border-radius: 22px;
+  padding: 0.55rem;
+  box-shadow: 0 24px 55px -6px rgba(0, 0, 0, 0.85),
+              0 0 35px rgba(0, 240, 255, 0.22),
+              inset 0 1.5px 1.5px rgba(255, 255, 255, 0.4);
   max-height: 250px;
   overflow-y: auto;
   overflow-x: hidden;
   display: none;
-  animation: a17GlassPop 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: top center;
+  animation: a17SpringMenu 0.26s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   scrollbar-width: thin;
   scrollbar-color: rgba(0, 240, 255, 0.5) rgba(10, 16, 30, 0.7);
 }
 
-@keyframes a17GlassPop {
+@keyframes a17SpringMenu {
   0% {
     opacity: 0;
-    transform: translateY(-8px) scale(0.96);
+    transform: translateY(-10px) scale(0.95);
   }
   100% {
     opacity: 1;
@@ -813,46 +828,53 @@ html, body {
   }
 }
 
+.a17-dropdown-wrapper.open .a17-dropdown-menu,
 .custom-select-wrapper.open .custom-select-dropdown {
   display: block;
 }
 
-/* Custom Select Dropdown Options */
+/* Android 17 Pill Options */
+.a17-option,
 .custom-option {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.68rem 0.9rem;
-  border-radius: 12px;
-  margin-bottom: 3px;
+  padding: 0.72rem 1rem;
+  border-radius: 14px;
+  margin-bottom: 5px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   color: #cbd5e1;
-  font-size: 0.85rem;
+  font-size: 0.87rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-  border: 1px solid transparent;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.a17-option:last-child,
 .custom-option:last-child {
   margin-bottom: 0;
 }
 
+.a17-option:hover,
 .custom-option:hover {
-  background: rgba(0, 240, 255, 0.15);
+  background: rgba(0, 240, 255, 0.16);
+  border-color: rgba(0, 240, 255, 0.5);
   color: #00f0ff;
-  border-color: rgba(0, 240, 255, 0.3);
   transform: translateX(4px);
-  box-shadow: inset 0 0 14px rgba(0, 240, 255, 0.12);
+  box-shadow: 0 4px 14px rgba(0, 240, 255, 0.2);
 }
 
+.a17-option.selected,
 .custom-option.selected {
-  background: linear-gradient(135deg, rgba(0, 240, 255, 0.28) 0%, rgba(168, 85, 247, 0.22) 100%);
-  border: 1px solid rgba(0, 240, 255, 0.5);
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.35) 0%, rgba(168, 85, 247, 0.25) 100%);
+  border: 1.5px solid #00f0ff;
   color: #ffffff;
   font-weight: 800;
-  box-shadow: 0 0 16px rgba(0, 240, 255, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 18px rgba(0, 240, 255, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.35);
 }
 
+.a17-opt-label,
 .custom-option-label {
   display: flex;
   align-items: center;
@@ -862,19 +884,28 @@ html, body {
   white-space: nowrap;
 }
 
+.a17-opt-badge,
 .custom-option-check {
-  font-size: 0.85rem;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
   font-weight: 900;
-  color: var(--cyan-neon);
-  opacity: 0;
-  transform: scale(0.6);
+  background: transparent;
+  color: transparent;
   transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
   margin-left: 0.5rem;
+  flex-shrink: 0;
 }
 
+.a17-option.selected .a17-opt-badge,
 .custom-option.selected .custom-option-check {
-  opacity: 1;
-  transform: scale(1);
+  background: var(--cyan-neon);
+  color: #060911;
+  box-shadow: 0 0 10px var(--cyan-neon);
 }
 
 .setting-item select {

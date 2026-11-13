@@ -28,8 +28,8 @@
   <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
 
-  <link rel="stylesheet" href="./css/style.css?v=20261113_12">
-  <link rel="stylesheet" href="./css/joystick.css?v=20261113_12">
+  <link rel="stylesheet" href="./css/style.css?v=20261114_a17_v3">
+  <link rel="stylesheet" href="./css/joystick.css?v=20261114_a17_v3">
 </head>
 <body>
   <!-- Canvas Screen -->
@@ -459,26 +459,76 @@
 
           <!-- Room Options (Editable by Host) -->
           <div class="room-settings-row">
-            <div class="setting-item">
+            <div class="setting-item" data-select-id="select-game-mode">
               <label>Game Mode</label>
-              <select id="select-game-mode">
-                <option value="ffa">Free For All (Deathmatch)</option>
+              <select id="select-game-mode" style="display: none !important;">
+                <option value="ffa" selected>Free For All (Deathmatch)</option>
                 <option value="team">Team Battle (Red vs Blue)</option>
               </select>
+              <div class="a17-dropdown-wrapper" id="wrapper-select-game-mode">
+                <button type="button" class="a17-dropdown-trigger" id="trigger-select-game-mode" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="a17-trigger-value">Free For All (Deathmatch)</span>
+                  <span class="a17-trigger-arrow">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                  </span>
+                </button>
+                <div class="a17-dropdown-menu" id="menu-select-game-mode" role="listbox">
+                  <div class="a17-option selected" data-value="ffa" role="option">
+                    <span class="a17-opt-label">⚔️ Free For All (Deathmatch)</span>
+                    <span class="a17-opt-badge">✓</span>
+                  </div>
+                  <div class="a17-option" data-value="team" role="option">
+                    <span class="a17-opt-label">🛡️ Team Battle (Red vs Blue)</span>
+                    <span class="a17-opt-badge">✓</span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="setting-item">
+
+            <div class="setting-item" data-select-id="select-score-limit">
               <label>Kills to Win</label>
-              <select id="select-score-limit">
+              <select id="select-score-limit" style="display: none !important;">
                 <option value="10">10 Kills</option>
                 <option value="15" selected>15 Kills</option>
                 <option value="25">25 Kills</option>
                 <option value="50">50 Kills</option>
                 <option value="0">Endless (Unlimited Kills)</option>
               </select>
+              <div class="a17-dropdown-wrapper" id="wrapper-select-score-limit">
+                <button type="button" class="a17-dropdown-trigger" id="trigger-select-score-limit" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="a17-trigger-value">15 Kills</span>
+                  <span class="a17-trigger-arrow">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                  </span>
+                </button>
+                <div class="a17-dropdown-menu" id="menu-select-score-limit" role="listbox">
+                  <div class="a17-option" data-value="10" role="option">
+                    <span class="a17-opt-label">🎯 10 Kills</span>
+                    <span class="a17-opt-badge">✓</span>
+                  </div>
+                  <div class="a17-option selected" data-value="15" role="option">
+                    <span class="a17-opt-label">🎯 15 Kills</span>
+                    <span class="a17-opt-badge">✓</span>
+                  </div>
+                  <div class="a17-option" data-value="25" role="option">
+                    <span class="a17-opt-label">🎯 25 Kills</span>
+                    <span class="a17-opt-badge">✓</span>
+                  </div>
+                  <div class="a17-option" data-value="50" role="option">
+                    <span class="a17-opt-label">🎯 50 Kills</span>
+                    <span class="a17-opt-badge">✓</span>
+                  </div>
+                  <div class="a17-option" data-value="0" role="option">
+                    <span class="a17-opt-label">♾️ Endless (Unlimited Kills)</span>
+                    <span class="a17-opt-badge">✓</span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="setting-item">
+
+            <div class="setting-item" data-select-id="select-match-duration">
               <label>Match Time (2-20 Mins)</label>
-              <select id="select-match-duration">
+              <select id="select-match-duration" style="display: none !important;">
                 <option value="120">⏱️ 2 Minutes</option>
                 <option value="240" selected>⏱️ 4 Minutes (Default)</option>
                 <option value="360">⏱️ 6 Minutes</option>
@@ -491,10 +541,65 @@
                 <option value="1200">⏱️ 20 Minutes (Max)</option>
                 <option value="0">⚔️ Endless (No Time Limit)</option>
               </select>
+              <div class="a17-dropdown-wrapper" id="wrapper-select-match-duration">
+                <button type="button" class="a17-dropdown-trigger" id="trigger-select-match-duration" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="a17-trigger-value">⏱️ 4 Minutes (Default)</span>
+                  <span class="a17-trigger-arrow">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                  </span>
+                </button>
+                <div class="a17-dropdown-menu" id="menu-select-match-duration" role="listbox">
+                  <div class="a17-option" data-value="120" role="option">
+                    <span class="a17-opt-label">⏱️ 2 Minutes</span>
+                    <span class="a17-opt-badge">✓</span>
+                  </div>
+                  <div class="a17-option selected" data-value="240" role="option">
+                    <span class="a17-opt-label">⏱️ 4 Minutes (Default)</span>
+                    <span class="a17-opt-badge">✓</span>
+                  </div>
+                  <div class="a17-option" data-value="360" role="option">
+                    <span class="a17-opt-label">⏱️ 6 Minutes</span>
+                    <span class="a17-opt-badge">✓</span>
+                  </div>
+                  <div class="a17-option" data-value="480" role="option">
+                    <span class="a17-opt-label">⏱️ 8 Minutes</span>
+                    <span class="a17-opt-badge">✓</span>
+                  </div>
+                  <div class="a17-option" data-value="600" role="option">
+                    <span class="a17-opt-label">⏱️ 10 Minutes</span>
+                    <span class="a17-opt-badge">✓</span>
+                  </div>
+                  <div class="a17-option" data-value="720" role="option">
+                    <span class="a17-opt-label">⏱️ 12 Minutes</span>
+                    <span class="a17-opt-badge">✓</span>
+                  </div>
+                  <div class="a17-option" data-value="840" role="option">
+                    <span class="a17-opt-label">⏱️ 14 Minutes</span>
+                    <span class="a17-opt-badge">✓</span>
+                  </div>
+                  <div class="a17-option" data-value="960" role="option">
+                    <span class="a17-opt-label">⏱️ 16 Minutes</span>
+                    <span class="a17-opt-badge">✓</span>
+                  </div>
+                  <div class="a17-option" data-value="1080" role="option">
+                    <span class="a17-opt-label">⏱️ 18 Minutes</span>
+                    <span class="a17-opt-badge">✓</span>
+                  </div>
+                  <div class="a17-option" data-value="1200" role="option">
+                    <span class="a17-opt-label">⏱️ 20 Minutes (Max)</span>
+                    <span class="a17-opt-badge">✓</span>
+                  </div>
+                  <div class="a17-option" data-value="0" role="option">
+                    <span class="a17-opt-label">⚔️ Endless (No Time Limit)</span>
+                    <span class="a17-opt-badge">✓</span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="setting-item">
+
+            <div class="setting-item" data-select-id="select-map">
               <label>Tactical Battlefield Map</label>
-              <select id="select-map">
+              <select id="select-map" style="display: none !important;">
                 <option value="military_airbase" selected>🎖️ Military Airbase (Bunkers & Runway)</option>
                 <option value="cargo_docks">🚢 Cargo Docks (Shipping Containers)</option>
                 <option value="desert_town">🏜️ Desert Town (Dust II Ruins)</option>
@@ -505,6 +610,52 @@
                 <option value="railway_depot">🚂 Railway Depot (Train Cars & Tracks)</option>
                 <option value="island_bunker">🏝️ Island Bunker (Coast & Fort)</option>
               </select>
+              <div class="a17-dropdown-wrapper" id="wrapper-select-map">
+                <button type="button" class="a17-dropdown-trigger" id="trigger-select-map" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="a17-trigger-value">🎖️ Military Airbase (Bunkers & Runway)</span>
+                  <span class="a17-trigger-arrow">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                  </span>
+                </button>
+                <div class="a17-dropdown-menu" id="menu-select-map" role="listbox">
+                  <div class="a17-option selected" data-value="military_airbase" role="option">
+                    <span class="a17-opt-label">🎖️ Military Airbase (Bunkers & Runway)</span>
+                    <span class="a17-opt-badge">✓</span>
+                  </div>
+                  <div class="a17-option" data-value="cargo_docks" role="option">
+                    <span class="a17-opt-label">🚢 Cargo Docks (Shipping Containers)</span>
+                    <span class="a17-opt-badge">✓</span>
+                  </div>
+                  <div class="a17-option" data-value="desert_town" role="option">
+                    <span class="a17-opt-label">🏜️ Desert Town (Dust II Ruins)</span>
+                    <span class="a17-opt-badge">✓</span>
+                  </div>
+                  <div class="a17-option" data-value="abandoned_factory" role="option">
+                    <span class="a17-opt-label">🏭 Abandoned Factory (Bricks & Hazards)</span>
+                    <span class="a17-opt-badge">✓</span>
+                  </div>
+                  <div class="a17-option" data-value="dense_jungle" role="option">
+                    <span class="a17-opt-label">🌲 Dense Jungle (Rainforest & River)</span>
+                    <span class="a17-opt-badge">✓</span>
+                  </div>
+                  <div class="a17-option" data-value="arctic_base" role="option">
+                    <span class="a17-opt-label">❄️ Arctic Snow Base (Sub-Zero Bunker)</span>
+                    <span class="a17-opt-badge">✓</span>
+                  </div>
+                  <div class="a17-option" data-value="city_ruins" role="option">
+                    <span class="a17-opt-label">🏙️ City Ruins (Street Warzone)</span>
+                    <span class="a17-opt-badge">✓</span>
+                  </div>
+                  <div class="a17-option" data-value="railway_depot" role="option">
+                    <span class="a17-opt-label">🚂 Railway Depot (Train Cars & Tracks)</span>
+                    <span class="a17-opt-badge">✓</span>
+                  </div>
+                  <div class="a17-option" data-value="island_bunker" role="option">
+                    <span class="a17-opt-label">🏝️ Island Bunker (Coast & Fort)</span>
+                    <span class="a17-opt-badge">✓</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -556,8 +707,8 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Load Scripts: Local bundled socket.io and peerjs for 100% reliable serverless online & P2P multiplayer -->
-  <script src="./js/socket.io.min.js?v=20261113_12"></script>
-  <script src="./js/peerjs.min.js?v=20261113_12"></script>
-  <script type="module" src="./js/main.js?v=20261113_12"></script>
+  <script src="./js/socket.io.min.js?v=20261114_a17_v3"></script>
+  <script src="./js/peerjs.min.js?v=20261114_a17_v3"></script>
+  <script type="module" src="./js/main.js?v=20261114_a17_v3"></script>
 </body>
 </html>
