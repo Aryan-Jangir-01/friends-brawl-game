@@ -642,8 +642,8 @@ if (btnQuickPlay) {
         }
 
         // Ensure mapData is loaded immediately
-        const chosenMapId = res.room?.options?.mapId || "cyber_arena";
-        state.mapData = MAPS[chosenMapId] || MAPS.cyber_arena;
+        const chosenMapId = res.room?.options?.mapId || "military_airbase";
+        state.mapData = MAPS[chosenMapId] || MAPS.military_airbase;
 
         // Transition straight into the game arena!
         lobbyScreen.classList.add("hidden");
@@ -736,14 +736,14 @@ if (btnPracticeBots) {
     audio.playClick();
     renderer.resize();
     showToast("Starting Solo Match vs AI Bots! ⚔️");
-    state.currentRoom = { id: "SOLO", options: { mapId: "cyber_arena" } };
+    state.currentRoom = { id: "SOLO", options: { mapId: "military_airbase" } };
     state.isHost = true;
     navigateToScreen("arena");
     network.startSoloMatch(state.profile, {
       gameMode: "ffa",
       scoreLimit: 15,
       matchDuration: 300,
-      mapId: "cyber_arena"
+      mapId: "military_airbase"
     });
   });
 }
@@ -802,8 +802,8 @@ function joinSpecificRoom(code) {
         lobbyScreen.classList.add("hidden");
         hudOverlay.classList.remove("hidden");
         modalMatchOver.classList.add("hidden");
-        const chosenMapId = res.room?.options?.mapId || "cyber_arena";
-        state.mapData = MAPS[chosenMapId] || MAPS.cyber_arena;
+        const chosenMapId = res.room?.options?.mapId || "military_airbase";
+        state.mapData = MAPS[chosenMapId] || MAPS.military_airbase;
         renderer.resetCamera();
         renderer.resize();
         state.gameRunning = true;
@@ -962,7 +962,7 @@ function renderLobbyRoom(room) {
   const selectMap = document.getElementById("select-map");
   if (selectMap) {
     selectMap.disabled = !isMeHost;
-    selectMap.value = room.options?.mapId || "cyber_arena";
+    selectMap.value = room.options?.mapId || "military_airbase";
     selectMap.onchange = (e) => {
       if (state.isHost) {
         network.updateRoomOptions({ mapId: e.target.value });
@@ -1286,8 +1286,8 @@ function gameLoop(time) {
   if (state.gameRunning) {
     // Ensure mapData is never null
     if (!state.mapData) {
-      const chosenMapId = state.currentRoom?.options?.mapId || "cyber_arena";
-      state.mapData = MAPS[chosenMapId] || MAPS.cyber_arena;
+      const chosenMapId = state.currentRoom?.options?.mapId || "military_airbase";
+      state.mapData = MAPS[chosenMapId] || MAPS.military_airbase;
     }
 
     // Active world state (fallback to room players while waiting for first packet)

@@ -216,11 +216,11 @@ export class GameRenderer {
     }
 
     // 2. Draw Obstacle Walls
-    this.drawWalls(ctx, mapData.walls);
+    this.drawWalls(ctx, mapData.walls, mapData.theme);
 
     // 3. Draw Destructible Crates
     if (worldState.crates) {
-      this.drawCrates(ctx, worldState.crates);
+      this.drawCrates(ctx, worldState.crates, mapData.theme);
     }
 
     // 4. Draw Ground Items & Spawners
@@ -235,7 +235,7 @@ export class GameRenderer {
     }
 
     // 6. Draw Bushes
-    this.drawBushes(ctx, mapData.bushes, localPlayer);
+    this.drawBushes(ctx, mapData.bushes, localPlayer, mapData.theme);
 
     // 7. Draw Bullets
     if (worldState.bullets) {
@@ -256,12 +256,13 @@ export class GameRenderer {
   }
 
   drawFloor(ctx, map) {
+    const theme = map.theme || {};
     // Background fill
-    ctx.fillStyle = map.theme?.background || "#0c101d";
+    ctx.fillStyle = theme.background || "#1a1d21";
     ctx.fillRect(0, 0, map.width, map.height);
 
-    // Cyber grid with viewport culling
-    ctx.strokeStyle = map.theme?.gridColor || "rgba(0, 240, 255, 0.08)";
+    // Subtle tactical grid / runway paving with viewport culling
+    ctx.strokeStyle = theme.gridColor || "rgba(255, 255, 255, 0.05)";
     ctx.lineWidth = 1;
     const gridSize = 80;
 
@@ -283,9 +284,9 @@ export class GameRenderer {
     }
     ctx.stroke();
 
-    // Glowing Arena Border
-    ctx.strokeStyle = "#00f0ff";
-    ctx.lineWidth = 4;
+    // Reinforced Perimeter Border
+    ctx.strokeStyle = theme.borderColor || "#475569";
+    ctx.lineWidth = 6;
     ctx.strokeRect(0, 0, map.width, map.height);
   }
 
@@ -325,58 +326,118 @@ export class GameRenderer {
     });
   }
 
-  drawWalls(ctx, walls) {
+  drawWalls(ctx, walls, theme = {}) {
     if (!walls) return;
+    const wallColor = theme.wallColor || "#2e3746";
+    const wallBorder = theme.wallBorder || "#4b5563";
+    const wallStyle = theme.wallStyle || "concrete";
+
     walls.forEach(w => {
       // Frustum culling
       if (!this.isRectInView(w.x, w.y, w.w, w.h)) return;
 
-      // Drop shadow
-      ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
-      ctx.fillRect(w.x + 6, w.y + 6, w.w, w.h);
+      // Realistic deep drop shadow
+      ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+      ctx.fillRect(w.x + 8, w.y + 8, w.w, w.h);
 
-      // Wall core
-      ctx.fillStyle = "#162032";
+      // Wall core body
+      ctx.fillStyle = wallColor;
       ctx.fillRect(w.x, w.y, w.w, w.h);
 
-      // Wall glowing border
-      ctx.strokeStyle = "#00f0ff";
+      // 3D Top bevel light and bottom shadow
+      ctx.fillStyle = "rgba(255, 255, 255, 0.12)";
+      ctx.fillRect(w.x, w.y, w.w, Math.min(5, w.h / 2));
+      ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
+      ctx.fillRect(w.x, w.y + w.h - Math.min(5, w.h / 2), w.w, Math.min(5, w.h / 2));
+
+      // Wall border outline
+      ctx.strokeStyle = wallBorder;
       ctx.lineWidth = 2;
       ctx.strokeRect(w.x, w.y, w.w, w.h);
 
-      // Subtle diagonal hazard stripes on larger walls
-      if (w.w >= 80 && w.h >= 80) {
-        ctx.save();
-        ctx.strokeStyle = "rgba(0, 240, 255, 0.12)";
-        ctx.lineWidth = 3;
+      // Surface texture details based on wallStyle
+      if (wallStyle === "container") {
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.35)";
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        for (let i = -w.h; i < w.w; i += 24) {
-          ctx.moveTo(w.x + i, w.y);
-          ctx.lineTo(w.x + i + w.h, w.y + w.h);
+        if (w.w >= w.h) {
+          for (let x = w.x + 16; x < w.x + w.w - 10; x += 18) {
+            ctx.moveTo(x, w.y + 3);
+            ctx.lineTo(x, w.y + w.h - 3);
+          }
+        } else {
+          for (let y = w.y + 16; y < w.y + w.h - 10; y += 18) {
+            ctx.moveTo(w.x + 3, y);
+            ctx.lineTo(w.x + w.w - 3, y);
+          }
         }
         ctx.stroke();
-        ctx.restore();
+      } else if (wallStyle === "sandbag") {
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.25)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        if (w.w >= w.h) {
+          for (let x = w.x + 22; x < w.x + w.w; x += 22) {
+            ctx.moveTo(x, w.y + 3);
+            ctx.lineTo(x, w.y + w.h - 3);
+          }
+        } else {
+          for (let y = w.y + 22; y < w.y + w.h; y += 22) {
+            ctx.moveTo(w.x + 3, y);
+            ctx.lineTo(w.x + w.w - 3, y);
+          }
+        }
+        ctx.stroke();
+      } else if (wallStyle === "brick") {
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.22)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        for (let y = w.y + 14; y < w.y + w.h; y += 14) {
+          ctx.moveTo(w.x, y);
+          ctx.lineTo(w.x + w.w, y);
+        }
+        ctx.stroke();
+      } else if (wallStyle === "train" || wallStyle === "wood") {
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.35)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        const step = w.w >= w.h ? 32 : 28;
+        if (w.w >= w.h) {
+          for (let x = w.x + step; x < w.x + w.w; x += step) {
+            ctx.moveTo(x, w.y);
+            ctx.lineTo(x, w.y + w.h);
+          }
+        } else {
+          for (let y = w.y + step; y < w.y + w.h; y += step) {
+            ctx.moveTo(w.x, y);
+            ctx.lineTo(w.x + w.w, y);
+          }
+        }
+        ctx.stroke();
       }
     });
   }
 
-  drawCrates(ctx, crates) {
+  drawCrates(ctx, crates, theme = {}) {
     if (!crates) return;
+    const crateBg = theme.crateColor || "#8a6136";
+    const crateBorder = theme.crateBorder || "#4a3219";
+
     crates.forEach(c => {
       if (c.hp <= 0) return;
       // Frustum culling
       if (!this.isRectInView(c.x, c.y, c.size, c.size)) return;
 
       // Drop shadow
-      ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
-      ctx.fillRect(c.x + 4, c.y + 4, c.size, c.size);
+      ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+      ctx.fillRect(c.x + 5, c.y + 5, c.size, c.size);
 
       // Crate body
-      ctx.fillStyle = "#9a6b38";
+      ctx.fillStyle = crateBg;
       ctx.fillRect(c.x, c.y, c.size, c.size);
 
       // Crate inner cross & bevel
-      ctx.strokeStyle = "#5a3a1c";
+      ctx.strokeStyle = crateBorder;
       ctx.lineWidth = 3;
       ctx.strokeRect(c.x, c.y, c.size, c.size);
       ctx.beginPath();
@@ -757,9 +818,13 @@ export class GameRenderer {
     });
   }
 
-  drawBushes(ctx, bushes, localPlayer) {
+  drawBushes(ctx, bushes, localPlayer, theme = {}) {
     if (!bushes) return;
     const localIP = localPlayer ? (this.interpolatedPlayers.get(localPlayer.id) || localPlayer) : null;
+    const bushColor = theme.bushColor || "rgba(22, 101, 52, 0.9)";
+    const bushBorder = theme.bushBorder || "#15803d";
+    const bushLeaf = theme.bushLeaf || "rgba(34, 197, 94, 0.75)";
+
     bushes.forEach(b => {
       // Frustum culling
       if (!this.isCircleInView(b.x, b.y, b.radius)) return;
@@ -771,10 +836,10 @@ export class GameRenderer {
       // Check if local player is inside this bush
       const playerInside = localIP && Math.hypot(localIP.x - b.x, localIP.y - b.y) < b.radius;
 
-      ctx.fillStyle = playerInside ? "rgba(22, 101, 52, 0.55)" : "rgba(22, 101, 52, 0.9)";
+      ctx.fillStyle = playerInside ? "rgba(22, 101, 52, 0.45)" : (b.color || bushColor);
       ctx.fill();
 
-      ctx.strokeStyle = "#15803d";
+      ctx.strokeStyle = bushBorder;
       ctx.lineWidth = 4;
       ctx.stroke();
 
@@ -785,7 +850,7 @@ export class GameRenderer {
         const oy = b.y + Math.sin(ang) * (b.radius * 0.6);
         ctx.beginPath();
         ctx.arc(ox, oy, b.radius * 0.35, 0, Math.PI * 2);
-        ctx.fillStyle = playerInside ? "rgba(34, 197, 94, 0.35)" : "rgba(34, 197, 94, 0.75)";
+        ctx.fillStyle = playerInside ? "rgba(255, 255, 255, 0.15)" : bushLeaf;
         ctx.fill();
       }
 
@@ -852,7 +917,7 @@ export class GameRenderer {
     const sy = mH / mapData.height;
 
     // Walls on minimap
-    mCtx.fillStyle = "rgba(0, 240, 255, 0.35)";
+    mCtx.fillStyle = mapData.theme?.wallBorder || "rgba(100, 116, 139, 0.7)";
     mapData.walls.forEach(w => {
       mCtx.fillRect(w.x * sx, w.y * sy, w.w * sx, w.h * sy);
     });

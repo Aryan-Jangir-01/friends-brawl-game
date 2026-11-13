@@ -309,7 +309,7 @@ export class P2PManager {
         gameMode: "ffa",
         scoreLimit: 0, // 0 = UNLIMITED SCORE (ENDLESS BRAWL)
         matchDuration: 0, // 0 = UNLIMITED TIME (24/7 BATTLE ARENA)
-        mapId: "cyber_arena"
+        mapId: "military_airbase"
       },
       players: [
         {
@@ -422,7 +422,7 @@ export class P2PManager {
         gameMode: options.gameMode || "ffa",
         scoreLimit: options.scoreLimit || 15,
         matchDuration: options.matchDuration || 300,
-        mapId: options.mapId || "cyber_arena"
+        mapId: options.mapId || "military_airbase"
       },
       players: [
         {
@@ -521,7 +521,7 @@ export class P2PManager {
             gameMode: "ffa",
             scoreLimit: 25,
             matchDuration: 600,
-            mapId: "cyber_arena"
+            mapId: "military_airbase"
           },
           players: [
             {
