@@ -928,6 +928,164 @@ if (selectMatchDuration) {
   });
 }
 
+// ===================================================
+// Android 17 Liquid Glass Custom Select Component
+// ===================================================
+function initAndroid17Selects() {
+  const selects = document.querySelectorAll(".setting-item select");
+  selects.forEach(select => {
+    if (select.dataset.a17Enhanced) return;
+    select.dataset.a17Enhanced = "true";
+    select.classList.add("a17-hidden-native-select");
+
+    const parent = select.parentElement;
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "custom-select-wrapper";
+    wrapper.id = `wrapper-${select.id}`;
+
+    const trigger = document.createElement("button");
+    trigger.type = "button";
+    trigger.className = "custom-select-trigger";
+    trigger.setAttribute("aria-haspopup", "listbox");
+    trigger.setAttribute("aria-expanded", "false");
+
+    const valueSpan = document.createElement("span");
+    valueSpan.className = "custom-select-value";
+
+    const arrowSpan = document.createElement("span");
+    arrowSpan.className = "custom-select-arrow";
+    arrowSpan.innerHTML = `
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="6 9 12 15 18 9"></polyline>
+      </svg>
+    `;
+
+    trigger.appendChild(valueSpan);
+    trigger.appendChild(arrowSpan);
+
+    const dropdown = document.createElement("div");
+    dropdown.className = "custom-select-dropdown";
+    dropdown.setAttribute("role", "listbox");
+
+    Array.from(select.options).forEach(opt => {
+      const optDiv = document.createElement("div");
+      optDiv.className = "custom-option";
+      optDiv.dataset.value = opt.value;
+      optDiv.setAttribute("role", "option");
+
+      const labelSpan = document.createElement("span");
+      labelSpan.className = "custom-option-label";
+      labelSpan.textContent = opt.textContent;
+
+      const checkSpan = document.createElement("span");
+      checkSpan.className = "custom-option-check";
+      checkSpan.textContent = "✓";
+
+      optDiv.appendChild(labelSpan);
+      optDiv.appendChild(checkSpan);
+
+      optDiv.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (select.disabled || trigger.classList.contains("disabled")) return;
+        select.value = opt.value;
+        syncCustomSelect(select);
+        closeAllCustomSelects();
+        if (typeof select.onchange === "function") {
+          select.onchange({ target: select });
+        }
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+
+      dropdown.appendChild(optDiv);
+    });
+
+    trigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (select.disabled || trigger.classList.contains("disabled")) return;
+      const isOpen = wrapper.classList.contains("open");
+      closeAllCustomSelects();
+      if (!isOpen) {
+        wrapper.classList.add("open");
+        trigger.setAttribute("aria-expanded", "true");
+        parent.classList.add("has-open-dropdown");
+
+        const selectedOpt = dropdown.querySelector(".custom-option.selected");
+        if (selectedOpt) {
+          selectedOpt.scrollIntoView({ block: "nearest" });
+        }
+      }
+    });
+
+    wrapper.appendChild(trigger);
+    wrapper.appendChild(dropdown);
+    parent.appendChild(wrapper);
+
+    syncCustomSelect(select);
+  });
+}
+
+function closeAllCustomSelects() {
+  document.querySelectorAll(".custom-select-wrapper.open").forEach(w => {
+    w.classList.remove("open");
+    const tr = w.querySelector(".custom-select-trigger");
+    if (tr) tr.setAttribute("aria-expanded", "false");
+    const parent = w.closest(".setting-item");
+    if (parent) parent.classList.remove("has-open-dropdown");
+  });
+}
+
+function syncCustomSelect(select) {
+  if (!select) return;
+  const wrapper = document.getElementById(`wrapper-${select.id}`);
+  if (!wrapper) return;
+
+  const trigger = wrapper.querySelector(".custom-select-trigger");
+  const valueSpan = wrapper.querySelector(".custom-select-value");
+  const options = wrapper.querySelectorAll(".custom-option");
+
+  if (select.disabled) {
+    trigger.classList.add("disabled");
+    wrapper.classList.remove("open");
+    wrapper.closest(".setting-item")?.classList.remove("has-open-dropdown");
+  } else {
+    trigger.classList.remove("disabled");
+  }
+
+  const selectedIndex = select.selectedIndex >= 0 ? select.selectedIndex : 0;
+  const selectedOption = select.options[selectedIndex];
+  if (selectedOption && valueSpan) {
+    valueSpan.textContent = selectedOption.textContent;
+  }
+
+  options.forEach(opt => {
+    if (opt.dataset.value === String(select.value)) {
+      opt.classList.add("selected");
+    } else {
+      opt.classList.remove("selected");
+    }
+  });
+}
+
+function syncAllCustomSelects() {
+  const selects = document.querySelectorAll(".setting-item select");
+  selects.forEach(select => syncCustomSelect(select));
+}
+
+document.addEventListener("pointerdown", (e) => {
+  if (!e.target.closest(".custom-select-wrapper")) {
+    closeAllCustomSelects();
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    closeAllCustomSelects();
+  }
+});
+
+initAndroid17Selects();
+
 // Share / QR Code
 btnShareRoom.addEventListener("click", () => {
   if (!state.currentRoom) return;
@@ -1024,6 +1182,9 @@ function renderLobbyRoom(room) {
       }
     };
   }
+
+  // Synchronize Android 17 custom select pills
+  syncAllCustomSelects();
 
   if (isMeHost) {
     btnStartGame.classList.remove("hidden");
