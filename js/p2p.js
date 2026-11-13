@@ -1,5 +1,5 @@
 // public/js/p2p.js
-import { GameInstance } from "./engine/GameInstance.js?v=20261113_07";
+import { GameInstance } from "./engine/GameInstance.js?v=20261113_08";
 
 const PEER_CONFIG = {
   debug: 1,
@@ -295,23 +295,7 @@ export class P2PManager {
   }
 
   balanceBots() {
-    if (!this.isHost || !this.game) return;
-    const humanCount = Array.from(this.game.players.values()).filter(p => !p.isBot).length;
-    // Keep total combatants at least 4 so arena is always full of action
-    const targetBots = Math.max(0, 4 - humanCount);
-    const currentBots = this.game.bots ? this.game.bots.size : 0;
-
-    if (currentBots < targetBots) {
-      const needed = targetBots - currentBots;
-      for (let i = 0; i < needed; i++) {
-        try { this.game.addBot(); } catch (e) {}
-      }
-    } else if (currentBots > targetBots) {
-      const excess = currentBots - targetBots;
-      for (let i = 0; i < excess; i++) {
-        try { this.game.removeBot(); } catch (e) {}
-      }
-    }
+    // Permanently disabled: Bots are now strictly opt-in by Host only (+ ADD BOT)
   }
 
   hostQuickArena(targetPeerId, arenaTag, profile, callback) {
@@ -373,10 +357,8 @@ export class P2PManager {
       console.log("[QuickPlay Host] Live Arena open and listening on Peer ID:", id);
       this.networkClient.trigger("connected", this.localPlayerId);
 
-      // Start game engine immediately and balance bots!
-      this.startGame(() => {
-        this.balanceBots();
-      });
+      // Start game engine immediately
+      this.startGame();
 
       if (callback) callback({ success: true, isHost: true, room: this.room, playerId: this.localPlayerId });
     });
@@ -556,13 +538,6 @@ export class P2PManager {
         };
       }
 
-      // If game is not active on host, start it right now so guest can fight
-      if (!this.game) {
-        this.startGame(() => {
-          this.addBot();
-        });
-      }
-
       const guestPlayerId = `guest_${peerId}`;
       let player = this.room.players.find(p => p.id === guestPlayerId || p.peerId === peerId);
       if (!player) {
@@ -597,7 +572,6 @@ export class P2PManager {
             team: player.team,
             isBot: false
           }, false);
-          this.balanceBots();
           conn.send({
             type: "game_started",
             data: { map: this.game.map, options: this.game.options }
@@ -646,7 +620,6 @@ export class P2PManager {
       this.networkClient.trigger("lobby_updated", this.room);
       if (this.game) {
         this.game.removePlayer(`guest_${peerId}`);
-        this.balanceBots();
       }
     }
   }
@@ -842,13 +815,17 @@ export class P2PManager {
     this.game = new GameInstance(this.room.id, this.room.options, mockIO);
 
     this.room.players.forEach(p => {
-      this.game.addPlayer(p.id, {
-        name: p.name,
-        color: p.color,
-        avatar: p.avatar,
-        team: p.team,
-        isBot: p.isBot
-      }, p.isHost);
+      if (p.isBot) {
+        this.game.addBot(p.team);
+      } else {
+        this.game.addPlayer(p.id, {
+          name: p.name,
+          color: p.color,
+          avatar: p.avatar,
+          team: p.team,
+          isBot: false
+        }, p.isHost);
+      }
     });
 
     this.game.start();
@@ -929,10 +906,11 @@ export class P2PManager {
 
   addBot(callback) {
     if (this.isHost && this.room) {
+      const botCount = this.room.players.filter(p => p.isBot).length;
       const botId = `bot_${Date.now()}`;
       const bot = {
         id: botId,
-        name: `🤖 Bot ${this.room.players.length}`,
+        name: `🤖 Bot ${botCount + 1}`,
         color: "#f43f5e",
         avatar: "striker",
         team: this.room.options.gameMode === "team" ? "red" : "blue",
@@ -943,7 +921,20 @@ export class P2PManager {
       this.room.players.push(bot);
       this.broadcast({ type: "lobby_updated", data: this.room });
       this.networkClient.trigger("lobby_updated", this.room);
+
+      // If match is already running on host, spawn bot in live game
+      if (this.game) {
+        try {
+          const gameBot = this.game.addBot(bot.team);
+          if (gameBot) bot.id = gameBot.id;
+        } catch (e) {
+          console.warn("Could not add bot to active game:", e);
+        }
+      }
+
       if (callback) callback({ success: true, bot });
+    } else {
+      if (callback) callback({ success: false, error: "Only host can add bots" });
     }
   }
 
@@ -951,11 +942,22 @@ export class P2PManager {
     if (this.isHost && this.room) {
       const idx = this.room.players.findIndex(p => p.isBot);
       if (idx !== -1) {
-        this.room.players.splice(idx, 1);
+        const removed = this.room.players.splice(idx, 1)[0];
         this.broadcast({ type: "lobby_updated", data: this.room });
         this.networkClient.trigger("lobby_updated", this.room);
+
+        // If match is already running on host, remove bot from live game
+        if (this.game) {
+          try {
+            this.game.removeBot(removed?.id);
+          } catch (e) {
+            console.warn("Could not remove bot from active game:", e);
+          }
+        }
       }
       if (callback) callback({ success: true });
+    } else {
+      if (callback) callback({ success: false, error: "Only host can remove bots" });
     }
   }
 
