@@ -190,6 +190,8 @@ export class NetworkClient {
 
   startSoloMatch(profile, options = {}) {
     this.isLocalSolo = true;
+    this.currentSoloProfile = profile;
+    this.currentSoloOptions = options;
     this.trigger("connected", "local_player_1");
     const result = this.localServer.start(profile, options);
     return result;
@@ -267,6 +269,11 @@ export class NetworkClient {
   }
 
   startGame(callback) {
+    if (this.isLocalSolo) {
+      const res = this.localServer.start(this.currentSoloProfile || {}, this.currentSoloOptions || {});
+      if (callback) callback(res);
+      return;
+    }
     if (this.mode === "p2p") {
       this.p2p.startGame(callback);
       return;

@@ -99,6 +99,7 @@ export class P2PManager {
     if (this.peer && !this.peer.destroyed && !this.peer.disconnected) return;
 
     try {
+      this.userLeftVoluntarily = false;
       this.peer = new Peer(PEER_CONFIG);
 
       this.peer.on("open", (id) => {
@@ -388,7 +389,7 @@ export class P2PManager {
         this.isHost = false;
         if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
         this.reconnectTimer = setTimeout(() => {
-          if (this.userLeftVoluntarily) return;
+          this.userLeftVoluntarily = false;
           this.init();
           this.quickPlay(profile, callback);
         }, 300);
@@ -638,6 +639,7 @@ export class P2PManager {
       return;
     }
 
+    this.userLeftVoluntarily = false;
     const targetPeerId = `brawlz-${cleanCode}`;
 
     if (!this.peer || this.peer.destroyed || this.peer.disconnected || !this.peer.open) {
@@ -792,6 +794,11 @@ export class P2PManager {
 
   startGame(callback) {
     if (!this.isHost || !this.room) return;
+
+    if (this.game) {
+      try { this.game.stop(); } catch (e) {}
+      this.game = null;
+    }
 
     let lastStateSync = 0;
     const mockIO = {

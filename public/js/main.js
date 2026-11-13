@@ -734,10 +734,17 @@ if (btnPracticeBots) {
   btnPracticeBots.addEventListener("click", () => {
     audio.unlock();
     audio.playClick();
-    renderer.resize();
     showToast("Starting Solo Match vs AI Bots! ⚔️");
-    state.currentRoom = { id: "SOLO", options: { mapId: "military_airbase" } };
+    state.currentRoom = { id: "SOLO", options: { mapId: "military_airbase", scoreLimit: 15, matchDuration: 300 } };
     state.isHost = true;
+    state.mapData = MAPS.military_airbase;
+    lobbyScreen.classList.add("hidden");
+    hudOverlay.classList.remove("hidden");
+    modalMatchOver.classList.add("hidden");
+    renderer.resetCamera();
+    renderer.resize();
+    state.gameRunning = true;
+    audio.startMusic();
     navigateToScreen("arena");
     network.startSoloMatch(state.profile, {
       gameMode: "ffa",
@@ -1222,31 +1229,39 @@ function showMatchOverModal(data) {
   navigateToScreen("match_over");
 }
 
+function returnToLobbyCleanly() {
+  audio.stopMusic();
+  state.gameRunning = false;
+  state.latestWorldState = null;
+  network.leaveRoom();
+  state.currentRoom = null;
+  state.isHost = false;
+  modalMatchOver.classList.add("hidden");
+  hudOverlay.classList.add("hidden");
+  lobbyScreen.classList.remove("hidden");
+  viewActiveRoom.classList.add("hidden");
+  viewRoomSelection.classList.remove("hidden");
+
+  if (btnQuickPlay) {
+    btnQuickPlay.disabled = false;
+    btnQuickPlay.textContent = "⚔️ BATTLE NOW (DROP IN) ⚔️";
+  }
+  if (btnCreateRoom) {
+    btnCreateRoom.disabled = false;
+    btnCreateRoom.textContent = "CREATE ROOM 🚀";
+  }
+
+  try {
+    window.history.replaceState({ screen: "lobby" }, document.title, window.location.pathname);
+  } catch (e) {}
+}
+
 const btnMatchOverBack = document.getElementById("btn-match-over-back");
 if (btnMatchOverBack) {
   btnMatchOverBack.addEventListener("click", () => {
     audio.unlock();
     audio.playClick();
-    audio.stopMusic();
-    state.gameRunning = false;
-    network.leaveRoom();
-    state.currentRoom = null;
-    state.isHost = false;
-    state.latestWorldState = null;
-    modalMatchOver.classList.add("hidden");
-    hudOverlay.classList.add("hidden");
-    lobbyScreen.classList.remove("hidden");
-
-    // Reset BATTLE NOW button state
-    if (btnQuickPlay) {
-      btnQuickPlay.disabled = false;
-      btnQuickPlay.textContent = "⚔️ BATTLE NOW (DROP IN) ⚔️";
-    }
-
-    try {
-      window.history.replaceState({ screen: "lobby" }, document.title, window.location.pathname);
-    } catch (e) {}
-
+    returnToLobbyCleanly();
     showToast("Returned to Lobby 🏠");
   });
 }
@@ -1254,27 +1269,77 @@ if (btnMatchOverBack) {
 btnRematch.addEventListener("click", () => {
   audio.unlock();
   audio.playClick();
-  audio.stopMusic();
-  state.gameRunning = false;
-  network.leaveRoom();
-  state.currentRoom = null;
-  state.isHost = false;
-  state.latestWorldState = null;
-  modalMatchOver.classList.add("hidden");
-  hudOverlay.classList.add("hidden");
-  lobbyScreen.classList.remove("hidden");
-
-  if (btnQuickPlay) {
-    btnQuickPlay.disabled = false;
-    btnQuickPlay.textContent = "⚔️ BATTLE NOW (DROP IN) ⚔️";
-  }
-
-  try {
-    window.history.replaceState({ screen: "lobby" }, document.title, window.location.pathname);
-  } catch (e) {}
-
+  returnToLobbyCleanly();
   showToast("Returned to Lobby 🏠");
 });
+
+const btnPlayAgain = document.getElementById("btn-play-again");
+if (btnPlayAgain) {
+  btnPlayAgain.addEventListener("click", () => {
+    audio.unlock();
+    audio.playClick();
+    audio.stopMusic();
+
+    modalMatchOver.classList.add("hidden");
+
+    // Case 1: Solo match vs Bots
+    if (state.currentRoom?.id === "SOLO" || network.isLocalSolo) {
+      showToast("Starting New Solo Match vs Bots! ⚔️");
+      const opts = state.currentRoom?.options || { mapId: "military_airbase", scoreLimit: 15, matchDuration: 300 };
+      state.currentRoom = { id: "SOLO", options: opts };
+      state.isHost = true;
+      state.mapData = MAPS[opts.mapId] || MAPS.military_airbase;
+      lobbyScreen.classList.add("hidden");
+      hudOverlay.classList.remove("hidden");
+      modalMatchOver.classList.add("hidden");
+      renderer.resetCamera();
+      renderer.resize();
+      state.gameRunning = true;
+      audio.startMusic();
+      navigateToScreen("arena");
+      network.startSoloMatch(state.profile, opts);
+      return;
+    }
+
+    // Case 2: Custom Room with Friends
+    if (state.currentRoom && state.currentRoom.id !== "PUBLIC") {
+      if (state.isHost) {
+        showToast("Starting Next Round for Room! ⚔️");
+        network.startGame();
+      } else {
+        showToast("Waiting for Host to start next round... ⏳");
+        switchToRoomView(state.currentRoom);
+      }
+      return;
+    }
+
+    // Case 3: Quick Play (Public Arena)
+    showToast("Rejoining Arena for Next Battle... ⚔️");
+    state.gameRunning = false;
+    state.latestWorldState = null;
+    network.quickPlay(state.profile, (res) => {
+      if (res.success) {
+        state.currentRoom = res.room;
+        state.isHost = res.isHost;
+        if (res.playerId) state.localPlayerId = res.playerId;
+        const chosenMapId = res.room?.options?.mapId || "military_airbase";
+        state.mapData = MAPS[chosenMapId] || MAPS.military_airbase;
+        lobbyScreen.classList.add("hidden");
+        hudOverlay.classList.remove("hidden");
+        modalMatchOver.classList.add("hidden");
+        renderer.resetCamera();
+        renderer.resize();
+        state.gameRunning = true;
+        audio.startMusic();
+        navigateToScreen("arena");
+        showToast("⚔️ IN BATTLE! Round 2!");
+      } else {
+        showToast("Returned to Lobby 🏠");
+        returnToLobbyCleanly();
+      }
+    });
+  });
+}
 
 // 7. Main Game Loop (60 FPS)
 let lastFrameTime = performance.now();

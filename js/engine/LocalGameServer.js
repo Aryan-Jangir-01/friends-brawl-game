@@ -23,7 +23,7 @@ export class LocalGameServer {
       gameMode: options.gameMode || "ffa",
       scoreLimit: options.scoreLimit || 15,
       matchDuration: options.matchDuration || 300,
-      mapId: options.mapId || "cyber_arena"
+      mapId: options.mapId || "military_airbase"
     };
 
     this.game = new GameInstance("SOLO_ROOM", gameOptions, this.mockIO);
@@ -42,6 +42,12 @@ export class LocalGameServer {
 
     // Start match loop
     this.game.start();
+
+    // Notify network client that game has started
+    this.networkClient.trigger("game_started", {
+      map: this.game.map,
+      options: gameOptions
+    });
 
     return {
       success: true,
