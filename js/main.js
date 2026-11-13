@@ -366,6 +366,8 @@ function initNetwork() {
     const chosenMapId = startData?.options?.mapId || state.currentRoom?.options?.mapId || "military_airbase";
     state.mapData = (startData && startData.map) ? startData.map : (MAPS[chosenMapId] || MAPS.military_airbase);
     state.gameRunning = true;
+    particles.setWeatherMap("military_airbase");
+    particles.setWeatherMap(state.mapData?.id || chosenMapId || "military_airbase");
 
     // Reset camera state so it snaps directly to player on start
     renderer.resetCamera();
@@ -473,15 +475,22 @@ function initNetwork() {
 
   network.on("killstreak_achieved", (data) => {
     if (!state.gameRunning) return;
-    audio.playStreakFanfare();
+    const isMe = data.playerId === state.localPlayerId;
+    if (audio.playKillstreak) {
+      audio.playKillstreak(data.title.includes("RAMPAGE") ? 5 : (data.title.includes("TRIPLE") ? 3 : 2));
+    } else {
+      audio.playStreakFanfare();
+    }
     const banner = document.getElementById("killstreak-banner");
     const title = document.getElementById("streak-text");
     const sub = document.getElementById("streak-sub");
     if (banner && title && sub) {
       title.textContent = data.title;
-      sub.textContent = `${data.playerName} is on fire!`;
+      sub.textContent = isMe ? "⚡ YOU ARE UNSTOPPABLE! ⚡" : `${data.playerName} IS ON A RAMPAGE!`;
+      banner.className = `killstreak-banner ${data.title.includes("RAMPAGE") || data.title.includes("UNSTOPPABLE") ? "streak-gold" : (data.title.includes("TRIPLE") ? "streak-purple" : "streak-cyan")}`;
       banner.classList.remove("hidden");
-      setTimeout(() => banner.classList.add("hidden"), 2600);
+      if (isMe && navigator.vibrate) navigator.vibrate([70, 40, 90]);
+      setTimeout(() => banner.classList.add("hidden"), 2800);
     }
   });
 
@@ -655,6 +664,7 @@ if (btnQuickPlay) {
         renderer.resetCamera();
         renderer.resize();
         state.gameRunning = true;
+    particles.setWeatherMap("military_airbase");
         audio.startMusic();
         navigateToScreen("arena");
         showToast("⚔️ IN BATTLE! FIGHT YOUR FRIENDS!");
@@ -757,6 +767,7 @@ if (btnPracticeBots) {
     renderer.resetCamera();
     renderer.resize();
     state.gameRunning = true;
+    particles.setWeatherMap("military_airbase");
     audio.startMusic();
     navigateToScreen("arena");
     network.startSoloMatch(state.profile, {
@@ -830,6 +841,7 @@ function joinSpecificRoom(code) {
         renderer.resetCamera();
         renderer.resize();
         state.gameRunning = true;
+    particles.setWeatherMap("military_airbase");
         audio.startMusic();
         navigateToScreen("arena");
         showToast(`⚔️ Entered Battle in Room ${cleanCode}!`);
@@ -931,6 +943,18 @@ if (selectMatchDuration) {
 // ===================================================
 // Android 17 Liquid Glass Dropdown Controller
 // ===================================================
+const MAP_PREVIEWS = {
+  military_airbase: { icon: "🎖️", name: "Military Airbase", tag: "Bunkers & Runway", desc: "Airfield combat with blast barriers and tactical sniper hangars." },
+  cargo_docks: { icon: "🚢", name: "Cargo Docks", tag: "Containers & Harbor", desc: "Multi-level container mazes with tight ambush corners." },
+  desert_town: { icon: "🏜️", name: "Desert Town", tag: "Dust II Ruins", desc: "Sunken stone pillars, open sand bazaar, and lethal crossfire lanes." },
+  abandoned_factory: { icon: "🏭", name: "Abandoned Factory", tag: "Industrial Hazard", desc: "Rusted machinery, hazardous vats, and narrow catwalks." },
+  dense_jungle: { icon: "🌲", name: "Dense Jungle", tag: "Rainforest & River", desc: "Misty wilderness with natural rock choke points and river flanks." },
+  arctic_base: { icon: "❄️", name: "Arctic Snow Base", tag: "Sub-Zero Outpost", desc: "Reinforced snow barriers, frozen runway, and blast-proof bunkers." },
+  city_ruins: { icon: "🏙️", name: "City Ruins", tag: "Urban Warzone", desc: "Destroyed bus barricades, rubble alleyways, and street crossfire." },
+  railway_depot: { icon: "🚂", name: "Railway Depot", tag: "Freight & Switchyard", desc: "Heavy boxcars, rusted rail lines, and tactical corridor lanes." },
+  island_bunker: { icon: "🏝️", name: "Island Bunker", tag: "Coastal Fortress", desc: "Sea wall revetments, fortified pillbox battery, and ocean perimeter." }
+};
+
 function initA17Dropdowns() {
   const dropdownIds = ["select-game-mode", "select-score-limit", "select-match-duration", "select-map"];
   
@@ -948,6 +972,7 @@ function initA17Dropdowns() {
       trigger.addEventListener("click", (e) => {
         e.stopPropagation();
         if (select.disabled || trigger.classList.contains("disabled")) return;
+        if (audio.playHapticTick) audio.playHapticTick();
         const isOpen = wrapper.classList.contains("open");
         closeAllA17Dropdowns();
         if (!isOpen) {
@@ -964,9 +989,14 @@ function initA17Dropdowns() {
     }
 
     options.forEach(opt => {
+      opt.addEventListener("pointerenter", () => {
+        if (audio.playHapticTick) audio.playHapticTick();
+      });
+
       opt.addEventListener("click", (e) => {
         e.stopPropagation();
         if (select.disabled || trigger.classList.contains("disabled")) return;
+        if (audio.playSelectChime) audio.playSelectChime();
         const val = opt.dataset.value;
         select.value = val;
         syncA17Dropdown(id);
@@ -979,6 +1009,13 @@ function initA17Dropdowns() {
     });
 
     syncA17Dropdown(id);
+  });
+
+  // Haptic hover on standard UI buttons
+  document.querySelectorAll(".btn, .app-back-btn, .hud-back-btn").forEach(btn => {
+    btn.addEventListener("pointerenter", () => {
+      if (audio.playHapticTick) audio.playHapticTick();
+    });
   });
 }
 
@@ -1016,6 +1053,21 @@ function syncA17Dropdown(selectId) {
 
   if (matchedLabel && valueDisplay) {
     valueDisplay.textContent = matchedLabel;
+  }
+
+  // Update Map Preview Card if map selection changed
+  if (selectId === "select-map") {
+    const preview = MAP_PREVIEWS[curVal] || MAP_PREVIEWS.military_airbase;
+    const pIcon = document.getElementById("map-preview-icon");
+    const pName = document.getElementById("map-preview-name");
+    const pTag = document.getElementById("map-preview-tag");
+    const pDesc = document.getElementById("map-preview-desc");
+    if (pIcon && preview) {
+      pIcon.textContent = preview.icon;
+      if (pName) pName.textContent = preview.name;
+      if (pTag) pTag.textContent = preview.tag;
+      if (pDesc) pDesc.textContent = preview.desc;
+    }
   }
 }
 
@@ -1328,9 +1380,28 @@ function updateHUD(worldState) {
 function addKillFeedItem(event) {
   const item = document.createElement("div");
   item.className = "kill-feed-item";
-  item.innerHTML = `<span style="color:${event.killerColor}">${escapeHtml(event.killerName)}</span> ➔ <span style="color:${event.victimColor}">${escapeHtml(event.victimName)}</span>`;
+  const weaponIcon = {
+    rocket: "🚀",
+    railgun: "⚡",
+    shotgun: "💥",
+    plasma: "🔮",
+    blaster: "🔫",
+    grenade: "💣",
+    melee: "🗡️"
+  }[event.weapon] || "⚔️";
+
+  item.innerHTML = `
+    <span class="kf-killer" style="color:${event.killerColor}">${escapeHtml(event.killerName)}</span>
+    <span class="kf-weapon" title="${escapeHtml(event.weapon || 'weapon')}">${weaponIcon}</span>
+    <span class="kf-victim" style="color:${event.victimColor}">${escapeHtml(event.victimName)}</span>
+  `;
   killFeed.appendChild(item);
-  setTimeout(() => item.remove(), 4000);
+  setTimeout(() => {
+    item.style.opacity = "0";
+    item.style.transform = "translateX(20px)";
+    item.style.transition = "all 0.3s ease";
+    setTimeout(() => item.remove(), 300);
+  }, 4000);
 }
 
 // 6. Match Over Screen
@@ -1491,6 +1562,7 @@ if (btnPlayAgain) {
       renderer.resetCamera();
       renderer.resize();
       state.gameRunning = true;
+    particles.setWeatherMap("military_airbase");
       audio.startMusic();
       navigateToScreen("arena");
       network.startSoloMatch(state.profile, opts);
@@ -1531,6 +1603,7 @@ if (btnPlayAgain) {
         renderer.resetCamera();
         renderer.resize();
         state.gameRunning = true;
+    particles.setWeatherMap("military_airbase");
         audio.startMusic();
         navigateToScreen("arena");
         showToast("⚔️ IN BATTLE! Round 2!");
@@ -1597,7 +1670,7 @@ function gameLoop(time) {
     }
 
     // Update Particles
-    particles.update(dt);
+    particles.update(dt, renderer.viewBounds);
 
     // Render Canvas (Interpolates all entities smoothly & updates camera without jitter)
     renderer.render(world, state.localPlayerId, state.mapData, dt);

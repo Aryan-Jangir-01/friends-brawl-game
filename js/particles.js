@@ -5,6 +5,101 @@ export class ParticleSystem {
     this.particles = [];
     this.floatingTexts = [];
     this.shockwaves = [];
+    this.weatherParticles = [];
+    this.currentMapId = null;
+  }
+
+  setWeatherMap(mapId) {
+    this.currentMapId = mapId;
+    this.weatherParticles = [];
+  }
+
+  updateWeather(dt, viewBounds) {
+    if (!this.currentMapId || !viewBounds) return;
+    if (!this.weatherParticles) this.weatherParticles = [];
+
+    const mapId = this.currentMapId;
+    const maxParticles = 40;
+
+    // Replenish
+    while (this.weatherParticles.length < maxParticles) {
+      const p = {
+        x: viewBounds.minX + Math.random() * (viewBounds.maxX - viewBounds.minX),
+        y: viewBounds.minY + Math.random() * (viewBounds.maxY - viewBounds.minY),
+        alpha: 0.35 + Math.random() * 0.45,
+        speed: 60 + Math.random() * 100,
+        size: 2 + Math.random() * 2
+      };
+
+      if (mapId === "arctic_base") {
+        p.vx = (Math.random() - 0.3) * 30;
+        p.vy = 45 + Math.random() * 55; // falling snow
+        p.color = "#ffffff";
+        p.size = 2 + Math.random() * 3;
+      } else if (mapId === "dense_jungle") {
+        p.vx = -40; // angled rain
+        p.vy = 280 + Math.random() * 80;
+        p.color = "#60a5fa";
+        p.length = 14 + Math.random() * 8;
+      } else if (mapId === "desert_town") {
+        p.vx = 80 + Math.random() * 60; // drifting sand
+        p.vy = (Math.random() - 0.5) * 20;
+        p.color = "#f59e0b";
+        p.size = 1.5 + Math.random() * 2;
+      } else if (mapId === "city_ruins" || mapId === "abandoned_factory") {
+        p.vx = (Math.random() - 0.5) * 35;
+        p.vy = -(35 + Math.random() * 45); // rising embers
+        p.color = Math.random() > 0.4 ? "#f97316" : "#eab308";
+        p.size = 2 + Math.random() * 2.5;
+      } else {
+        // Subtle ambient dust / tactical particles
+        p.vx = (Math.random() - 0.5) * 25;
+        p.vy = (Math.random() - 0.5) * 25;
+        p.color = "#00f0ff";
+        p.alpha = 0.2 + Math.random() * 0.25;
+        p.size = 1.5;
+      }
+
+      this.weatherParticles.push(p);
+    }
+
+    // Move & wrap
+    for (let i = this.weatherParticles.length - 1; i >= 0; i--) {
+      const p = this.weatherParticles[i];
+      p.x += (p.vx || 0) * dt;
+      p.y += (p.vy || 0) * dt;
+
+      // Wrap around viewBounds
+      if (p.x < viewBounds.minX - 50) p.x = viewBounds.maxX + 40;
+      if (p.x > viewBounds.maxX + 50) p.x = viewBounds.minX - 40;
+      if (p.y < viewBounds.minY - 50) p.y = viewBounds.maxY + 40;
+      if (p.y > viewBounds.maxY + 50) p.y = viewBounds.minY - 40;
+    }
+  }
+
+  drawWeather(ctx, viewBounds) {
+    if (!this.weatherParticles || this.weatherParticles.length === 0) return;
+    ctx.save();
+    for (let i = 0; i < this.weatherParticles.length; i++) {
+      const p = this.weatherParticles[i];
+      ctx.globalAlpha = p.alpha;
+      ctx.fillStyle = p.color;
+      if (p.length) {
+        // Rain streak
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x + (p.vx * 0.04), p.y + (p.vy * 0.04));
+        ctx.stroke();
+      } else {
+        // Dot or Ember
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
   }
 
   emitMuzzle(x, y, angle, color = "#00f0ff") {
@@ -201,7 +296,11 @@ export class ParticleSystem {
     });
   }
 
-  update(dt) {
+  update(dt, viewBounds = null) {
+    if (viewBounds) {
+      this.updateWeather(dt, viewBounds);
+    }
+
     // Safety cap to prevent particle flood
     if (this.particles.length > 100) {
       this.particles.splice(0, this.particles.length - 100);
@@ -291,6 +390,9 @@ export class ParticleSystem {
       ctx.fillText(ft.text, ft.x, ft.y);
       ctx.restore();
     });
+
+    // Weather Atmospheric Particles
+    this.drawWeather(ctx, viewBounds);
 
     ctx.restore();
   }

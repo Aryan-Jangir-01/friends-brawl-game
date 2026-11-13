@@ -908,6 +908,83 @@ html, body {
   box-shadow: 0 0 10px var(--cyan-neon);
 }
 
+/* Tactical Map Environment Preview Card */
+.lobby-map-preview-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  background: linear-gradient(135deg, rgba(16, 26, 52, 0.75) 0%, rgba(9, 14, 30, 0.85) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 240, 255, 0.25);
+  border-radius: 16px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.1rem;
+  box-shadow: inset 0 1px 1.5px rgba(255, 255, 255, 0.15), 0 6px 20px rgba(0, 0, 0, 0.35);
+  transition: all 0.28s var(--ease-smooth);
+}
+
+.map-preview-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(0, 240, 255, 0.15);
+  border: 1px solid rgba(0, 240, 255, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.45rem;
+  box-shadow: 0 0 14px rgba(0, 240, 255, 0.25);
+  flex-shrink: 0;
+  animation: pulseBadge 3s infinite ease-in-out;
+}
+
+@keyframes pulseBadge {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 14px rgba(0, 240, 255, 0.25); }
+  50% { transform: scale(1.05); box-shadow: 0 0 22px rgba(0, 240, 255, 0.45); }
+}
+
+.map-preview-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.map-preview-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.2rem;
+  flex-wrap: wrap;
+}
+
+.map-preview-name {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+}
+
+.map-preview-tag {
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  background: rgba(0, 240, 255, 0.2);
+  color: var(--cyan-neon);
+  border: 1px solid rgba(0, 240, 255, 0.35);
+  padding: 1px 6px;
+  border-radius: 6px;
+}
+
+.map-preview-desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .setting-item select {
   width: 100%;
   appearance: none;
@@ -1232,23 +1309,32 @@ html, body {
 }
 
 .kill-feed-item {
-  background: rgba(10, 16, 28, 0.82);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border-left: 3px solid var(--cyan-neon);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(12, 18, 36, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-left: 3.5px solid var(--cyan-neon);
-  padding: 0.35rem 0.75rem;
-  border-radius: 8px;
-  font-size: 0.75rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 12px;
+  font-size: 0.78rem;
   font-weight: 700;
-  animation: slideInRight 0.25s ease-out;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.15), 0 4px 14px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  animation: slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.2), 0 4px 16px rgba(0, 0, 0, 0.45);
+}
+
+.kf-killer { font-weight: 800; }
+.kf-victim { font-weight: 800; }
+.kf-weapon {
+  font-size: 0.88rem;
+  filter: drop-shadow(0 0 6px rgba(0, 240, 255, 0.6));
 }
 
 @keyframes slideInRight {
-  from { opacity: 0; transform: translateX(20px); }
-  to { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; transform: translateX(24px) scale(0.95); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
 }
 
 /* Mini Map Radar */
@@ -1667,6 +1753,36 @@ html, body {
   color: var(--cyan-neon);
   text-transform: uppercase;
   letter-spacing: 1px;
+}
+
+.killstreak-banner.streak-cyan {
+  border-color: var(--cyan-neon);
+  box-shadow: 0 0 35px rgba(0, 240, 255, 0.65), inset 0 1px 2px rgba(255, 255, 255, 0.4);
+  background: radial-gradient(ellipse at center, rgba(0, 240, 255, 0.3) 0%, rgba(10, 16, 32, 0.92) 80%);
+}
+.killstreak-banner.streak-cyan .streak-text {
+  color: var(--cyan-neon);
+  text-shadow: 0 0 18px rgba(0, 240, 255, 0.85);
+}
+
+.killstreak-banner.streak-purple {
+  border-color: var(--purple-neon);
+  box-shadow: 0 0 35px rgba(168, 85, 247, 0.65), inset 0 1px 2px rgba(255, 255, 255, 0.4);
+  background: radial-gradient(ellipse at center, rgba(168, 85, 247, 0.3) 0%, rgba(10, 16, 32, 0.92) 80%);
+}
+.killstreak-banner.streak-purple .streak-text {
+  color: #d8b4fe;
+  text-shadow: 0 0 18px rgba(168, 85, 247, 0.85);
+}
+
+.killstreak-banner.streak-gold {
+  border-color: #ffd700;
+  box-shadow: 0 0 40px rgba(255, 215, 0, 0.75), inset 0 1px 2px rgba(255, 255, 255, 0.5);
+  background: radial-gradient(ellipse at center, rgba(255, 215, 0, 0.35) 0%, rgba(10, 16, 32, 0.92) 80%);
+}
+.killstreak-banner.streak-gold .streak-text {
+  color: #ffea00;
+  text-shadow: 0 0 20px rgba(255, 234, 0, 0.9);
 }
 
 /* ========================================================

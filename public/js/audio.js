@@ -490,6 +490,67 @@ class SoundEngine {
     } catch (e) {}
   }
 
+  // Ultra-crisp Android 17 Haptic Micro-Tick for UI hover and touch feedback
+  playHapticTick() {
+    if (!this.ctx || this.isMuted) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(2400, now);
+      osc.frequency.exponentialRampToValueAtTime(900, now + 0.022);
+      gain.gain.setValueAtTime(0.06, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.022);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.025);
+    } catch (e) {}
+  }
+
+  // Futuristic Android 17 Glass Selection Chime
+  playSelectChime() {
+    if (!this.ctx || this.isMuted) return;
+    try {
+      const now = this.ctx.currentTime;
+      [880, 1320].forEach((freq, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, now + idx * 0.035);
+        gain.gain.setValueAtTime(0.1, now + idx * 0.035);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.035 + 0.12);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now + idx * 0.035);
+        osc.stop(now + idx * 0.035 + 0.13);
+      });
+    } catch (e) {}
+  }
+
+  // Impactful Killstreak Power Fanfare
+  playKillstreak(streak = 2) {
+    if (!this.ctx || this.isMuted) return;
+    try {
+      const now = this.ctx.currentTime;
+      const baseFreq = streak >= 5 ? 330 : (streak >= 3 ? 261.63 : 220);
+      const notes = [baseFreq, baseFreq * 1.25, baseFreq * 1.5, baseFreq * 2];
+      notes.forEach((freq, i) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(freq, now + i * 0.07);
+        gain.gain.setValueAtTime(0.18, now + i * 0.07);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.07 + 0.22);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now + i * 0.07);
+        osc.stop(now + i * 0.07 + 0.23);
+      });
+    } catch (e) {}
+  }
+
   startMusic() {
     if (!this.ctx || this.isMuted || this.musicTimer) return;
     const bassline = [110, 110, 130.81, 146.83, 110, 110, 164.81, 146.83];
