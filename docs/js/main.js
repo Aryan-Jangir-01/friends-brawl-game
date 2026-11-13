@@ -280,7 +280,10 @@ initControlsModal();
 // CUSTOM HUD CONTROLS LAYOUT & DRAG/RESIZE EDITOR
 // ========================================================
 const DEFAULT_HUD_LAYOUT = {
-  btnGroup: { x: 0, y: 0, scale: 1.0, opacity: 1.0, name: "🎮 Action Buttons (Super / Swap / Emote / Dash)" },
+  btnDash: { x: 0, y: 0, scale: 1.0, opacity: 1.0, name: "⚡ Dash Boost Button" },
+  btnSuper: { x: 0, y: 0, scale: 1.0, opacity: 1.0, name: "💥 Super Ability Button" },
+  btnSwap: { x: 0, y: 0, scale: 1.0, opacity: 1.0, name: "🔄 Weapon Swap Button" },
+  btnEmote: { x: 0, y: 0, scale: 1.0, opacity: 1.0, name: "💬 Emote Button" },
   bottomBar: { x: 0, y: 0, scale: 1.0, opacity: 1.0, name: "❤️ Health & Weapon Bar" },
   timerGroup: { x: 0, y: 0, scale: 1.0, opacity: 1.0, name: "⏱️ Match Timer" },
   killsGroup: { x: 0, y: 0, scale: 1.0, opacity: 1.0, name: "🏆 Kills Counter" },
@@ -288,7 +291,10 @@ const DEFAULT_HUD_LAYOUT = {
 };
 
 const HUD_VAR_MAP = {
-  btnGroup: { x: '--btn-x', y: '--btn-y', scale: '--btn-scale', opacity: '--btn-opacity' },
+  btnDash: { x: '--dash-x', y: '--dash-y', scale: '--dash-scale', opacity: '--dash-opacity' },
+  btnSuper: { x: '--super-x', y: '--super-y', scale: '--super-scale', opacity: '--super-opacity' },
+  btnSwap: { x: '--swap-x', y: '--swap-y', scale: '--swap-scale', opacity: '--swap-opacity' },
+  btnEmote: { x: '--emote-x', y: '--emote-y', scale: '--emote-scale', opacity: '--emote-opacity' },
   bottomBar: { x: '--bar-x', y: '--bar-y', scale: '--bar-scale', opacity: '--bar-opacity' },
   timerGroup: { x: '--timer-x', y: '--timer-y', scale: '--timer-scale', opacity: '--timer-opacity' },
   killsGroup: { x: '--kills-x', y: '--kills-y', scale: '--kills-scale', opacity: '--kills-opacity' },
@@ -302,6 +308,15 @@ function loadCustomHudLayout() {
     const raw = localStorage.getItem("brawl_custom_hud_layout");
     if (raw) {
       const parsed = JSON.parse(raw);
+      // Migrate legacy single btnGroup to individual buttons
+      if (parsed.btnGroup && !parsed.btnDash) {
+        const bg = parsed.btnGroup;
+        parsed.btnDash = { x: bg.x || 0, y: bg.y || 0, scale: bg.scale || 1.0, opacity: bg.opacity || 1.0 };
+        parsed.btnSuper = { x: bg.x || 0, y: bg.y || 0, scale: bg.scale || 1.0, opacity: bg.opacity || 1.0 };
+        parsed.btnSwap = { x: bg.x || 0, y: bg.y || 0, scale: bg.scale || 1.0, opacity: bg.opacity || 1.0 };
+        parsed.btnEmote = { x: bg.x || 0, y: bg.y || 0, scale: bg.scale || 1.0, opacity: bg.opacity || 1.0 };
+        delete parsed.btnGroup;
+      }
       const layout = {};
       for (const key of Object.keys(DEFAULT_HUD_LAYOUT)) {
         layout[key] = {
@@ -361,7 +376,7 @@ function initHudEditor() {
   const validIds = Object.keys(DEFAULT_HUD_LAYOUT);
 
   let isEditorActive = false;
-  let selectedId = "btnGroup";
+  let selectedId = "btnDash";
   let wasLobbyActive = false;
   let activePointerId = null;
   let dragStartX = 0;
@@ -2250,6 +2265,7 @@ const wheelTacticalGrid = document.getElementById("wheel-tactical-grid");
 
 if (btnEmote && emoteWheel) {
   btnEmote.addEventListener("click", (e) => {
+    if (document.getElementById("hud-overlay")?.classList.contains("hud-editor-active")) return;
     e.stopPropagation();
     emoteWheel.classList.toggle("hidden");
   });

@@ -28,8 +28,8 @@
   <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
 
-  <link rel="stylesheet" href="./css/style.css?v=20261114_hud_editor_v2">
-  <link rel="stylesheet" href="./css/joystick.css?v=20261114_hud_editor_v2">
+  <link rel="stylesheet" href="./css/style.css?v=20261114_hud_editor_v3">
+  <link rel="stylesheet" href="./css/joystick.css?v=20261114_hud_editor_v3">
 </head>
 <body>
   <!-- Canvas Screen -->
@@ -212,10 +212,10 @@
           <div class="joystick-hint">Drag Right to Aim & Fire</div>
         </div>
 
-        <!-- Action Buttons on Right Side -->
-        <div class="action-buttons-group hud-editable-item" data-hud-id="btnGroup" title="Action Buttons (Super/Dash/Swap/Emote)">
+        <!-- Action Buttons on Right Side (Individual Editable Controls) -->
+        <div class="action-buttons-group">
           <!-- Super Ultimate Button -->
-          <button id="btn-super" class="action-btn super-btn" aria-label="Super Ability">
+          <button id="btn-super" class="action-btn super-btn hud-editable-item" data-hud-id="btnSuper" title="Super Ability Button" aria-label="Super Ability">
             <svg class="super-meter-svg" viewBox="0 0 76 76">
               <circle class="super-meter-bg" cx="38" cy="38" r="33"></circle>
               <circle id="super-meter-fill" class="super-meter-progress" cx="38" cy="38" r="33"></circle>
@@ -226,19 +226,19 @@
           </button>
 
           <!-- Switch Weapon Button -->
-          <button id="btn-switch-weapon" class="action-btn weapon-btn" aria-label="Switch Weapon">
+          <button id="btn-switch-weapon" class="action-btn weapon-btn hud-editable-item" data-hud-id="btnSwap" title="Weapon Swap Button" aria-label="Switch Weapon">
             <span class="btn-icon">🔄</span>
             <span class="btn-subtext">SWAP</span>
           </button>
 
           <!-- Emote Button -->
-          <button id="btn-emote" class="action-btn emote-btn" aria-label="Emote">
+          <button id="btn-emote" class="action-btn emote-btn hud-editable-item" data-hud-id="btnEmote" title="Emote Button" aria-label="Emote">
             <span class="btn-icon">💬</span>
             <span class="btn-subtext">EMOTE</span>
           </button>
 
           <!-- Dash / Jet Boost Button -->
-          <button id="btn-dash" class="action-btn dash-btn" aria-label="Dash">
+          <button id="btn-dash" class="action-btn dash-btn hud-editable-item" data-hud-id="btnDash" title="Dash Boost Button" aria-label="Dash">
             <span class="btn-icon">⚡</span>
             <span class="btn-subtext">DASH</span>
             <div id="dash-cooldown-overlay" class="cooldown-overlay"></div>
@@ -883,8 +883,8 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Load Scripts: Local bundled socket.io and peerjs for 100% reliable serverless online & P2P multiplayer -->
-  <script src="./js/socket.io.min.js?v=20261114_hud_editor_v2"></script>
-  <script src="./js/peerjs.min.js?v=20261114_hud_editor_v2"></script>
-  <script type="module" src="./js/main.js?v=20261114_hud_editor_v2"></script>
+  <script src="./js/socket.io.min.js?v=20261114_hud_editor_v3"></script>
+  <script src="./js/peerjs.min.js?v=20261114_hud_editor_v3"></script>
+  <script type="module" src="./js/main.js?v=20261114_hud_editor_v3"></script>
 </body>
 </html>

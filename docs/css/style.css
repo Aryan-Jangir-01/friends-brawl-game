@@ -1726,10 +1726,25 @@ html, body {
    CUSTOM HUD CONTROLS LAYOUT & DRAG/RESIZE EDITOR
    ======================================================== */
 #hud-overlay {
-  --btn-x: 0px;
-  --btn-y: 0px;
-  --btn-scale: 1;
-  --btn-opacity: 1;
+  --super-x: 0px;
+  --super-y: 0px;
+  --super-scale: 1;
+  --super-opacity: 1;
+
+  --swap-x: 0px;
+  --swap-y: 0px;
+  --swap-scale: 1;
+  --swap-opacity: 1;
+
+  --emote-x: 0px;
+  --emote-y: 0px;
+  --emote-scale: 1;
+  --emote-opacity: 1;
+
+  --dash-x: 0px;
+  --dash-y: 0px;
+  --dash-scale: 1;
+  --dash-opacity: 1;
 
   --bar-x: 0px;
   --bar-y: 0px;
@@ -1794,6 +1809,11 @@ html, body {
 
 .hud-editor-active .hud-editable-item * {
   pointer-events: none !important;
+}
+
+.hud-editor-active .action-btn.hud-editable-item {
+  border-radius: 50% !important;
+  transition: outline 0.15s, box-shadow 0.15s !important;
 }
 
 /* Editor Banner & Toolbar */

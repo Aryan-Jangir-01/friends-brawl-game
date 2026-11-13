@@ -103,11 +103,37 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
-  pointer-events: auto;
+  pointer-events: none;
   z-index: 25;
-  transform: translate(var(--btn-x, 0px), var(--btn-y, 0px)) scale(calc(var(--action-btn-size-mult, 1) * var(--btn-scale, 1)));
-  opacity: var(--btn-opacity, 1);
-  transform-origin: bottom right;
+}
+
+.action-btn {
+  pointer-events: auto;
+  position: relative;
+}
+
+#btn-super {
+  transform: translate(var(--super-x, 0px), var(--super-y, 0px)) scale(calc(var(--action-btn-size-mult, 1) * var(--super-scale, 1)));
+  opacity: var(--super-opacity, 1);
+  transform-origin: center center;
+}
+
+#btn-switch-weapon {
+  transform: translate(var(--swap-x, 0px), var(--swap-y, 0px)) scale(calc(var(--action-btn-size-mult, 1) * var(--swap-scale, 1)));
+  opacity: var(--swap-opacity, 1);
+  transform-origin: center center;
+}
+
+#btn-emote {
+  transform: translate(var(--emote-x, 0px), var(--emote-y, 0px)) scale(calc(var(--action-btn-size-mult, 1) * var(--emote-scale, 1)));
+  opacity: var(--emote-opacity, 1);
+  transform-origin: center center;
+}
+
+#btn-dash {
+  transform: translate(var(--dash-x, 0px), var(--dash-y, 0px)) scale(calc(var(--action-btn-size-mult, 1) * var(--dash-scale, 1)));
+  opacity: var(--dash-opacity, 1);
+  transform-origin: center center;
 }
 
 /* Mobile Landscape Compact Clustering (Under Thumb) */

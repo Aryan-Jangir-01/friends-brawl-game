@@ -104,35 +104,43 @@ export class InputManager {
     }
 
     // 2. Action Buttons
+    const isHudEditorActive = () => document.getElementById("hud-overlay")?.classList.contains("hud-editor-active");
+
     if (this.btnDash) {
       this.btnDash.addEventListener("touchstart", (e) => {
+        if (isHudEditorActive()) return;
         e.preventDefault();
         e.stopPropagation();
         this.triggerDash();
       }, { passive: false });
       this.btnDash.addEventListener("click", (e) => {
+        if (isHudEditorActive()) return;
         this.triggerDash();
       });
     }
 
     if (this.btnSuper) {
       this.btnSuper.addEventListener("touchstart", (e) => {
+        if (isHudEditorActive()) return;
         e.preventDefault();
         e.stopPropagation();
         this.triggerSuper();
       }, { passive: false });
       this.btnSuper.addEventListener("click", () => {
+        if (isHudEditorActive()) return;
         this.triggerSuper();
       });
     }
 
     if (this.btnSwitchWeapon) {
       this.btnSwitchWeapon.addEventListener("touchstart", (e) => {
+        if (isHudEditorActive()) return;
         e.preventDefault();
         e.stopPropagation();
         this.cycleWeapon();
       }, { passive: false });
       this.btnSwitchWeapon.addEventListener("click", () => {
+        if (isHudEditorActive()) return;
         this.cycleWeapon();
       });
     }
