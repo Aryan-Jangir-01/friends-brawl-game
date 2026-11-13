@@ -1610,6 +1610,108 @@ html, body {
   transform: scale(1.1);
 }
 
+/* Gameplay Controls Modal Styling */
+.controls-modal-card {
+  text-align: left !important;
+  max-width: 480px;
+}
+
+.control-setting-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 12px 14px;
+}
+
+.setting-label-col label {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #ffffff;
+  display: block;
+}
+
+.setting-hint {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  display: block;
+  margin-top: 2px;
+}
+
+.pill-segmented-control {
+  display: flex;
+  background: rgba(10, 16, 30, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+  padding: 3px;
+  gap: 4px;
+}
+
+.pill-segmented-control .seg-btn {
+  flex: 1;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.pill-segmented-control .seg-btn:hover {
+  color: #ffffff;
+}
+
+.pill-segmented-control .seg-btn.active {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.3), rgba(168, 85, 247, 0.38));
+  border: 1px solid rgba(0, 240, 255, 0.6);
+  color: #ffffff;
+  font-weight: 800;
+  box-shadow: 0 0 14px rgba(0, 240, 255, 0.35), inset 0 1px 1.5px rgba(255, 255, 255, 0.4);
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.8);
+}
+
+.pc-controls-guide {
+  background: rgba(0, 240, 255, 0.05);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  border-radius: 18px;
+  padding: 12px 14px;
+  margin-top: 6px;
+  margin-bottom: 4px;
+}
+
+.keybinds-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: #cbd5e1;
+}
+
+.kb-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.kb-key {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #00f0ff;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
 .neon-title {
   color: var(--cyan-neon);
   font-size: 1.85rem;

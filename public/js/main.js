@@ -1,10 +1,10 @@
 // public/js/main.js
-import { audio } from "./audio.js?v=20261114_2k";
-import { ParticleSystem } from "./particles.js?v=20261114_2k";
-import { InputManager } from "./input.js?v=20261114_2k";
-import { GameRenderer } from "./renderer.js?v=20261114_2k";
-import { NetworkClient } from "./network.js?v=20261114_2k";
-import { MAPS } from "./engine/MapData.js?v=20261114_2k";
+import { audio } from "./audio.js?v=20261114_controls_v1";
+import { ParticleSystem } from "./particles.js?v=20261114_controls_v1";
+import { InputManager } from "./input.js?v=20261114_controls_v1";
+import { GameRenderer } from "./renderer.js?v=20261114_controls_v1";
+import { NetworkClient } from "./network.js?v=20261114_controls_v1";
+import { MAPS } from "./engine/MapData.js?v=20261114_controls_v1";
 
 // Global Game State
 const state = {
@@ -169,6 +169,112 @@ function cycleQuality() {
 document.getElementById("btn-lobby-quality")?.addEventListener("click", cycleQuality);
 document.getElementById("btn-hud-quality")?.addEventListener("click", cycleQuality);
 updateQualityButtons(renderer.quality || "2k");
+
+// Gameplay Controls Customizer Modal Controller
+function initControlsModal() {
+  const modal = document.getElementById("modal-controls");
+  const btnOpenLobby = document.getElementById("btn-open-controls-modal");
+  const btnOpenHud = document.getElementById("btn-hud-controls");
+  const btnClose = document.getElementById("btn-close-controls");
+  const btnBack = document.getElementById("btn-controls-back");
+  const btnSave = document.getElementById("btn-save-controls");
+  const btnReset = document.getElementById("btn-reset-controls");
+
+  function openControlsModal() {
+    if (!modal) return;
+    if (audio.playHapticTick) audio.playHapticTick();
+    syncControlUI();
+    modal.classList.remove("hidden");
+  }
+
+  function closeControlsModal() {
+    if (!modal) return;
+    if (audio.playHapticTick) audio.playHapticTick();
+    modal.classList.add("hidden");
+  }
+
+  function syncControlUI() {
+    const cur = input.controlSettings || {
+      joystickScale: "1.0",
+      buttonScale: "1.0",
+      joystickMode: "floating",
+      vibration: "on"
+    };
+
+    setSegmentActive("ctrl-joystick-size", cur.joystickScale);
+    setSegmentActive("ctrl-button-size", cur.buttonScale);
+    setSegmentActive("ctrl-joystick-mode", cur.joystickMode);
+    setSegmentActive("ctrl-vibration", cur.vibration);
+  }
+
+  function setSegmentActive(containerId, value) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.querySelectorAll(".seg-btn").forEach(btn => {
+      if (btn.dataset.value === String(value)) {
+        btn.classList.add("active");
+      } else {
+        btn.classList.remove("active");
+      }
+    });
+  }
+
+  function getSegmentValue(containerId, fallback) {
+    const container = document.getElementById(containerId);
+    const active = container?.querySelector(".seg-btn.active");
+    return active?.dataset.value || fallback;
+  }
+
+  // Segment button click listeners
+  ["ctrl-joystick-size", "ctrl-button-size", "ctrl-joystick-mode", "ctrl-vibration"].forEach(cid => {
+    const container = document.getElementById(cid);
+    if (!container) return;
+    container.querySelectorAll(".seg-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        container.querySelectorAll(".seg-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        if (audio.playHapticTick) audio.playHapticTick();
+      });
+    });
+  });
+
+  btnOpenLobby?.addEventListener("click", openControlsModal);
+  btnOpenHud?.addEventListener("click", openControlsModal);
+  btnClose?.addEventListener("click", closeControlsModal);
+  btnBack?.addEventListener("click", closeControlsModal);
+
+  modal?.addEventListener("click", (e) => {
+    if (e.target === modal) closeControlsModal();
+  });
+
+  btnSave?.addEventListener("click", () => {
+    const newSettings = {
+      joystickScale: getSegmentValue("ctrl-joystick-size", "1.0"),
+      buttonScale: getSegmentValue("ctrl-button-size", "1.0"),
+      joystickMode: getSegmentValue("ctrl-joystick-mode", "floating"),
+      vibration: getSegmentValue("ctrl-vibration", "on")
+    };
+    input.applyControlSettings(newSettings);
+    if (audio.playSelectChime) audio.playSelectChime();
+    showToast("🎮 Controls Saved & Applied!");
+    closeControlsModal();
+  });
+
+  btnReset?.addEventListener("click", () => {
+    const def = {
+      joystickScale: "1.0",
+      buttonScale: "1.0",
+      joystickMode: "floating",
+      vibration: "on"
+    };
+    input.applyControlSettings(def);
+    syncControlUI();
+    if (audio.playSelectChime) audio.playSelectChime();
+    showToast("🔄 Controls Reset to Default");
+  });
+}
+
+initControlsModal();
 
 // Toast notification helper
 function showToast(message) {

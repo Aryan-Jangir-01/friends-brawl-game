@@ -1,5 +1,10 @@
 /* public/css/joystick.css */
 
+:root {
+  --joystick-size-mult: 1;
+  --action-btn-size-mult: 1;
+}
+
 .touch-layer {
   position: absolute;
   top: 0;
@@ -51,8 +56,8 @@
 /* Joystick Rings (Android 17 Frosted Glass Pucks) */
 .joystick-ring {
   position: absolute;
-  width: 134px;
-  height: 134px;
+  width: calc(134px * var(--joystick-size-mult, 1));
+  height: calc(134px * var(--joystick-size-mult, 1));
   border-radius: 50%;
   border: 1.5px solid rgba(0, 240, 255, 0.45);
   background: radial-gradient(circle, rgba(0, 240, 255, 0.12) 0%, rgba(10, 16, 30, 0.5) 85%);
@@ -68,8 +73,8 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 56px;
-  height: 56px;
+  width: calc(56px * var(--joystick-size-mult, 1));
+  height: calc(56px * var(--joystick-size-mult, 1));
   border-radius: 50%;
   background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.95) 0%, rgba(0, 240, 255, 0.85) 45%, rgba(0, 140, 220, 0.95) 100%);
   border: 2px solid rgba(255, 255, 255, 0.9);
@@ -100,6 +105,8 @@
   gap: 14px;
   pointer-events: auto;
   z-index: 25;
+  transform: scale(var(--action-btn-size-mult, 1));
+  transform-origin: bottom right;
 }
 
 /* Mobile Landscape Compact Clustering (Under Thumb) */

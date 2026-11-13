@@ -47,8 +47,37 @@ export class InputManager {
     this.canvasRect = { left: 0, top: 0 };
     this.updateCanvasRect();
 
+    this.controlSettings = this.loadControlSettings();
+    this.applyControlSettings(this.controlSettings);
+
     this.initListeners();
     window.addEventListener("resize", () => this.updateCanvasRect());
+  }
+
+  loadControlSettings() {
+    try {
+      const saved = localStorage.getItem("brawl_control_settings");
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return {
+      joystickScale: "1.0",
+      buttonScale: "1.0",
+      joystickMode: "floating",
+      vibration: "on"
+    };
+  }
+
+  applyControlSettings(settings) {
+    this.controlSettings = { ...(this.controlSettings || this.loadControlSettings()), ...settings };
+    const jScale = parseFloat(this.controlSettings.joystickScale) || 1.0;
+    const bScale = parseFloat(this.controlSettings.buttonScale) || 1.0;
+    this.maxJoystickRadius = 50 * jScale;
+    document.documentElement.style.setProperty("--joystick-size-mult", jScale);
+    document.documentElement.style.setProperty("--action-btn-size-mult", bScale);
+
+    try {
+      localStorage.setItem("brawl_control_settings", JSON.stringify(this.controlSettings));
+    } catch (e) {}
   }
 
   updateCanvasRect() {
@@ -159,7 +188,13 @@ export class InputManager {
     for (const touch of e.changedTouches) {
       if (this.leftTouchId === null) {
         this.leftTouchId = touch.identifier;
-        this.leftCenter = { x: touch.clientX - this.canvasRect.left, y: touch.clientY - this.canvasRect.top };
+        if (this.controlSettings?.joystickMode === "fixed") {
+          const fx = Math.max(70, Math.min(130, window.innerWidth * 0.18));
+          const fy = window.innerHeight - 120;
+          this.leftCenter = { x: fx, y: fy };
+        } else {
+          this.leftCenter = { x: touch.clientX - this.canvasRect.left, y: touch.clientY - this.canvasRect.top };
+        }
         this.leftPos = { ...this.leftCenter };
 
         this.moveRing.style.left = `${this.leftCenter.x}px`;

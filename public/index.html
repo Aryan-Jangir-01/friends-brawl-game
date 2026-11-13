@@ -28,8 +28,8 @@
   <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
 
-  <link rel="stylesheet" href="./css/style.css?v=20261114_2k_v2">
-  <link rel="stylesheet" href="./css/joystick.css?v=20261114_2k_v2">
+  <link rel="stylesheet" href="./css/style.css?v=20261114_controls_v1">
+  <link rel="stylesheet" href="./css/joystick.css?v=20261114_controls_v1">
 </head>
 <body>
   <!-- Canvas Screen -->
@@ -54,6 +54,7 @@
             <button id="btn-hud-invite" class="btn-small-icon" style="background: rgba(168, 85, 247, 0.4); border: 1px solid #a855f7; color: #fff; font-size: 0.75rem; padding: 4px 8px; border-radius: 6px; cursor: pointer; font-weight: 700;" title="Invite Friends to Battle">📲 INVITE</button>
             <button id="btn-hud-sound" class="btn-small-icon" title="Toggle Sound">🔊</button>
             <button id="btn-hud-fullscreen" class="btn-small-icon" title="Toggle Fullscreen">⛶</button>
+            <button id="btn-hud-controls" class="btn-small-icon" title="Customize Controls">⚙️</button>
           </div>
         </div>
         <div class="hud-center-group">
@@ -424,6 +425,14 @@
               <button id="btn-join-room" class="btn btn-secondary">JOIN 🎮</button>
             </div>
           </div>
+
+          <!-- Customize Controls Card -->
+          <div class="glass-card action-card" style="border-color: rgba(168, 85, 247, 0.45);">
+            <div class="card-badge" style="background: rgba(168, 85, 247, 0.2); border-color: #a855f7; color: #d8b4fe;">CONTROLS</div>
+            <h3>⚙️ GAME CONTROLS</h3>
+            <p>Edit joystick size, action button layout, haptic vibration & keybinds.</p>
+            <button id="btn-open-controls-modal" class="btn btn-secondary full-width" style="border-color: #a855f7; color: #d8b4fe; font-weight: 700; background: rgba(168, 85, 247, 0.12);">CUSTOMIZE CONTROLS 🎮</button>
+          </div>
         </div>
 
         <!-- How to connect banner -->
@@ -717,12 +726,105 @@
     </div>
   </div>
 
+  <!-- Gameplay Controls Customization Modal -->
+  <div id="modal-controls" class="modal-overlay hidden">
+    <div class="modal-card controls-modal-card" style="position: relative; max-width: 480px; width: 92%;">
+      <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 12px;">
+        <button id="btn-controls-back" class="app-back-btn" title="Back">
+          <span class="back-arrow">←</span>
+          <span class="back-text">BACK</span>
+        </button>
+        <button id="btn-close-controls" class="modal-close" style="position: static;">✕</button>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+        <span style="font-size: 1.5rem;">🎮</span>
+        <h3 style="margin: 0; font-size: 1.25rem;">GAME CONTROLS SETUP</h3>
+      </div>
+      <p style="font-size: 0.82rem; color: #94a3b8; margin-bottom: 14px;">
+        Apne hisab se touch joystick size, action buttons aur vibration customise karein:
+      </p>
+
+      <!-- Section: Movement & Aim Joystick Size -->
+      <div class="control-setting-row">
+        <div class="setting-label-col">
+          <label>🕹️ Touch Joystick Size</label>
+          <span class="setting-hint">Screen par chalne aur aim karne wale pucks ka size</span>
+        </div>
+        <div class="pill-segmented-control" id="ctrl-joystick-size">
+          <button class="seg-btn" data-value="0.85">Small</button>
+          <button class="seg-btn active" data-value="1.0">Normal</button>
+          <button class="seg-btn" data-value="1.2">Big</button>
+          <button class="seg-btn" data-value="1.4">Extra Large</button>
+        </div>
+      </div>
+
+      <!-- Section: Action Buttons Size -->
+      <div class="control-setting-row">
+        <div class="setting-label-col">
+          <label>💥 Action Buttons Size (Super, Dash, Swap)</label>
+          <span class="setting-hint">Right-hand ability buttons ka size</span>
+        </div>
+        <div class="pill-segmented-control" id="ctrl-button-size">
+          <button class="seg-btn" data-value="0.85">Compact (85%)</button>
+          <button class="seg-btn active" data-value="1.0">Default (100%)</button>
+          <button class="seg-btn" data-value="1.2">Enlarged (120%)</button>
+        </div>
+      </div>
+
+      <!-- Section: Joystick Behavior (Floating vs Fixed) -->
+      <div class="control-setting-row">
+        <div class="setting-label-col">
+          <label>🎯 Joystick Position Mode</label>
+          <span class="setting-hint">Jaha ungli touch kare waha spawn ho ya fixed corner me</span>
+        </div>
+        <div class="pill-segmented-control" id="ctrl-joystick-mode">
+          <button class="seg-btn active" data-value="floating">Dynamic (Floating)</button>
+          <button class="seg-btn" data-value="fixed">Fixed Corner</button>
+        </div>
+      </div>
+
+      <!-- Section: Haptic Vibration -->
+      <div class="control-setting-row">
+        <div class="setting-label-col">
+          <label>📳 Haptic Vibration Feedback</label>
+          <span class="setting-hint">Firing, damage aur dash par phone vibration</span>
+        </div>
+        <div class="pill-segmented-control" id="ctrl-vibration">
+          <button class="seg-btn active" data-value="on">Enabled 🟢</button>
+          <button class="seg-btn" data-value="off">Disabled ✕</button>
+        </div>
+      </div>
+
+      <!-- Section: PC / Keyboard Guide -->
+      <div class="pc-controls-guide">
+        <div style="font-weight: 800; font-size: 0.8rem; color: #00f0ff; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+          <span>⌨️ PC / LAPTOP KEYBOARD SHORTCUTS:</span>
+        </div>
+        <div class="keybinds-grid">
+          <div class="kb-item"><span class="kb-key">W A S D</span> Move Hero</div>
+          <div class="kb-item"><span class="kb-key">Mouse Aim</span> Aim & Shoot</div>
+          <div class="kb-item"><span class="kb-key">SPACE</span> Dash / Dodge</div>
+          <div class="kb-item"><span class="kb-key">E / R-Click</span> Super Ability</div>
+          <div class="kb-item"><span class="kb-key">Q</span> Swap Weapon</div>
+          <div class="kb-item"><span class="kb-key">C</span> Emote Menu</div>
+        </div>
+      </div>
+
+      <!-- Actions: Reset & Save -->
+      <div style="display: flex; gap: 10px; margin-top: 16px;">
+        <button id="btn-reset-controls" class="btn btn-secondary" style="flex: 1; font-size: 0.85rem;">🔄 DEFAULT</button>
+        <button id="btn-save-controls" class="btn btn-primary" style="flex: 2; font-size: 0.95rem; font-weight: 800;">💾 SAVE & APPLY</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notifications -->
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Load Scripts: Local bundled socket.io and peerjs for 100% reliable serverless online & P2P multiplayer -->
-  <script src="./js/socket.io.min.js?v=20261114_2k_v2"></script>
-  <script src="./js/peerjs.min.js?v=20261114_2k_v2"></script>
-  <script type="module" src="./js/main.js?v=20261114_2k_v2"></script>
+  <script src="./js/socket.io.min.js?v=20261114_controls_v1"></script>
+  <script src="./js/peerjs.min.js?v=20261114_controls_v1"></script>
+  <script type="module" src="./js/main.js?v=20261114_controls_v1"></script>
 </body>
 </html>
