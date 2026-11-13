@@ -48,15 +48,17 @@
   right: 120px;
 }
 
-/* Joystick Rings */
+/* Joystick Rings (Android 17 Frosted Glass Pucks) */
 .joystick-ring {
   position: absolute;
-  width: 130px;
-  height: 130px;
+  width: 134px;
+  height: 134px;
   border-radius: 50%;
-  border: 2px solid rgba(0, 240, 255, 0.45);
-  background: radial-gradient(circle, rgba(0, 240, 255, 0.08) 0%, rgba(0, 0, 0, 0.4) 100%);
-  box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+  border: 1.5px solid rgba(0, 240, 255, 0.45);
+  background: radial-gradient(circle, rgba(0, 240, 255, 0.12) 0%, rgba(10, 16, 30, 0.5) 85%);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.45), 0 0 25px rgba(0, 240, 255, 0.25);
   transform: translate(-50%, -50%);
   pointer-events: none;
   will-change: transform, left, top;
@@ -66,12 +68,12 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 54px;
-  height: 54px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
-  background: radial-gradient(circle, #00f0ff 0%, #0088cc 100%);
-  border: 2px solid #ffffff;
-  box-shadow: 0 0 15px rgba(0, 240, 255, 0.8);
+  background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.95) 0%, rgba(0, 240, 255, 0.85) 45%, rgba(0, 140, 220, 0.95) 100%);
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.85), 0 0 20px rgba(0, 240, 255, 0.9), 0 8px 18px rgba(0, 0, 0, 0.45);
   transform: translate(-50%, -50%);
   will-change: transform, left, top;
 }
@@ -79,13 +81,13 @@
 /* Right Aim Joystick Specific Styling */
 .aim-ring {
   border-color: rgba(255, 0, 127, 0.45);
-  background: radial-gradient(circle, rgba(255, 0, 127, 0.08) 0%, rgba(0, 0, 0, 0.4) 100%);
-  box-shadow: 0 0 20px rgba(255, 0, 127, 0.2);
+  background: radial-gradient(circle, rgba(255, 0, 127, 0.12) 0%, rgba(10, 16, 30, 0.5) 85%);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.45), 0 0 25px rgba(255, 0, 127, 0.25);
 }
 
 .aim-knob {
-  background: radial-gradient(circle, #ff007f 0%, #cc0055 100%);
-  box-shadow: 0 0 15px rgba(255, 0, 127, 0.8);
+  background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 0, 127, 0.85) 45%, rgba(190, 0, 85, 0.95) 100%);
+  box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.85), 0 0 20px rgba(255, 0, 127, 0.9), 0 8px 18px rgba(0, 0, 0, 0.45);
 }
 
 /* Action Buttons Group (Right side above or near thumb) */
@@ -137,10 +139,10 @@
   width: 66px;
   height: 66px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  background: rgba(16, 24, 39, 0.85);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.03) 100%), rgba(14, 22, 40, 0.72);
+  backdrop-filter: blur(18px) saturate(190%);
+  -webkit-backdrop-filter: blur(18px) saturate(190%);
   color: #ffffff;
   display: flex;
   flex-direction: column;
@@ -149,9 +151,9 @@
   cursor: pointer;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 1px 1.5px rgba(255, 255, 255, 0.45), 0 8px 24px rgba(0, 0, 0, 0.45);
   touch-action: manipulation;
-  transition: transform 0.1s, border-color 0.2s, box-shadow 0.2s;
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s, box-shadow 0.2s;
 }
 
 .action-btn:active {
@@ -171,13 +173,13 @@
   margin-top: 2px;
 }
 
-/* Super Ultimate Button */
+/* Super Ultimate Button (Android 17 Frosted Glass Gem) */
 .super-btn {
   width: 72px;
   height: 72px;
-  border-color: rgba(255, 0, 127, 0.6);
-  background: radial-gradient(circle, rgba(255, 0, 127, 0.25) 0%, rgba(16, 24, 39, 0.95) 100%);
-  box-shadow: 0 0 15px rgba(255, 0, 127, 0.3);
+  border-color: rgba(255, 0, 127, 0.65);
+  background: radial-gradient(circle, rgba(255, 0, 127, 0.3) 0%, rgba(16, 24, 44, 0.82) 100%);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.5), 0 0 20px rgba(255, 0, 127, 0.4);
   position: relative;
 }
 
@@ -193,7 +195,7 @@
 
 .super-meter-bg {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.1);
+  stroke: rgba(255, 255, 255, 0.12);
   stroke-width: 4;
 }
 
@@ -209,8 +211,8 @@
 
 .super-btn.ready {
   border-color: #ffea00;
-  background: radial-gradient(circle, rgba(255, 234, 0, 0.3) 0%, rgba(255, 0, 127, 0.4) 100%);
-  box-shadow: 0 0 25px rgba(255, 234, 0, 0.8), 0 0 45px rgba(255, 0, 127, 0.6);
+  background: radial-gradient(circle, rgba(255, 234, 0, 0.35) 0%, rgba(255, 0, 127, 0.45) 100%);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.8), 0 0 25px rgba(255, 234, 0, 0.85), 0 0 50px rgba(255, 0, 127, 0.65);
   animation: superPulse 1.2s infinite alternate;
 }
 
@@ -226,18 +228,18 @@
 }
 
 @keyframes superPulse {
-  0% { transform: scale(1); box-shadow: 0 0 20px rgba(255, 234, 0, 0.7); }
-  100% { transform: scale(1.08); box-shadow: 0 0 35px rgba(255, 234, 0, 1), 0 0 50px rgba(255, 0, 127, 0.8); }
+  0% { transform: scale(1); box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.8), 0 0 20px rgba(255, 234, 0, 0.7); }
+  100% { transform: scale(1.08); box-shadow: inset 0 1px 3px rgba(255, 255, 255, 1), 0 0 35px rgba(255, 234, 0, 1), 0 0 55px rgba(255, 0, 127, 0.8); }
 }
 
 /* Dash Button */
 .dash-btn {
   border-color: var(--amber-neon);
-  box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);
+  box-shadow: inset 0 1px 1.5px rgba(255, 255, 255, 0.4), 0 0 16px rgba(245, 158, 11, 0.35);
 }
 
 .dash-btn:active {
-  background: rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.35);
 }
 
 /* Cooldown radial dark overlay */
@@ -257,40 +259,40 @@
 /* Weapon Swap Button */
 .weapon-btn {
   border-color: var(--cyan-neon);
-  box-shadow: 0 0 15px var(--cyan-glow);
+  box-shadow: inset 0 1px 1.5px rgba(255, 255, 255, 0.4), 0 0 16px var(--cyan-glow);
 }
 
 .weapon-btn:active {
-  background: rgba(0, 240, 255, 0.25);
+  background: rgba(0, 240, 255, 0.3);
 }
 
 /* Emote Button */
 .emote-btn {
   border-color: var(--purple-neon);
-  box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
+  box-shadow: inset 0 1px 1.5px rgba(255, 255, 255, 0.4), 0 0 16px rgba(168, 85, 247, 0.4);
 }
 
 .emote-btn:active {
-  background: rgba(168, 85, 247, 0.3);
+  background: rgba(168, 85, 247, 0.35);
 }
 
-/* Emote & Tactical Wheel Popup */
+/* Emote & Tactical Wheel Popup (Android 17 Frosted Glass) */
 .emote-wheel {
   position: absolute;
   right: 95px;
   bottom: 80px;
-  background: rgba(10, 14, 23, 0.95);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--purple-neon);
-  box-shadow: 0 0 25px rgba(168, 85, 247, 0.5);
-  border-radius: 16px;
-  padding: 10px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.02) 100%), rgba(14, 20, 38, 0.82);
+  backdrop-filter: blur(24px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  border: 1px solid rgba(168, 85, 247, 0.45);
+  box-shadow: inset 0 1px 1.5px rgba(255, 255, 255, 0.35), 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 25px rgba(168, 85, 247, 0.35);
+  border-radius: 22px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
   z-index: 30;
-  animation: popScale 0.15s ease-out;
+  animation: popScale 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
   min-width: 216px;
 }
 
@@ -303,23 +305,24 @@
 
 .wheel-tab {
   flex: 1;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 9999px;
   color: var(--text-muted);
   font-size: 0.7rem;
   font-weight: 800;
   letter-spacing: 0.5px;
-  padding: 5px 0;
+  padding: 6px 0;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s ease;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.15);
 }
 
 .wheel-tab.active {
-  background: rgba(168, 85, 247, 0.3);
+  background: rgba(168, 85, 247, 0.35);
   border-color: var(--purple-neon);
   color: #ffffff;
-  box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.3), 0 0 12px rgba(168, 85, 247, 0.45);
 }
 
 .wheel-grid {
@@ -338,12 +341,14 @@
 
 .tactical-item {
   background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(0, 240, 255, 0.3);
-  border-radius: 8px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 240, 255, 0.35);
+  border-radius: 9999px;
   color: #ffffff;
   font-size: 0.75rem;
   font-weight: 800;
-  padding: 8px 6px;
+  padding: 8px 10px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -351,6 +356,7 @@
   gap: 6px;
   transition: transform 0.1s, background 0.2s, border-color 0.2s;
   white-space: nowrap;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.15);
 }
 
 .tactical-item:active {
@@ -359,23 +365,26 @@
   border-color: var(--cyan-neon);
 }
 
-@keyframes popScale {
-  from { opacity: 0; transform: scale(0.85); }
-  to { opacity: 1; transform: scale(1); }
-}
-
 .emote-item {
   width: 46px;
   height: 46px;
   font-size: 1.5rem;
   background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 10px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: transform 0.1s, background 0.2s;
+  transition: transform 0.15s ease, background 0.2s;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.15);
+}
+
+.emote-item:active {
+  transform: scale(0.85);
+  background: rgba(168, 85, 247, 0.4);
 }
 
 .emote-item:active {
