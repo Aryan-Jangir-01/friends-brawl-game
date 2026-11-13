@@ -1,6 +1,6 @@
 // server/GameInstance.js
-import { MAPS, WEAPON_CONFIGS, HERO_CLASSES } from "./MapData.js?v=20261113_09";
-import { BotPlayer } from "./BotPlayer.js?v=20261113_09";
+import { MAPS, WEAPON_CONFIGS, HERO_CLASSES } from "./MapData.js?v=20261113_12";
+import { BotPlayer } from "./BotPlayer.js?v=20261113_12";
 
 export class GameInstance {
   constructor(roomId, options = {}, io) {

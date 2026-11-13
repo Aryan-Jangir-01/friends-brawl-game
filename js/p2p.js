@@ -1,5 +1,5 @@
 // public/js/p2p.js
-import { GameInstance } from "./engine/GameInstance.js?v=20261113_09";
+import { GameInstance } from "./engine/GameInstance.js?v=20261113_12";
 
 const PEER_CONFIG = {
   debug: 1,
@@ -50,6 +50,7 @@ export class P2PManager {
     this._visibilityBound = false;
     this.userLeftVoluntarily = false;
     this.migrationTimeout = null;
+    this.leaveReinitTimer = null;
   }
 
   setupSignalingWatchdog() {
@@ -129,6 +130,10 @@ export class P2PManager {
 
   quickPlay(profile, callback) {
     this.userLeftVoluntarily = false;
+    if (this.leaveReinitTimer) {
+      clearTimeout(this.leaveReinitTimer);
+      this.leaveReinitTimer = null;
+    }
     if (this.migrationTimeout) {
       clearTimeout(this.migrationTimeout);
       this.migrationTimeout = null;
@@ -403,6 +408,10 @@ export class P2PManager {
 
   createRoom(profile, options, callback) {
     this.userLeftVoluntarily = false;
+    if (this.leaveReinitTimer) {
+      clearTimeout(this.leaveReinitTimer);
+      this.leaveReinitTimer = null;
+    }
     if (this.migrationTimeout) {
       clearTimeout(this.migrationTimeout);
       this.migrationTimeout = null;
@@ -640,6 +649,10 @@ export class P2PManager {
     }
 
     this.userLeftVoluntarily = false;
+    if (this.leaveReinitTimer) {
+      clearTimeout(this.leaveReinitTimer);
+      this.leaveReinitTimer = null;
+    }
     const targetPeerId = `brawlz-${cleanCode}`;
 
     if (!this.peer || this.peer.destroyed || this.peer.disconnected || !this.peer.open) {
@@ -793,7 +806,11 @@ export class P2PManager {
   }
 
   startGame(callback) {
-    if (!this.isHost || !this.room) return;
+    if (!this.isHost || !this.room) {
+      console.warn("[P2P] Cannot start game: Not host or room is null", { isHost: this.isHost, room: this.room });
+      if (callback) callback({ success: false, error: "Only the room host can start the match." });
+      return;
+    }
 
     if (this.game) {
       try { this.game.stop(); } catch (e) {}
@@ -819,34 +836,39 @@ export class P2PManager {
       })
     };
 
-    this.game = new GameInstance(this.room.id, this.room.options, mockIO);
+    try {
+      this.game = new GameInstance(this.room.id, this.room.options, mockIO);
 
-    this.room.players.forEach(p => {
-      if (p.isBot) {
-        this.game.addBot(p.team);
-      } else {
-        this.game.addPlayer(p.id, {
-          name: p.name,
-          color: p.color,
-          avatar: p.avatar,
-          team: p.team,
-          isBot: false
-        }, p.isHost);
-      }
-    });
+      this.room.players.forEach(p => {
+        if (p.isBot) {
+          this.game.addBot(p.team);
+        } else {
+          this.game.addPlayer(p.id, {
+            name: p.name,
+            color: p.color,
+            avatar: p.avatar,
+            team: p.team,
+            isBot: false
+          }, p.isHost);
+        }
+      });
 
-    this.game.start();
+      this.game.start();
 
-    this.broadcast({
-      type: "game_started",
-      data: { map: this.game.map, options: this.game.options }
-    });
-    this.networkClient.trigger("game_started", {
-      map: this.game.map,
-      options: this.game.options
-    });
+      this.broadcast({
+        type: "game_started",
+        data: { map: this.game.map, options: this.game.options }
+      });
+      this.networkClient.trigger("game_started", {
+        map: this.game.map,
+        options: this.game.options
+      });
 
-    if (callback) callback({ success: true });
+      if (callback) callback({ success: true });
+    } catch (err) {
+      console.error("[P2P] Failed to start GameInstance:", err);
+      if (callback) callback({ success: false, error: err.message || "Failed to initialize game engine." });
+    }
   }
 
   broadcastCompactState(worldState) {
@@ -1068,6 +1090,11 @@ export class P2PManager {
       this.joinOverallTimeout = null;
     }
 
+    if (this.leaveReinitTimer) {
+      clearTimeout(this.leaveReinitTimer);
+      this.leaveReinitTimer = null;
+    }
+
     const wasHost = this.isHost;
     if (this.game) {
       this.game.stop();
@@ -1092,7 +1119,8 @@ export class P2PManager {
         this.peer.destroy();
       } catch (e) {}
       this.peer = null;
-      setTimeout(() => {
+      this.leaveReinitTimer = setTimeout(() => {
+        this.leaveReinitTimer = null;
         this.init();
       }, 300);
     }

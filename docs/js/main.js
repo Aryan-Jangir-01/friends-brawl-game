@@ -1,10 +1,10 @@
 // public/js/main.js
-import { audio } from "./audio.js?v=20261113_09";
-import { ParticleSystem } from "./particles.js?v=20261113_09";
-import { InputManager } from "./input.js?v=20261113_09";
-import { GameRenderer } from "./renderer.js?v=20261113_09";
-import { NetworkClient } from "./network.js?v=20261113_09";
-import { MAPS } from "./engine/MapData.js?v=20261113_09";
+import { audio } from "./audio.js?v=20261113_12";
+import { ParticleSystem } from "./particles.js?v=20261113_12";
+import { InputManager } from "./input.js?v=20261113_12";
+import { GameRenderer } from "./renderer.js?v=20261113_12";
+import { NetworkClient } from "./network.js?v=20261113_12";
+import { MAPS } from "./engine/MapData.js?v=20261113_12";
 
 // Global Game State
 const state = {
@@ -355,21 +355,22 @@ function initNetwork() {
   });
 
   network.on("game_started", (startData) => {
-    // GUARD: If user has returned to lobby, ignore stray arena start events
+    // GUARD: If user has completely exited to main menu, ignore stray arena start events
     if (!state.currentRoom) {
-      console.log("[GameStarted] Ignored because player is currently in lobby.");
+      console.log("[GameStarted] Ignored because player is not in any room.");
       return;
     }
 
     console.log("Game started received:", startData);
-    const chosenMapId = startData?.options?.mapId || state.currentRoom?.options?.mapId || "cyber_arena";
-    state.mapData = (startData && startData.map) ? startData.map : (MAPS[chosenMapId] || MAPS.cyber_arena);
+    const chosenMapId = startData?.options?.mapId || state.currentRoom?.options?.mapId || "military_airbase";
+    state.mapData = (startData && startData.map) ? startData.map : (MAPS[chosenMapId] || MAPS.military_airbase);
     state.gameRunning = true;
 
     // Reset camera state so it snaps directly to player on start
     renderer.resetCamera();
     renderer.resize();
 
+    viewActiveRoom.classList.add("hidden");
     lobbyScreen.classList.add("hidden");
     hudOverlay.classList.remove("hidden");
     modalMatchOver.classList.add("hidden");
@@ -688,26 +689,35 @@ if (btnHudBack) {
     audio.playClick();
     audio.stopMusic();
     state.gameRunning = false;
-    network.leaveRoom();
-    state.currentRoom = null;
-    state.isHost = false;
     state.latestWorldState = null;
     hudOverlay.classList.add("hidden");
-    lobbyScreen.classList.remove("hidden");
     modalMatchOver.classList.add("hidden");
 
-    // Reset BATTLE NOW button so it is clean for next tap
-    if (btnQuickPlay) {
-      btnQuickPlay.disabled = false;
-      btnQuickPlay.textContent = "⚔️ BATTLE NOW (DROP IN) ⚔️";
+    if (state.currentRoom && state.currentRoom.id !== "PUBLIC" && state.currentRoom.id !== "SOLO") {
+      // In a custom room with friends: return to room lobby view
+      lobbyScreen.classList.remove("hidden");
+      switchToRoomView(state.currentRoom);
+      showToast("Returned to Room Lobby 🏠");
+    } else {
+      // In quick play or solo: leave cleanly
+      network.leaveRoom();
+      state.currentRoom = null;
+      state.isHost = false;
+      lobbyScreen.classList.remove("hidden");
+      viewActiveRoom.classList.add("hidden");
+      viewRoomSelection.classList.remove("hidden");
+
+      if (btnQuickPlay) {
+        btnQuickPlay.disabled = false;
+        btnQuickPlay.textContent = "⚔️ BATTLE NOW (DROP IN) ⚔️";
+      }
+
+      try {
+        window.history.replaceState({ screen: "lobby" }, document.title, window.location.pathname);
+      } catch (e) {}
+
+      showToast("Returned to Lobby 🏠");
     }
-
-    // Clean URL query parameters so browser back/reload doesn't re-trigger battle
-    try {
-      window.history.replaceState({ screen: "lobby" }, document.title, window.location.pathname);
-    } catch (e) {}
-
-    showToast("Returned to Lobby 🏠");
   });
 }
 
@@ -863,9 +873,29 @@ btnToggleReady.addEventListener("click", () => {
 
 btnStartGame.addEventListener("click", () => {
   audio.unlock();
+  audio.playClick();
+
+  // Ensure current map selector and room options are strictly synchronized
+  const selectMap = document.getElementById("select-map");
+  if (selectMap && selectMap.value && state.currentRoom) {
+    state.currentRoom.options = state.currentRoom.options || {};
+    state.currentRoom.options.mapId = selectMap.value;
+    if (selectGameMode) state.currentRoom.options.gameMode = selectGameMode.value;
+    if (selectScoreLimit) state.currentRoom.options.scoreLimit = Number(selectScoreLimit.value) || 15;
+    network.updateRoomOptions(state.currentRoom.options);
+  }
+
+  btnStartGame.disabled = true;
+  btnStartGame.textContent = "STARTING MATCH... ⚔️";
+
   network.startGame((res) => {
-    if (!res.success) {
-      showToast(`Cannot start: ${res.error}`);
+    setTimeout(() => {
+      btnStartGame.disabled = false;
+      btnStartGame.textContent = "START MATCH ⚔️";
+    }, 1500);
+
+    if (res && !res.success) {
+      showToast(`Cannot start: ${res.error || "Please wait..."}`);
     }
   });
 });
@@ -936,6 +966,7 @@ btnCloseQr.addEventListener("click", () => {
 
 // Switch view helper
 function switchToRoomView(room) {
+  if (room) state.currentRoom = room;
   viewRoomSelection.classList.add("hidden");
   viewActiveRoom.classList.remove("hidden");
   renderLobbyRoom(room);
@@ -1261,16 +1292,32 @@ if (btnMatchOverBack) {
   btnMatchOverBack.addEventListener("click", () => {
     audio.unlock();
     audio.playClick();
-    returnToLobbyCleanly();
-    showToast("Returned to Lobby 🏠");
+    if (state.currentRoom && state.currentRoom.id !== "PUBLIC" && state.currentRoom.id !== "SOLO") {
+      modalMatchOver.classList.add("hidden");
+      hudOverlay.classList.add("hidden");
+      lobbyScreen.classList.remove("hidden");
+      switchToRoomView(state.currentRoom);
+      showToast("Returned to Room Lobby 🏠");
+    } else {
+      returnToLobbyCleanly();
+      showToast("Returned to Lobby 🏠");
+    }
   });
 }
 
 btnRematch.addEventListener("click", () => {
   audio.unlock();
   audio.playClick();
-  returnToLobbyCleanly();
-  showToast("Returned to Lobby 🏠");
+  if (state.currentRoom && state.currentRoom.id !== "PUBLIC" && state.currentRoom.id !== "SOLO") {
+    modalMatchOver.classList.add("hidden");
+    hudOverlay.classList.add("hidden");
+    lobbyScreen.classList.remove("hidden");
+    switchToRoomView(state.currentRoom);
+    showToast("Returned to Room Lobby 🏠");
+  } else {
+    returnToLobbyCleanly();
+    showToast("Returned to Lobby 🏠");
+  }
 });
 
 const btnPlayAgain = document.getElementById("btn-play-again");
@@ -1305,7 +1352,12 @@ if (btnPlayAgain) {
     if (state.currentRoom && state.currentRoom.id !== "PUBLIC") {
       if (state.isHost) {
         showToast("Starting Next Round for Room! ⚔️");
-        network.startGame();
+        network.startGame((res) => {
+          if (res && !res.success) {
+            showToast(`Cannot start: ${res.error}`);
+            switchToRoomView(state.currentRoom);
+          }
+        });
       } else {
         showToast("Waiting for Host to start next round... ⏳");
         switchToRoomView(state.currentRoom);
