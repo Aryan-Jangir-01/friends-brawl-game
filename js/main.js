@@ -746,7 +746,7 @@ if (btnPracticeBots) {
     audio.unlock();
     audio.playClick();
     showToast("Starting Solo Match vs AI Bots! ⚔️");
-    const dur = selectMatchDuration ? Number(selectMatchDuration.value) : 300;
+    const dur = selectMatchDuration ? Number(selectMatchDuration.value) : 240;
     const kills = selectScoreLimit ? Number(selectScoreLimit.value) : 15;
     state.currentRoom = { id: "SOLO", options: { mapId: "military_airbase", scoreLimit: kills, matchDuration: dur } };
     state.isHost = true;
@@ -772,7 +772,7 @@ btnCreateRoom.addEventListener("click", () => {
   audio.unlock();
   btnCreateRoom.disabled = true;
   btnCreateRoom.textContent = "CREATING... 🚀";
-  const initialDuration = selectMatchDuration ? Number(selectMatchDuration.value) : 300;
+  const initialDuration = selectMatchDuration ? Number(selectMatchDuration.value) : 240;
   const initialScoreLimit = selectScoreLimit ? Number(selectScoreLimit.value) : 15;
   const initialGameMode = selectGameMode ? selectGameMode.value : "ffa";
   network.createRoom(state.profile, { gameMode: initialGameMode, scoreLimit: initialScoreLimit, matchDuration: initialDuration }, (res) => {
@@ -1012,7 +1012,7 @@ function renderLobbyRoom(room) {
   if (selectMatchDuration) selectMatchDuration.disabled = !isMeHost;
   selectGameMode.value = room.options?.gameMode || "ffa";
   selectScoreLimit.value = String(room.options?.scoreLimit !== undefined ? room.options.scoreLimit : 15);
-  if (selectMatchDuration) selectMatchDuration.value = String(room.options?.matchDuration !== undefined ? room.options.matchDuration : 300);
+  if (selectMatchDuration) selectMatchDuration.value = String(room.options?.matchDuration !== undefined ? room.options.matchDuration : 240);
 
   const selectMap = document.getElementById("select-map");
   if (selectMap) {
@@ -1357,7 +1357,7 @@ if (btnPlayAgain) {
     // Case 1: Solo match vs Bots
     if (state.currentRoom?.id === "SOLO" || network.isLocalSolo) {
       showToast("Starting New Solo Match vs Bots! ⚔️");
-      const opts = state.currentRoom?.options || { mapId: "military_airbase", scoreLimit: 15, matchDuration: 300 };
+      const opts = state.currentRoom?.options || { mapId: "military_airbase", scoreLimit: 15, matchDuration: 240 };
       state.currentRoom = { id: "SOLO", options: opts };
       state.isHost = true;
       state.mapData = MAPS[opts.mapId] || MAPS.military_airbase;

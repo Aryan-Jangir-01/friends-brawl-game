@@ -431,7 +431,7 @@ export class P2PManager {
       options: {
         gameMode: options.gameMode || "ffa",
         scoreLimit: options.scoreLimit !== undefined ? options.scoreLimit : 15,
-        matchDuration: options.matchDuration !== undefined ? options.matchDuration : 300,
+        matchDuration: options.matchDuration !== undefined ? options.matchDuration : 240,
         mapId: options.mapId || "military_airbase"
       },
       players: [

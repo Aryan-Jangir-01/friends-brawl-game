@@ -29,7 +29,7 @@ export class RoomManager {
       options: {
         gameMode: options.gameMode || "ffa", // ffa, team
         scoreLimit: options.scoreLimit !== undefined ? options.scoreLimit : 15,
-        matchDuration: options.matchDuration !== undefined ? options.matchDuration : 300,
+        matchDuration: options.matchDuration !== undefined ? options.matchDuration : 240,
         mapId: options.mapId || "military_airbase"
       },
       players: new Map(), // socketId -> profile
