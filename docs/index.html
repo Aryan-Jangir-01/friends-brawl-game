@@ -28,8 +28,8 @@
   <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
 
-  <link rel="stylesheet" href="./css/style.css?v=20261114_hud_editor_v3">
-  <link rel="stylesheet" href="./css/joystick.css?v=20261114_hud_editor_v3">
+  <link rel="stylesheet" href="./css/style.css?v=20261114_movable_editor_v1">
+  <link rel="stylesheet" href="./css/joystick.css?v=20261114_movable_editor_v1">
 </head>
 <body>
   <!-- Canvas Screen -->
@@ -40,12 +40,14 @@
     <div id="hud-overlay" class="hidden">
       <!-- Interactive HUD Layout Editor Overlay (Active in Editor Mode) -->
       <div id="hud-editor-banner" class="hud-editor-banner hidden">
-        <div class="editor-header-bar">
-          <div class="editor-title-box">
+        <!-- Draggable Top Header Bar -->
+        <div id="editor-header-bar" class="editor-header-bar">
+          <div id="header-drag-handle" class="editor-title-box drag-handle" title="Touch & Drag this Header Bar anywhere">
+            <span class="editor-drag-icon">⠿</span>
             <span class="editor-icon">📐</span>
             <div>
               <div class="editor-main-title">HUD CONTROLS LAYOUT EDITOR</div>
-              <div class="editor-sub-title">Touch/click any control to drag (upar, neeche, aage, peeche) & resize (chhota, bada)</div>
+              <div class="editor-sub-title">Touch/drag toolbars or buttons anywhere • Customize your battle HUD</div>
             </div>
           </div>
           <div class="editor-top-actions">
@@ -55,11 +57,18 @@
           </div>
         </div>
 
-        <!-- Floating Editor Palette -->
+        <!-- Draggable Floating Editor Palette -->
         <div id="editor-palette" class="editor-palette">
-          <div class="palette-top">
-            <span id="palette-target-name" class="palette-name">👉 Tap any button or bar on screen to select</span>
-            <button id="btn-palette-cycle" class="palette-cycle-btn">Next Control ❯</button>
+          <div id="palette-drag-handle" class="palette-top drag-handle" title="Touch & Drag this Toolbar anywhere on screen">
+            <div class="palette-title-group">
+              <span class="palette-drag-pill">⠿ DRAG</span>
+              <span id="palette-target-name" class="palette-name">👉 Tap any button or bar on screen to select</span>
+            </div>
+            <div class="palette-header-actions">
+              <button id="btn-palette-cycle" class="palette-cycle-btn" title="Cycle to next control">Next ❯</button>
+              <button id="btn-palette-dock" class="palette-dock-btn" title="Dock toolbar to Top or Bottom">⇅ DOCK</button>
+              <button id="btn-palette-collapse" class="palette-collapse-btn" title="Minimize / Expand Toolbar">▼ MIN</button>
+            </div>
           </div>
           <div id="palette-controls-row" class="palette-controls-row">
             <!-- Scale Controls (Chota / Bada) -->
@@ -883,8 +892,8 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Load Scripts: Local bundled socket.io and peerjs for 100% reliable serverless online & P2P multiplayer -->
-  <script src="./js/socket.io.min.js?v=20261114_hud_editor_v3"></script>
-  <script src="./js/peerjs.min.js?v=20261114_hud_editor_v3"></script>
-  <script type="module" src="./js/main.js?v=20261114_hud_editor_v3"></script>
+  <script src="./js/socket.io.min.js?v=20261114_movable_editor_v1"></script>
+  <script src="./js/peerjs.min.js?v=20261114_movable_editor_v1"></script>
+  <script type="module" src="./js/main.js?v=20261114_movable_editor_v1"></script>
 </body>
 </html>

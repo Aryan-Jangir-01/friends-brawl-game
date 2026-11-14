@@ -1848,12 +1848,43 @@ html, body {
   max-width: 820px;
   margin: 0 auto;
   width: 100%;
+  touch-action: none;
+  transition: transform 0.1s ease-out, box-shadow 0.2s;
 }
 
 .editor-title-box {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+/* Draggable Handles */
+.drag-handle {
+  cursor: grab !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  touch-action: none !important;
+}
+
+.drag-handle:active,
+.is-dragging {
+  cursor: grabbing !important;
+}
+
+.is-dragging {
+  opacity: 0.92 !important;
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.8), 0 0 35px rgba(0, 240, 255, 0.5) !important;
+  transition: none !important;
+}
+
+.editor-drag-icon {
+  font-size: 1.25rem;
+  color: #00f0ff;
+  opacity: 0.85;
+  letter-spacing: -2px;
+  margin-right: 2px;
+  display: inline-block;
+  user-select: none;
 }
 
 .editor-icon {
@@ -1926,6 +1957,8 @@ html, body {
   max-width: 760px;
   margin: 0 auto 10px auto;
   width: 96%;
+  touch-action: none;
+  transition: transform 0.1s ease-out, box-shadow 0.2s, max-width 0.2s, padding 0.2s;
 }
 
 .palette-top {
@@ -1935,15 +1968,52 @@ html, body {
   margin-bottom: 8px;
   padding-bottom: 6px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 10px;
+}
+
+.palette-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.palette-drag-pill {
+  background: rgba(0, 240, 255, 0.2);
+  border: 1px solid rgba(0, 240, 255, 0.5);
+  color: #00f0ff;
+  border-radius: 9999px;
+  padding: 2px 7px;
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  display: inline-flex;
+  align-items: center;
+  pointer-events: none;
+  white-space: nowrap;
 }
 
 .palette-name {
   font-size: 0.88rem;
   font-weight: 800;
   color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.palette-cycle-btn {
+.palette-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.palette-cycle-btn,
+.palette-dock-btn,
+.palette-collapse-btn {
   background: rgba(0, 240, 255, 0.15);
   border: 1px solid rgba(0, 240, 255, 0.35);
   color: #00f0ff;
@@ -1952,6 +2022,44 @@ html, body {
   font-size: 0.72rem;
   font-weight: 700;
   cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.palette-dock-btn {
+  background: rgba(168, 85, 247, 0.18);
+  border-color: rgba(168, 85, 247, 0.45);
+  color: #d8b4fe;
+}
+
+.palette-collapse-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #f1f5f9;
+}
+
+.palette-cycle-btn:hover,
+.palette-dock-btn:hover,
+.palette-collapse-btn:hover {
+  transform: scale(1.05);
+}
+
+/* Collapsed Palette */
+.editor-palette.collapsed {
+  padding: 8px 14px;
+  border-radius: 9999px;
+  width: auto;
+  max-width: 480px;
+}
+
+.editor-palette.collapsed .palette-controls-row {
+  display: none !important;
+}
+
+.editor-palette.collapsed .palette-top {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
 }
 
 .palette-controls-row {

@@ -628,6 +628,124 @@ function initHudEditor() {
     closeEditor(false);
   });
 
+  // ==========================================
+  // Draggable Toolbars (Header Bar & Palette)
+  // ==========================================
+  function setupToolbarDrag(element, handle) {
+    if (!element || !handle) return null;
+    let isDragging = false;
+    let startPointerX = 0;
+    let startPointerY = 0;
+    let currentX = 0;
+    let currentY = 0;
+    let pointerId = null;
+
+    handle.addEventListener("pointerdown", (e) => {
+      // Do not initiate drag if user tapped a button or input inside the handle
+      if (e.target.closest("button") || e.target.closest("input")) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      isDragging = true;
+      pointerId = e.pointerId;
+      startPointerX = e.clientX - currentX;
+      startPointerY = e.clientY - currentY;
+      element.classList.add("is-dragging");
+
+      try {
+        handle.setPointerCapture(e.pointerId);
+      } catch (_) {}
+    });
+
+    handle.addEventListener("pointermove", (e) => {
+      if (!isDragging || e.pointerId !== pointerId) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      currentX = e.clientX - startPointerX;
+      currentY = e.clientY - startPointerY;
+
+      element.style.transform = `translate(${currentX}px, ${currentY}px)`;
+    });
+
+    const endDrag = (e) => {
+      if (!isDragging || e.pointerId !== pointerId) return;
+      isDragging = false;
+      pointerId = null;
+      element.classList.remove("is-dragging");
+      try {
+        handle.releasePointerCapture(e.pointerId);
+      } catch (_) {}
+    };
+
+    handle.addEventListener("pointerup", endDrag);
+    handle.addEventListener("pointercancel", endDrag);
+
+    return {
+      setTranslate: (x, y) => {
+        currentX = x;
+        currentY = y;
+        element.style.transform = `translate(${x}px, ${y}px)`;
+      },
+      getTranslate: () => ({ x: currentX, y: currentY }),
+      reset: () => {
+        currentX = 0;
+        currentY = 0;
+        element.style.transform = "translate(0px, 0px)";
+      }
+    };
+  }
+
+  const headerBarEl = document.getElementById("editor-header-bar");
+  const headerHandle = document.getElementById("header-drag-handle");
+  const headerDrag = setupToolbarDrag(headerBarEl, headerHandle);
+
+  const paletteEl = document.getElementById("editor-palette");
+  const paletteHandle = document.getElementById("palette-drag-handle");
+  const paletteDrag = setupToolbarDrag(paletteEl, paletteHandle);
+
+  // Docking button (Toggles palette position between top and bottom)
+  let isDockedTop = false;
+  const btnDock = document.getElementById("btn-palette-dock");
+  btnDock?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    isDockedTop = !isDockedTop;
+    if (isDockedTop) {
+      const topOffset = -(window.innerHeight - 170);
+      paletteDrag?.setTranslate(0, Math.min(-180, topOffset));
+      btnDock.textContent = "⇅ BOTTOM";
+      showToast("⬆️ Toolbar Docked to Top");
+    } else {
+      paletteDrag?.reset();
+      btnDock.textContent = "⇅ TOP";
+      showToast("⬇️ Toolbar Docked to Bottom");
+    }
+    if (audio.playHapticTick) audio.playHapticTick();
+  });
+
+  // Minimize / Expand Palette Button
+  const btnCollapse = document.getElementById("btn-palette-collapse");
+  btnCollapse?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (!paletteEl) return;
+    const isCollapsed = paletteEl.classList.toggle("collapsed");
+    btnCollapse.textContent = isCollapsed ? "▲ EXPAND" : "▼ MIN";
+    if (audio.playHapticTick) audio.playHapticTick();
+    if (isCollapsed) {
+      showToast("🔽 Toolbar Minimized");
+    } else {
+      showToast("🔼 Toolbar Expanded");
+    }
+  });
+
+  // Reset toolbar positions on global reset
+  btnReset?.addEventListener("click", () => {
+    paletteDrag?.reset();
+    headerDrag?.reset();
+    if (btnDock) btnDock.textContent = "⇅ DOCK";
+    isDockedTop = false;
+  });
+
   // Open triggers
   btnOpenLobby?.addEventListener("click", openEditor);
   btnOpenModal?.addEventListener("click", openEditor);
