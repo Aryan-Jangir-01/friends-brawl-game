@@ -891,11 +891,12 @@ async function fetchNetworkInfo() {
   try {
     const res = await fetch(network.getApiUrl("/api/network-info"));
     const data = await res.json();
-    if (data.joinUrl && lanUrlText) {
-      lanUrlText.textContent = data.joinUrl;
+    const effectiveUrl = (window.location.protocol === "https:" && data.httpsJoinUrl) ? data.httpsJoinUrl : data.joinUrl;
+    if (effectiveUrl && lanUrlText) {
+      lanUrlText.textContent = effectiveUrl;
       if (btnCopyUrl) {
         btnCopyUrl.onclick = () => {
-          navigator.clipboard.writeText(data.joinUrl);
+          navigator.clipboard.writeText(effectiveUrl);
           showToast("Copied Mobile Play URL!");
         };
       }
@@ -2522,8 +2523,8 @@ const btnVoiceDeafen = document.getElementById("btn-voice-toggle-deafen");
 const btnHudVoiceMic = document.getElementById("btn-hud-voice-mic");
 const btnHudVoiceDeafen = document.getElementById("btn-hud-voice-deafen");
 
-function onToggleMic() {
-  const isMuted = voiceManager.toggleMic();
+async function onToggleMic() {
+  const isMuted = await voiceManager.toggleMic();
   if (audio.playClick) audio.playClick();
   showToast(isMuted ? "🔇 Microphone Muted" : "🎙️ Microphone Live!");
 }
@@ -2544,7 +2545,9 @@ voiceManager.on("toast", (msg) => {
 });
 
 voiceManager.on("speaking_change", ({ peerId, isSpeaking }) => {
-  const card = document.getElementById(`lobby-player-${peerId}`);
+  const card = document.getElementById(`lobby-player-${peerId}`) ||
+               document.getElementById(`lobby-player-guest_${peerId}`) ||
+               (typeof peerId === "string" && peerId.startsWith("guest_") ? document.getElementById(`lobby-player-${peerId.replace("guest_", "")}`) : null);
   if (card) {
     if (isSpeaking) {
       card.classList.add("is-speaking");

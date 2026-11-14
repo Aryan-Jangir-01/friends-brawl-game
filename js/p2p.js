@@ -619,13 +619,32 @@ export class P2PManager {
     } else if (msg.type === "send_tactical_ping") {
       this.broadcast({ type: "tactical_ping", data: { id: `guest_${peerId}`, ...msg.pingData } });
       this.networkClient.trigger("tactical_ping", { id: `guest_${peerId}`, ...msg.pingData });
-    } else if (msg.type === "voice_user_joined" || msg.type === "voice_signal" || msg.type === "voice_state_changed" || msg.type === "voice_speaking_changed" || msg.type === "voice_user_left") {
-      this.networkClient.trigger(msg.type, msg);
-      if (this.isHost) {
-        // Relay to other connected peers
-        for (const [otherPeerId, otherConn] of this.connections.entries()) {
-          if (otherPeerId !== peerId && otherConn && otherConn.open) {
-            try { otherConn.send(msg); } catch (_) {}
+    } else if (msg.type === "voice_user_joined" || msg.type === "voice_signal" || msg.type === "voice_state_changed" || msg.type === "voice_speaking_changed" || msg.type === "voice_user_left" || msg.type === "voice_room_users") {
+      if (msg.type === "voice_signal") {
+        if (this.isHost) {
+          if (msg.targetId === this.peerId || msg.targetId === "host") {
+            this.networkClient.trigger("voice_signal", msg);
+          } else {
+            // Forward to specific target peer
+            const targetConn = this.connections.get(msg.targetId);
+            if (targetConn && targetConn.open) {
+              try { targetConn.send(msg); } catch (_) {}
+            }
+          }
+        } else {
+          // Guest receiving voice_signal
+          if (!msg.targetId || msg.targetId === this.peerId) {
+            this.networkClient.trigger("voice_signal", msg);
+          }
+        }
+      } else {
+        this.networkClient.trigger(msg.type, msg);
+        if (this.isHost) {
+          // Relay to other connected peers
+          for (const [otherPeerId, otherConn] of this.connections.entries()) {
+            if (otherPeerId !== peerId && otherConn && otherConn.open) {
+              try { otherConn.send(msg); } catch (_) {}
+            }
           }
         }
       }

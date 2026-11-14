@@ -159,6 +159,10 @@ export class NetworkClient {
       });
 
       // Live Room Voice Chat Listeners
+      this.socket.on("voice_room_users", (data) => {
+        this.trigger("voice_room_users", data);
+      });
+
       this.socket.on("voice_user_joined", (data) => {
         this.trigger("voice_user_joined", data);
       });
@@ -403,7 +407,7 @@ export class NetworkClient {
     if (this.mode === "socket" && this.socket && this.socket.connected) {
       this.socket.emit("voice_signal", { targetId, signal });
     } else if (this.mode === "p2p" && this.p2p) {
-      this.p2p.sendToPeer(targetId, { type: "voice_signal", senderId: this.p2p.peerId, signal });
+      this.p2p.sendToPeer(targetId, { type: "voice_signal", senderId: this.p2p.peerId, targetId, signal });
     }
   }
 

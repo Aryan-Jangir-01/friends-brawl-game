@@ -1530,7 +1530,9 @@ export class GameRenderer {
       // 2a. Live Voice Chat Speaking Aura
       const isPlayerSpeaking = window.__voiceManager && (
         (p.id === localPlayer?.id && window.__voiceManager.isSpeaking) ||
-        window.__voiceManager.peers?.get(p.id)?.isSpeaking
+        window.__voiceManager.peers?.get(p.id)?.isSpeaking ||
+        (p.peerId && window.__voiceManager.peers?.get(p.peerId)?.isSpeaking) ||
+        (typeof p.id === "string" && p.id.startsWith("guest_") && window.__voiceManager.peers?.get(p.id.replace("guest_", ""))?.isSpeaking)
       );
       if (isPlayerSpeaking) {
         const voicePulse = Math.sin(Date.now() / 110) * 3;

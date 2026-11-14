@@ -1,10 +1,12 @@
 // server/index.js
 import express from "express";
 import http from "http";
+import https from "https";
 import { Server } from "socket.io";
 import path from "path";
 import os from "os";
 import QRCode from "qrcode";
+import selfsigned from "selfsigned";
 import { fileURLToPath } from "url";
 import { RoomManager } from "./RoomManager.js";
 
@@ -20,6 +22,29 @@ const io = new Server(server, {
 });
 
 const PORT = process.env.PORT || 3000;
+const HTTPS_PORT = process.env.HTTPS_PORT || (Number(PORT) + 443); // e.g. 3443
+let httpsServer = null;
+
+// Generate local self-signed SSL certificate for Secure Context on mobile phones
+try {
+  const pems = await selfsigned.generate([
+    { name: "commonName", value: "brawlzone.local" }
+  ], {
+    days: 365,
+    algorithm: "sha256"
+  });
+
+  httpsServer = https.createServer({
+    key: pems.private,
+    cert: pems.cert
+  }, app);
+
+  // Attach socket.io to the HTTPS server as well
+  io.attach(httpsServer);
+} catch (err) {
+  console.warn("HTTPS certificate generation notice:", err.message);
+}
+
 const roomManager = new RoomManager(io);
 
 // Static assets and CORS for cross-origin hosting (e.g. GitHub Pages)
@@ -52,14 +77,16 @@ function getLocalNetworkAddresses() {
   return addresses;
 }
 
-// API: Get server network info and join URL
+// API: Get server network info and join URLs (HTTP and HTTPS)
 app.get("/api/network-info", async (req, res) => {
   const addresses = getLocalNetworkAddresses();
   // Prefer Wi-Fi or 192.168 / 10.x LAN
   const primary = addresses.find(a => /wi-?fi|wlan/i.test(a.name)) || addresses[0] || { ip: "localhost" };
   const joinUrl = `http://${primary.ip}:${PORT}`;
+  const httpsJoinUrl = httpsServer ? `https://${primary.ip}:${HTTPS_PORT}` : joinUrl;
 
   let qrDataUrl = "";
+  let httpsQrDataUrl = "";
   try {
     qrDataUrl = await QRCode.toDataURL(joinUrl, {
       margin: 1,
@@ -69,6 +96,17 @@ app.get("/api/network-info", async (req, res) => {
       },
       width: 256
     });
+
+    if (httpsServer) {
+      httpsQrDataUrl = await QRCode.toDataURL(httpsJoinUrl, {
+        margin: 1,
+        color: {
+          dark: "#10b981",
+          light: "#0a0e17"
+        },
+        width: 256
+      });
+    }
   } catch (err) {
     console.error("QR Code generation error:", err);
   }
@@ -76,8 +114,11 @@ app.get("/api/network-info", async (req, res) => {
   res.json({
     ip: primary.ip,
     port: PORT,
+    httpsPort: HTTPS_PORT,
     joinUrl,
+    httpsJoinUrl,
     qrDataUrl,
+    httpsQrDataUrl,
     allAddresses: addresses
   });
 });
@@ -120,6 +161,10 @@ io.on("connection", (socket) => {
   });
 
   socket.on("leave_room", () => {
+    if (socket.roomId) {
+      io.to(socket.roomId).emit("voice_user_left", { senderId: socket.id });
+    }
+    socket.voiceData = null;
     roomManager.leaveCurrentRoom(socket);
   });
 
@@ -166,9 +211,34 @@ io.on("connection", (socket) => {
   socket.on("voice_join", (data) => {
     const roomId = socket.roomId;
     if (!roomId) return;
+    socket.voiceData = {
+      id: socket.id,
+      name: data?.name || "Brawler",
+      isMuted: Boolean(data?.isMuted)
+    };
+
+    // 1. Gather other participants currently in voice in this room
+    const room = roomManager.rooms.get(roomId);
+    if (room) {
+      const existingPeers = [];
+      for (const p of room.players.values()) {
+        const s = io.sockets.sockets.get(p.id);
+        if (s && s.id !== socket.id && s.voiceData) {
+          existingPeers.push({
+            id: s.id,
+            name: s.voiceData.name,
+            isMuted: s.voiceData.isMuted
+          });
+        }
+      }
+      socket.emit("voice_room_users", { peers: existingPeers });
+    }
+
+    // 2. Broadcast new voice member to existing room peers
     socket.to(roomId).emit("voice_user_joined", {
       senderId: socket.id,
-      name: data?.name || "Brawler"
+      name: socket.voiceData.name,
+      isMuted: socket.voiceData.isMuted
     });
   });
 
@@ -176,6 +246,7 @@ io.on("connection", (socket) => {
     if (!targetId || !signal) return;
     io.to(targetId).emit("voice_signal", {
       senderId: socket.id,
+      name: socket.voiceData?.name || "Brawler",
       signal
     });
   });
@@ -183,6 +254,9 @@ io.on("connection", (socket) => {
   socket.on("voice_state", (state) => {
     const roomId = socket.roomId;
     if (!roomId) return;
+    if (socket.voiceData && typeof state?.isMuted === "boolean") {
+      socket.voiceData.isMuted = state.isMuted;
+    }
     socket.to(roomId).emit("voice_state_changed", {
       senderId: socket.id,
       ...state
@@ -210,22 +284,38 @@ io.on("connection", (socket) => {
 
   // Disconnect
   socket.on("disconnect", () => {
+    if (socket.roomId) {
+      io.to(socket.roomId).emit("voice_user_left", { senderId: socket.id });
+    }
+    socket.voiceData = null;
     roomManager.leaveCurrentRoom(socket);
   });
 });
 
-// Start Server
+// Start HTTP Server
 server.listen(PORT, "0.0.0.0", () => {
   const addresses = getLocalNetworkAddresses();
   console.log("\n=======================================================");
   console.log("🎮  BRAWL ZONE - MULTIPLAYER ACTION SERVER RUNNING  🎮");
   console.log("=======================================================");
-  console.log(`Local Access:    http://localhost:${PORT}`);
+  console.log(`Local HTTP:      http://localhost:${PORT}`);
   addresses.forEach(a => {
     console.log(`Mobile/LAN Play: http://${a.ip}:${PORT}  (${a.name})`);
   });
-  console.log("=======================================================\n");
-  console.log("👉 Tip: Connect your phone to the same Wi-Fi or Hotspot,");
-  console.log("   then open the Mobile/LAN Play link above or scan QR code!\n");
+  console.log("=======================================================");
 });
 
+// Start HTTPS Server (for Phone Mic permissions on local Wi-Fi)
+if (httpsServer) {
+  httpsServer.listen(HTTPS_PORT, "0.0.0.0", () => {
+    const addresses = getLocalNetworkAddresses();
+    console.log(`🔒 Local HTTPS:     https://localhost:${HTTPS_PORT}`);
+    addresses.forEach(a => {
+      console.log(`🔒 Mobile HTTPS:    https://${a.ip}:${HTTPS_PORT}  (Recommended for Phone Mic!)`);
+    });
+    console.log("=======================================================\n");
+    console.log("👉 Tip: For Mobile Voice Chat (Microphone) on local Wi-Fi,");
+    console.log("   open the Mobile HTTPS link above on your phone and tap");
+    console.log("   'Advanced -> Proceed' once to allow microphone access!\n");
+  });
+}

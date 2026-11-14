@@ -26,6 +26,10 @@ export class VoiceChatManager {
     this.remoteAudioElements = new Map();
     // Remote peers info: peerId -> { name, isMuted, isSpeaking }
     this.peers = new Map();
+    // ICE Candidate Queue: peerId -> Array of RTCIceCandidateInit
+    this.pendingCandidates = new Map();
+    // Active offer flags: peerId -> boolean
+    this.isMakingOffer = new Map();
 
     // Audio Analysis for Voice Activity Detection (VAD)
     this.audioContext = null;
@@ -37,6 +41,7 @@ export class VoiceChatManager {
     // Event listeners
     this.listeners = new Map();
 
+    this.initAudioUnlock();
     this.initNetworkListeners();
   }
 
@@ -56,8 +61,49 @@ export class VoiceChatManager {
     }
   }
 
+  // Global user-gesture audio unlocker for mobile Safari & Chrome
+  initAudioUnlock() {
+    const unlock = () => {
+      this.unlockAudio();
+    };
+    window.addEventListener("click", unlock, { passive: true });
+    window.addEventListener("touchstart", unlock, { passive: true });
+    window.addEventListener("pointerdown", unlock, { passive: true });
+  }
+
+  unlockAudio() {
+    if (this.audioContext && this.audioContext.state === "suspended") {
+      this.audioContext.resume().catch(() => {});
+    }
+    this.remoteAudioElements.forEach(audio => {
+      if (audio.paused && audio.srcObject) {
+        audio.play().catch(() => {});
+      }
+    });
+  }
+
   initNetworkListeners() {
     if (!this.network) return;
+
+    // Room existing voice participants list
+    this.network.on("voice_room_users", async (data) => {
+      if (!this.isVoiceActive || !data?.peers) return;
+      console.log(`[Voice] Received voice participants list (${data.peers.length} peers)`);
+      for (const peer of data.peers) {
+        if (!peer.id || peer.id === this.getMyId()) continue;
+        this.peers.set(peer.id, {
+          name: peer.name || "Brawler",
+          isMuted: Boolean(peer.isMuted),
+          isSpeaking: false
+        });
+
+        // Deterministic role: smaller ID initiates offer
+        if (this.getMyId() < peer.id) {
+          await this.initiateCallTo(peer.id);
+        }
+      }
+      this.updateVoiceUI();
+    });
 
     // Incoming new user in voice chat
     this.network.on("voice_user_joined", async (data) => {
@@ -68,13 +114,15 @@ export class VoiceChatManager {
       console.log(`[Voice] Peer joined voice chat: ${peerId} (${data.name || "Brawler"})`);
       this.peers.set(peerId, {
         name: data.name || "Brawler",
-        isMuted: false,
+        isMuted: Boolean(data.isMuted),
         isSpeaking: false
       });
       this.updateVoiceUI();
 
-      // Initiate WebRTC peer connection and send offer
-      await this.initiateCallTo(peerId);
+      // Deterministic role: smaller ID initiates offer
+      if (this.getMyId() < peerId) {
+        await this.initiateCallTo(peerId);
+      }
     });
 
     // Incoming WebRTC signaling (offer, answer, or candidate)
@@ -82,6 +130,16 @@ export class VoiceChatManager {
       if (!this.isVoiceActive || !data?.senderId || !data?.signal) return;
       const peerId = data.senderId;
       if (peerId === this.getMyId()) return;
+
+      // Ensure peer exists in peers map
+      if (!this.peers.has(peerId)) {
+        this.peers.set(peerId, {
+          name: data.name || "Brawler",
+          isMuted: false,
+          isSpeaking: false
+        });
+        this.updateVoiceUI();
+      }
 
       await this.handleIncomingSignal(peerId, data.signal);
     });
@@ -130,16 +188,26 @@ export class VoiceChatManager {
     return "local_user";
   }
 
-  // Join Voice Chat in the current Room
-  async joinRoomVoice(roomId, playerName = "Brawler") {
-    if (this.isVoiceActive && this.currentRoomId === roomId) return;
-    this.currentRoomId = roomId;
-    this.localPlayerName = playerName;
-    this.isVoiceActive = true;
+  // Check Secure Context & Request Microphone access
+  async requestMicrophone() {
+    const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+    if (!window.isSecureContext && !isLocal) {
+      const httpsPort = 3443;
+      console.warn("[Voice] Insecure context on LAN IP. Mobile browsers require HTTPS for getUserMedia.");
+      this.trigger("toast", `🔒 Mobile Mic requires HTTPS! Open https://${location.hostname}:${httpsPort}`);
+      this.isMicMuted = true;
+      this.updateVoiceUI();
+      return null;
+    }
 
-    console.log(`[Voice] Joining voice chat in room: ${roomId}`);
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.warn("[Voice] navigator.mediaDevices.getUserMedia is not supported.");
+      this.trigger("toast", "🎙️ Microphone API not supported in this browser.");
+      this.isMicMuted = true;
+      this.updateVoiceUI();
+      return null;
+    }
 
-    // Request Microphone access
     try {
       this.localStream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -153,13 +221,59 @@ export class VoiceChatManager {
 
       this.isMicMuted = false;
       this.setupVAD(this.localStream);
+      this.attachLocalStreamToAllPeers();
       console.log("[Voice] Microphone access granted & VAD active");
+      this.updateVoiceUI();
+      return this.localStream;
     } catch (err) {
       console.warn("[Voice] Microphone access denied or unavailable:", err);
       this.localStream = null;
       this.isMicMuted = true;
-      this.trigger("toast", "🎙️ Microphone not available. You can still listen to others!");
+      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+        this.trigger("toast", "⚠️ Microphone permission denied in browser settings.");
+      } else {
+        this.trigger("toast", "🎙️ Microphone not available. You can still listen to others!");
+      }
+      this.updateVoiceUI();
+      return null;
     }
+  }
+
+  // Attach local audio track to all active peer connections
+  attachLocalStreamToAllPeers() {
+    if (!this.localStream) return;
+    const audioTrack = this.localStream.getAudioTracks()[0];
+    if (!audioTrack) return;
+
+    for (const [peerId, pc] of this.peerConnections) {
+      try {
+        const senders = pc.getSenders();
+        const existingSender = senders.find(s => s.track && s.track.kind === "audio");
+        if (existingSender) {
+          existingSender.replaceTrack(audioTrack).catch(e => console.warn("[Voice] replaceTrack failed:", e));
+        } else {
+          pc.addTrack(audioTrack, this.localStream);
+          if (this.getMyId() < peerId && pc.signalingState === "stable") {
+            this.initiateCallTo(peerId);
+          }
+        }
+      } catch (err) {
+        console.warn(`[Voice] Error attaching local track to peer ${peerId}:`, err);
+      }
+    }
+  }
+
+  // Join Voice Chat in the current Room
+  async joinRoomVoice(roomId, playerName = "Brawler") {
+    if (this.isVoiceActive && this.currentRoomId === roomId) return;
+    this.currentRoomId = roomId;
+    this.localPlayerName = playerName;
+    this.isVoiceActive = true;
+
+    console.log(`[Voice] Joining voice chat in room: ${roomId}`);
+
+    // Request Microphone access
+    await this.requestMicrophone();
 
     // Broadcast voice_join to room
     this.network.sendVoiceJoin({
@@ -170,7 +284,7 @@ export class VoiceChatManager {
     this.updateVoiceUI();
   }
 
-  // Create an RTCPeerConnection for a peer
+  // Create or retrieve an RTCPeerConnection for a peer
   getOrCreatePeerConnection(peerId) {
     if (this.peerConnections.has(peerId)) {
       return this.peerConnections.get(peerId);
@@ -178,12 +292,18 @@ export class VoiceChatManager {
 
     const pc = new RTCPeerConnection(RTC_CONFIG);
     this.peerConnections.set(peerId, pc);
+    this.pendingCandidates.set(peerId, []);
+    this.isMakingOffer.set(peerId, false);
 
-    // Add local audio track if microphone is available
+    // Add local audio track if microphone is available, or add receive-only transceiver
     if (this.localStream) {
       this.localStream.getAudioTracks().forEach(track => {
-        pc.addTrack(track, this.localStream);
+        try { pc.addTrack(track, this.localStream); } catch (e) {}
       });
+    } else {
+      try {
+        pc.addTransceiver("audio", { direction: "recvonly" });
+      } catch (e) {}
     }
 
     // Handle ICE candidates
@@ -202,19 +322,33 @@ export class VoiceChatManager {
         audio.id = `remote-voice-${peerId}`;
         audio.autoplay = true;
         audio.playsInline = true;
+        audio.setAttribute("playsinline", "");
+        audio.setAttribute("webkit-playsinline", "");
+        audio.volume = 1.0;
         audio.style.display = "none";
         document.body.appendChild(audio);
         this.remoteAudioElements.set(peerId, audio);
       }
       audio.srcObject = event.streams[0];
       audio.muted = this.isDeafened;
-      audio.play().catch(e => {
-        console.log("[Voice] Audio play waiting for user interaction:", e);
-      });
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(e => {
+          console.log("[Voice] Audio play waiting for user gesture:", e);
+        });
+      }
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      console.log(`[Voice] Peer ${peerId} ICE state: ${pc.iceConnectionState}`);
+      if (pc.iceConnectionState === "failed") {
+        try { pc.restartIce?.(); } catch (_) {}
+      }
     };
 
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === "disconnected" || pc.connectionState === "failed" || pc.connectionState === "closed") {
+      console.log(`[Voice] Peer ${peerId} connection state: ${pc.connectionState}`);
+      if (pc.connectionState === "disconnected" || pc.connectionState === "closed") {
         this.closePeer(peerId);
       }
     };
@@ -224,41 +358,95 @@ export class VoiceChatManager {
 
   // Call another peer (Caller side)
   async initiateCallTo(peerId) {
+    if (!peerId || peerId === this.getMyId()) return;
     try {
       const pc = this.getOrCreatePeerConnection(peerId);
+      this.isMakingOffer.set(peerId, true);
+
       const offer = await pc.createOffer({
         offerToReceiveAudio: true
       });
+
+      if (pc.signalingState !== "stable" && pc.signalingState !== "have-local-offer") {
+        console.warn(`[Voice] Skip initiateCallTo, state is ${pc.signalingState}`);
+        return;
+      }
+
       await pc.setLocalDescription(offer);
       this.network.sendVoiceSignal(peerId, {
         type: "offer",
-        sdp: offer.sdp
+        sdp: pc.localDescription.sdp
       });
+      console.log(`[Voice] Sent WebRTC offer to ${peerId}`);
     } catch (err) {
       console.warn(`[Voice] Error creating offer to ${peerId}:`, err);
+    } finally {
+      this.isMakingOffer.set(peerId, false);
     }
   }
 
-  // Handle incoming WebRTC signals (Callee side)
+  // Handle incoming WebRTC signals with Perfect Negotiation & Candidate Buffering
   async handleIncomingSignal(peerId, signal) {
+    if (!peerId || !signal) return;
     try {
       const pc = this.getOrCreatePeerConnection(peerId);
 
       if (signal.type === "offer") {
+        const isPolite = this.getMyId() > peerId;
+        const offerCollision = this.isMakingOffer.get(peerId) || pc.signalingState !== "stable";
+
+        if (offerCollision && !isPolite) {
+          console.log(`[Voice] Ignoring offer collision with ${peerId} (impolite side)`);
+          return;
+        }
+
         await pc.setRemoteDescription(new RTCSessionDescription(signal));
+        await this.flushPendingCandidates(peerId, pc);
+
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
+
         this.network.sendVoiceSignal(peerId, {
           type: "answer",
-          sdp: answer.sdp
+          sdp: pc.localDescription.sdp
         });
+        console.log(`[Voice] Created and sent answer to ${peerId}`);
       } else if (signal.type === "answer") {
-        await pc.setRemoteDescription(new RTCSessionDescription(signal));
+        if (pc.signalingState === "have-local-offer") {
+          await pc.setRemoteDescription(new RTCSessionDescription(signal));
+          await this.flushPendingCandidates(peerId, pc);
+          console.log(`[Voice] Remote description set for answer from ${peerId}`);
+        } else {
+          console.warn(`[Voice] Received answer in unexpected state: ${pc.signalingState}`);
+        }
       } else if (signal.candidate) {
-        await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+        if (!pc.remoteDescription || !pc.remoteDescription.type) {
+          // Buffer candidate until remote description is set!
+          const pending = this.pendingCandidates.get(peerId) || [];
+          pending.push(signal.candidate);
+          this.pendingCandidates.set(peerId, pending);
+        } else {
+          try {
+            await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+          } catch (err) {
+            console.warn(`[Voice] Error adding ICE candidate:`, err);
+          }
+        }
       }
     } catch (err) {
       console.warn(`[Voice] Signal error with peer ${peerId}:`, err);
+    }
+  }
+
+  async flushPendingCandidates(peerId, pc) {
+    const pending = this.pendingCandidates.get(peerId) || [];
+    while (pending.length > 0) {
+      const cand = pending.shift();
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(cand));
+      } catch (err) {
+        console.warn(`[Voice] Error adding buffered ICE candidate:`, err);
+      }
     }
   }
 
@@ -267,7 +455,13 @@ export class VoiceChatManager {
     try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (!AudioCtx) return;
-      this.audioContext = new AudioCtx();
+      if (!this.audioContext) {
+        this.audioContext = new AudioCtx();
+      }
+      if (this.audioContext.state === "suspended") {
+        this.audioContext.resume().catch(() => {});
+      }
+
       const source = this.audioContext.createMediaStreamSource(stream);
       this.analyser = this.audioContext.createAnalyser();
       this.analyser.fftSize = 256;
@@ -292,7 +486,7 @@ export class VoiceChatManager {
         }
         const average = sum / buffer.length;
 
-        // Threshold for speaking
+        // Dynamic threshold for speaking
         const SPEAKING_THRESHOLD = 20;
 
         if (average > SPEAKING_THRESHOLD) {
@@ -302,7 +496,7 @@ export class VoiceChatManager {
           }
         } else {
           this.silenceCounter++;
-          // Require 3 consecutive silent frames (~220ms) before toggling off
+          // Require 3 consecutive silent frames (~210ms) before toggling off
           if (this.isSpeaking && this.silenceCounter > 3) {
             this.setLocalSpeaking(false);
           }
@@ -326,16 +520,22 @@ export class VoiceChatManager {
   }
 
   // Toggle Microphone (Mute / Unmute)
-  toggleMic() {
+  async toggleMic() {
+    this.unlockAudio();
+
     if (!this.localStream) {
-      this.trigger("toast", "🎙️ No microphone connected!");
-      return this.isMicMuted;
+      const stream = await this.requestMicrophone();
+      if (!stream) {
+        return this.isMicMuted;
+      }
     }
 
     this.isMicMuted = !this.isMicMuted;
-    this.localStream.getAudioTracks().forEach(track => {
-      track.enabled = !this.isMicMuted;
-    });
+    if (this.localStream) {
+      this.localStream.getAudioTracks().forEach(track => {
+        track.enabled = !this.isMicMuted;
+      });
+    }
 
     if (this.isMicMuted && this.isSpeaking) {
       this.setLocalSpeaking(false);
@@ -349,6 +549,7 @@ export class VoiceChatManager {
 
   // Toggle Deafen (Hearing others)
   toggleDeafen() {
+    this.unlockAudio();
     this.isDeafened = !this.isDeafened;
     this.remoteAudioElements.forEach(audio => {
       audio.muted = this.isDeafened;
@@ -368,9 +569,11 @@ export class VoiceChatManager {
     }
     const audio = this.remoteAudioElements.get(peerId);
     if (audio) {
-      try { audio.pause(); audio.remove(); } catch (_) {}
+      try { audio.pause(); audio.srcObject = null; audio.remove(); } catch (_) {}
       this.remoteAudioElements.delete(peerId);
     }
+    this.pendingCandidates.delete(peerId);
+    this.isMakingOffer.delete(peerId);
     this.peers.delete(peerId);
     this.updateVoiceUI();
   }
@@ -404,9 +607,11 @@ export class VoiceChatManager {
     this.peerConnections.clear();
 
     this.remoteAudioElements.forEach(audio => {
-      try { audio.pause(); audio.remove(); } catch (_) {}
+      try { audio.pause(); audio.srcObject = null; audio.remove(); } catch (_) {}
     });
     this.remoteAudioElements.clear();
+    this.pendingCandidates.clear();
+    this.isMakingOffer.clear();
     this.peers.clear();
 
     this.updateVoiceUI();
