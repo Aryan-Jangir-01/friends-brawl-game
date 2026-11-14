@@ -5,6 +5,7 @@ import { InputManager } from "./input.js?v=20261114_controls_v1";
 import { GameRenderer } from "./renderer.js?v=20261114_controls_v1";
 import { NetworkClient } from "./network.js?v=20261114_controls_v1";
 import { MAPS } from "./engine/MapData.js?v=20261114_controls_v1";
+import { VoiceChatManager } from "./voice.js?v=20261114_voice_v1";
 
 // Global Game State
 const state = {
@@ -118,6 +119,8 @@ const particles = new ParticleSystem();
 const renderer = new GameRenderer(canvas, miniMapCanvas, particles);
 const input = new InputManager(canvas);
 const network = new NetworkClient();
+const voiceManager = new VoiceChatManager(network);
+window.__voiceManager = voiceManager;
 
 // Fullscreen Helper
 function toggleFullscreen() {
@@ -1482,6 +1485,7 @@ if (btnRoomBack) {
 }
 
 btnLeaveRoom.addEventListener("click", () => {
+  voiceManager.leaveRoomVoice();
   network.leaveRoom();
   state.currentRoom = null;
   state.isHost = false;
@@ -1775,6 +1779,11 @@ function switchToRoomView(room) {
   viewActiveRoom.classList.remove("hidden");
   renderLobbyRoom(room);
   navigateToScreen("room");
+
+  // Automatically connect to Room Live Voice Chat!
+  if (room && room.id && room.id !== "SOLO") {
+    voiceManager.joinRoomVoice(room.id, state.profile.name);
+  }
 }
 
 function renderLobbyRoom(room) {
@@ -1827,19 +1836,25 @@ function renderLobbyRoom(room) {
     document.getElementById("host-bot-controls")?.classList.add("hidden");
   }
 
-  // Render players grid
+  // Render players grid with real-time Voice Speaking aura
   lobbyPlayerList.innerHTML = "";
   room.players.forEach(p => {
     const card = document.createElement("div");
-    card.className = `player-lobby-card ${p.isHost ? "is-host" : ""} ${p.isReady ? "is-ready" : ""}`;
+    const pid = p.id || p.peerId;
+    card.id = `lobby-player-${pid}`;
+    const isLocal = pid === state.localPlayerId;
+    const isSpeaking = (isLocal && voiceManager.isSpeaking) || voiceManager.peers.get(pid)?.isSpeaking;
+    card.className = `player-lobby-card ${p.isHost ? "is-host" : ""} ${p.isReady ? "is-ready" : ""} ${isSpeaking ? "is-speaking" : ""}`;
 
     const hostBadge = p.isHost ? `<span class="host-badge">👑 HOST</span>` : "";
     const initial = (p.name || "B").substring(0, 2).toUpperCase();
+    const isMuted = (isLocal && voiceManager.isMicMuted) || voiceManager.peers.get(pid)?.isMuted;
+    const voiceStatus = isMuted ? `<span class="player-voice-status" title="Muted">🔇</span>` : `<span class="player-voice-status" title="Voice Active">🎙️</span>`;
 
     card.innerHTML = `
       ${hostBadge}
       <div class="avatar-mini" style="background-color: ${p.color};">${initial}</div>
-      <div class="p-name">${escapeHtml(p.name)}</div>
+      <div class="p-name">${escapeHtml(p.name)} ${voiceStatus}</div>
       <div class="p-status ${p.isReady ? "ready" : "waiting"}">
         ${p.isReady ? "READY" : "WAITING"}
       </div>
@@ -2498,6 +2513,46 @@ if (btnInstallApp) {
     }
   });
 }
+
+// ========================================================
+// LIVE ROOM & IN-GAME WEBRTC VOICE CHAT CONTROLLER
+// ========================================================
+const btnVoiceMic = document.getElementById("btn-voice-toggle-mic");
+const btnVoiceDeafen = document.getElementById("btn-voice-toggle-deafen");
+const btnHudVoiceMic = document.getElementById("btn-hud-voice-mic");
+const btnHudVoiceDeafen = document.getElementById("btn-hud-voice-deafen");
+
+function onToggleMic() {
+  const isMuted = voiceManager.toggleMic();
+  if (audio.playClick) audio.playClick();
+  showToast(isMuted ? "🔇 Microphone Muted" : "🎙️ Microphone Live!");
+}
+
+function onToggleDeafen() {
+  const isDeafened = voiceManager.toggleDeafen();
+  if (audio.playClick) audio.playClick();
+  showToast(isDeafened ? "🔇 Voice Audio Muted" : "🔊 Voice Audio Active");
+}
+
+btnVoiceMic?.addEventListener("click", onToggleMic);
+btnHudVoiceMic?.addEventListener("click", onToggleMic);
+btnVoiceDeafen?.addEventListener("click", onToggleDeafen);
+btnHudVoiceDeafen?.addEventListener("click", onToggleDeafen);
+
+voiceManager.on("toast", (msg) => {
+  showToast(msg);
+});
+
+voiceManager.on("speaking_change", ({ peerId, isSpeaking }) => {
+  const card = document.getElementById(`lobby-player-${peerId}`);
+  if (card) {
+    if (isSpeaking) {
+      card.classList.add("is-speaking");
+    } else {
+      card.classList.remove("is-speaking");
+    }
+  }
+});
 
 initNetwork();
 

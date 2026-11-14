@@ -89,6 +89,8 @@ export class RoomManager {
     socket.leave(roomId);
     delete socket.roomId;
 
+    this.io.to(roomId).emit("voice_user_left", { senderId: socket.id });
+
     if (room.gameInstance) {
       room.gameInstance.removePlayer(socket.id);
     }

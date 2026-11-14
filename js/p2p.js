@@ -619,6 +619,16 @@ export class P2PManager {
     } else if (msg.type === "send_tactical_ping") {
       this.broadcast({ type: "tactical_ping", data: { id: `guest_${peerId}`, ...msg.pingData } });
       this.networkClient.trigger("tactical_ping", { id: `guest_${peerId}`, ...msg.pingData });
+    } else if (msg.type === "voice_user_joined" || msg.type === "voice_signal" || msg.type === "voice_state_changed" || msg.type === "voice_speaking_changed" || msg.type === "voice_user_left") {
+      this.networkClient.trigger(msg.type, msg);
+      if (this.isHost) {
+        // Relay to other connected peers
+        for (const [otherPeerId, otherConn] of this.connections.entries()) {
+          if (otherPeerId !== peerId && otherConn && otherConn.open) {
+            try { otherConn.send(msg); } catch (_) {}
+          }
+        }
+      }
     }
   }
 
@@ -1058,6 +1068,15 @@ export class P2PManager {
           console.warn("Broadcast send error to:", peerId, e);
         }
       }
+    }
+  }
+
+  sendToPeer(peerId, msg) {
+    const conn = this.connections.get(peerId);
+    if (conn && conn.open) {
+      try { conn.send(msg); } catch (e) { console.warn("P2P sendToPeer error:", e); }
+    } else if (this.hostConn && this.hostConn.open) {
+      try { this.hostConn.send(msg); } catch (e) { console.warn("P2P sendToPeer via host error:", e); }
     }
   }
 

@@ -162,6 +162,42 @@ io.on("connection", (socket) => {
     roomManager.returnToLobby(socket);
   });
 
+  // Live Room Voice Chat Signaling
+  socket.on("voice_join", (data) => {
+    const roomId = socket.roomId;
+    if (!roomId) return;
+    socket.to(roomId).emit("voice_user_joined", {
+      senderId: socket.id,
+      name: data?.name || "Brawler"
+    });
+  });
+
+  socket.on("voice_signal", ({ targetId, signal }) => {
+    if (!targetId || !signal) return;
+    io.to(targetId).emit("voice_signal", {
+      senderId: socket.id,
+      signal
+    });
+  });
+
+  socket.on("voice_state", (state) => {
+    const roomId = socket.roomId;
+    if (!roomId) return;
+    socket.to(roomId).emit("voice_state_changed", {
+      senderId: socket.id,
+      ...state
+    });
+  });
+
+  socket.on("voice_speaking", ({ isSpeaking }) => {
+    const roomId = socket.roomId;
+    if (!roomId) return;
+    socket.to(roomId).emit("voice_speaking_changed", {
+      senderId: socket.id,
+      isSpeaking: Boolean(isSpeaking)
+    });
+  });
+
   // Gameplay Inputs
   socket.on("player_input", (inputData) => {
     const roomId = socket.roomId;

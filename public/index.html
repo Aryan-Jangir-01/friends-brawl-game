@@ -28,8 +28,8 @@
   <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
 
-  <link rel="stylesheet" href="./css/style.css?v=20261114_movable_editor_v1">
-  <link rel="stylesheet" href="./css/joystick.css?v=20261114_movable_editor_v1">
+  <link rel="stylesheet" href="./css/style.css?v=20261114_voice_v1">
+  <link rel="stylesheet" href="./css/joystick.css?v=20261114_voice_v1">
 </head>
 <body>
   <!-- Canvas Screen -->
@@ -116,6 +116,8 @@
             <span id="hud-players-count" style="font-size: 0.75rem; color: #00f0ff; font-weight: 800; margin: 0 4px;">👥 1 IN ARENA</span>
             <button id="btn-hud-quality" class="btn-hud-quality" title="Toggle Graphics Quality (2K Ultra / 1080p)">💎 2K</button>
             <button id="btn-hud-invite" class="btn-small-icon" style="background: rgba(168, 85, 247, 0.4); border: 1px solid #a855f7; color: #fff; font-size: 0.75rem; padding: 4px 8px; border-radius: 6px; cursor: pointer; font-weight: 700;" title="Invite Friends to Battle">📲 INVITE</button>
+            <button id="btn-hud-voice-mic" class="btn-small-icon voice-mic-btn" title="Toggle Microphone (Live Voice Chat)">🎙️</button>
+            <button id="btn-hud-voice-deafen" class="btn-small-icon voice-deafen-btn" title="Toggle Voice Chat Audio">🔊</button>
             <button id="btn-hud-sound" class="btn-small-icon" title="Toggle Sound">🔊</button>
             <button id="btn-hud-fullscreen" class="btn-small-icon" title="Toggle Fullscreen">⛶</button>
             <button id="btn-hud-controls" class="btn-small-icon" title="Customize Controls">⚙️</button>
@@ -139,6 +141,18 @@
       <div id="killstreak-banner" class="killstreak-banner hidden">
         <div id="streak-text" class="streak-text">DOUBLE KILL!</div>
         <div id="streak-sub" class="streak-sub">PLAYER NAME</div>
+      </div>
+
+      <!-- In-Game Live Voice Activity Floating Pill -->
+      <div id="hud-voice-activity" class="hud-voice-activity hidden">
+        <div class="voice-activity-pill">
+          <span class="voice-activity-waves">
+            <span class="wave-bar"></span>
+            <span class="wave-bar"></span>
+            <span class="wave-bar"></span>
+          </span>
+          <span id="hud-voice-speaker-name" class="voice-speaker-name">Someone is speaking...</span>
+        </div>
       </div>
 
       <!-- Real-time Kill Feed -->
@@ -751,6 +765,25 @@
 
           <!-- Players in Room List -->
           <div class="players-section">
+            <!-- Live Room Voice Chat Controls Bar -->
+            <div id="lobby-voice-bar" class="lobby-voice-bar">
+              <div class="voice-status-group">
+                <span class="voice-live-dot pulse"></span>
+                <span class="voice-title">🎙️ LIVE VOICE CHAT</span>
+                <span id="voice-peers-badge" class="voice-peers-badge">Ready</span>
+              </div>
+              <div class="voice-controls-group">
+                <button id="btn-voice-toggle-mic" class="voice-btn voice-mic-active" title="Mute / Unmute Microphone">
+                  <span id="icon-voice-mic" class="voice-icon">🎙️</span>
+                  <span id="label-voice-mic" class="voice-label">MIC ON</span>
+                </button>
+                <button id="btn-voice-toggle-deafen" class="voice-btn" title="Turn Voice Audio On/Off">
+                  <span id="icon-voice-deafen" class="voice-icon">🔊</span>
+                  <span id="label-voice-deafen" class="voice-label">SOUND</span>
+                </button>
+              </div>
+            </div>
+
             <div class="section-title">PLAYERS CONNECTED (<span id="player-count">0</span>)</div>
             <div id="lobby-player-list" class="players-grid"></div>
           </div>
@@ -892,8 +925,8 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Load Scripts: Local bundled socket.io and peerjs for 100% reliable serverless online & P2P multiplayer -->
-  <script src="./js/socket.io.min.js?v=20261114_movable_editor_v1"></script>
-  <script src="./js/peerjs.min.js?v=20261114_movable_editor_v1"></script>
-  <script type="module" src="./js/main.js?v=20261114_movable_editor_v1"></script>
+  <script src="./js/socket.io.min.js?v=20261114_voice_v1"></script>
+  <script src="./js/peerjs.min.js?v=20261114_voice_v1"></script>
+  <script type="module" src="./js/main.js?v=20261114_voice_v1"></script>
 </body>
 </html>

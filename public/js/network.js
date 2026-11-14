@@ -157,6 +157,27 @@ export class NetworkClient {
       this.socket.on("tactical_ping", (data) => {
         if (this.mode === "socket") this.trigger("tactical_ping", data);
       });
+
+      // Live Room Voice Chat Listeners
+      this.socket.on("voice_user_joined", (data) => {
+        this.trigger("voice_user_joined", data);
+      });
+
+      this.socket.on("voice_signal", (data) => {
+        this.trigger("voice_signal", data);
+      });
+
+      this.socket.on("voice_state_changed", (data) => {
+        this.trigger("voice_state_changed", data);
+      });
+
+      this.socket.on("voice_speaking_changed", (data) => {
+        this.trigger("voice_speaking_changed", data);
+      });
+
+      this.socket.on("voice_user_left", (data) => {
+        this.trigger("voice_user_left", data);
+      });
     } catch (e) {
       console.warn("Socket init failed, fallback P2P:", e);
       this.mode = "p2p";
@@ -366,6 +387,39 @@ export class NetworkClient {
     }
     if (this.socket && this.socket.connected) {
       this.socket.emit("player_input", payload);
+    }
+  }
+
+  // Live Room Voice Chat Methods
+  sendVoiceJoin(data) {
+    if (this.mode === "socket" && this.socket && this.socket.connected) {
+      this.socket.emit("voice_join", data);
+    } else if (this.mode === "p2p" && this.p2p) {
+      this.p2p.broadcast({ type: "voice_user_joined", senderId: this.p2p.peerId, ...data });
+    }
+  }
+
+  sendVoiceSignal(targetId, signal) {
+    if (this.mode === "socket" && this.socket && this.socket.connected) {
+      this.socket.emit("voice_signal", { targetId, signal });
+    } else if (this.mode === "p2p" && this.p2p) {
+      this.p2p.sendToPeer(targetId, { type: "voice_signal", senderId: this.p2p.peerId, signal });
+    }
+  }
+
+  sendVoiceState(state) {
+    if (this.mode === "socket" && this.socket && this.socket.connected) {
+      this.socket.emit("voice_state", state);
+    } else if (this.mode === "p2p" && this.p2p) {
+      this.p2p.broadcast({ type: "voice_state_changed", senderId: this.p2p.peerId, ...state });
+    }
+  }
+
+  sendVoiceSpeaking(isSpeaking) {
+    if (this.mode === "socket" && this.socket && this.socket.connected) {
+      this.socket.emit("voice_speaking", { isSpeaking });
+    } else if (this.mode === "p2p" && this.p2p) {
+      this.p2p.broadcast({ type: "voice_speaking_changed", senderId: this.p2p.peerId, isSpeaking });
     }
   }
 }

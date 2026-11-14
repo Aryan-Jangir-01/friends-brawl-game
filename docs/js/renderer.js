@@ -1527,6 +1527,24 @@ export class GameRenderer {
         ctx.fill();
       }
 
+      // 2a. Live Voice Chat Speaking Aura
+      const isPlayerSpeaking = window.__voiceManager && (
+        (p.id === localPlayer?.id && window.__voiceManager.isSpeaking) ||
+        window.__voiceManager.peers?.get(p.id)?.isSpeaking
+      );
+      if (isPlayerSpeaking) {
+        const voicePulse = Math.sin(Date.now() / 110) * 3;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(0, 0, radius + 7 + voicePulse, 0, Math.PI * 2);
+        ctx.strokeStyle = "#10b981";
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        ctx.fillStyle = "rgba(16, 185, 129, 0.15)";
+        ctx.fill();
+        ctx.restore();
+      }
+
       // 2b. Super Charged Aura when at 100%
       if ((p.superCharge || 0) >= 100) {
         const pulse = Math.sin(Date.now() / 140) * 3;
@@ -1617,14 +1635,15 @@ export class GameRenderer {
       ctx.fillStyle = p.id === localPlayer?.id ? "#10b981" : "#ef4444";
       ctx.fillRect(-barW / 2, barY, barW * (p.health / p.maxHealth), barH);
 
-      // Player Name
+      // Player Name (with Voice Speaking status)
       ctx.font = "bold 11px 'Segoe UI', sans-serif";
       ctx.textAlign = "center";
       ctx.strokeStyle = "rgba(0, 0, 0, 0.85)";
       ctx.lineWidth = 2.5;
-      ctx.strokeText(p.name, 0, barY - (p.shield > 0 ? 9 : 3));
-      ctx.fillStyle = "#ffffff";
-      ctx.fillText(p.name, 0, barY - (p.shield > 0 ? 9 : 3));
+      const displayName = isPlayerSpeaking ? `🎙️ ${p.name}` : p.name;
+      ctx.strokeText(displayName, 0, barY - (p.shield > 0 ? 9 : 3));
+      ctx.fillStyle = isPlayerSpeaking ? "#10b981" : "#ffffff";
+      ctx.fillText(displayName, 0, barY - (p.shield > 0 ? 9 : 3));
 
       // Active Emote Bubble
       const emote = this.activeEmotes.get(p.id);
